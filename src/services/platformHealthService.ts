@@ -1,212 +1,97 @@
-import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { API_BASE_URL, api } from '@/lib/api';
 import { env } from '@/lib/env';
-import {
-  statusForLatency,
-  type HealthCheck,
-  type HealthStatus,
-} from '@/lib/platformHealth';
+import { statusForLatency, type HealthCheck } from '@/lib/platformHealth';
 
 /**
- * Live platform checks, run from the browser with the caller's own session.
- *
- * ## What this can and cannot see
- *
- * This is a static PWA. There is no server of ours to ask, so every number
- * here is measured from the administrator's own device: a real round trip to
- * Supabase, a real realtime handshake, the real session. That makes the
- * latencies honest but *local*. They include the viewer's network, so they
- * answer "can I reach the platform, and how fast" rather than "what is the
- * platform's global p95".
- *
- * Deliberately absent, because a browser with an anon key cannot know them and
- * inventing them would be worse than omitting them: error rates, queue depth,
- * background-job health, storage totals and per-region latency. The page says
- * so on screen rather than filling the space with plausible numbers.
+ * The console's health page: live probes of the API from this browser, plus which optional services this build
+ * is configured for. Realtime is polling now (useRealtimeRefresh), so there is no socket to probe. Uptime over
+ * time is watched by an external monitor, not stored here.
  */
 
-/** How long a probe may take before we stop waiting and call it down. */
 const PROBE_TIMEOUT_MS = 8_000;
 
-/** Resolve to `null` if the promise has not settled in time. */
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+async function timed<T>(
+  run: () => Promise<T>,
+): Promise<{ value: T | null; error: unknown; ms: number }> {
+  const started = performance.now();
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<null>((resolve) => {
-    timer = setTimeout(() => resolve(null), ms);
-  });
   try {
-    return await Promise.race([promise, timeout]);
+    const value = await Promise.race([
+      run(),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), PROBE_TIMEOUT_MS);
+      }),
+    ]);
+    return { value, error: null, ms: performance.now() - started };
+  } catch (error) {
+    return { value: null, error, ms: performance.now() - started };
   } finally {
     if (timer !== undefined) clearTimeout(timer);
   }
 }
 
-/** Database reachability and round-trip time, via the cheapest query available. */
-async function checkDatabase(): Promise<HealthCheck> {
-  const started = performance.now();
-  const result = await withTimeout(
-    // `head: true` sends no rows back. This measures the round trip, not the
-    // payload. RLS still applies, which is the point: it proves the path a real
-    // request takes, not a privileged shortcut.
-    Promise.resolve(
-      supabase.from('organisations').select('id', { count: 'exact', head: true }),
-    ),
-    PROBE_TIMEOUT_MS,
-  );
-  const latencyMs = performance.now() - started;
-
-  if (result === null) {
+async function checkApi(): Promise<HealthCheck> {
+  const r = await timed(async () => {
+    const res = await fetch(`${API_BASE_URL}/health`, { credentials: 'omit' });
+    return res.ok;
+  });
+  if (r.value === true) {
     return {
-      name: 'PostgreSQL database',
-      status: 'down',
-      detail: `No response within ${PROBE_TIMEOUT_MS / 1_000} seconds.`,
-    };
-  }
-  if (result.error) {
-    return {
-      name: 'PostgreSQL database',
-      status: 'down',
-      latencyMs,
-      detail: `Query failed: ${result.error.message}`,
+      name: 'API and database',
+      status: statusForLatency(r.ms),
+      latencyMs: r.ms,
+      detail: 'The API answered its health check.',
     };
   }
   return {
-    name: 'PostgreSQL database',
-    status: statusForLatency(latencyMs),
-    latencyMs,
-    detail: 'Reachable, and row-level security is answering as expected.',
+    name: 'API and database',
+    status: 'down',
+    latencyMs: r.error ? r.ms : undefined,
+    detail:
+      r.error || r.value === false
+        ? 'The health check failed.'
+        : `No response within ${PROBE_TIMEOUT_MS / 1_000} seconds.`,
   };
 }
 
-/** Auth reachability, plus how long the current session has left. */
 async function checkAuth(): Promise<HealthCheck> {
-  const started = performance.now();
-  const result = await withTimeout(supabase.auth.getSession(), PROBE_TIMEOUT_MS);
-  const latencyMs = performance.now() - started;
-
-  if (result === null) {
+  const r = await timed(() => api.get<{ user: { id: string } }>('/me'));
+  if (r.value) {
     return {
-      name: 'Authentication',
-      status: 'down',
-      detail: `No response within ${PROBE_TIMEOUT_MS / 1_000} seconds.`,
-    };
-  }
-  if (result.error) {
-    return {
-      name: 'Authentication',
-      status: 'down',
-      latencyMs,
-      detail: `Session lookup failed: ${result.error.message}`,
-    };
-  }
-
-  const expiresAt = result.data.session?.expires_at;
-  const detail =
-    expiresAt === undefined
-      ? 'Responding. No active session on this device.'
-      : `Responding. This session expires ${new Date(expiresAt * 1_000).toLocaleString('en-GB')}.`;
-
-  return {
-    name: 'Authentication',
-    status: statusForLatency(latencyMs),
-    latencyMs,
-    detail,
-  };
-}
-
-/**
- * Realtime handshake. Subscribes to a throwaway channel and times how long the
- * socket takes to say SUBSCRIBED, then tears it down.
- */
-async function checkRealtime(): Promise<HealthCheck> {
-  const started = performance.now();
-  const channelName = `health-probe-${Date.now()}`;
-  const channel = supabase.channel(channelName);
-
-  const settled = await withTimeout(
-    new Promise<HealthStatus>((resolve) => {
-      // Compare against the enum rather than string literals: the callback is
-      // typed `REALTIME_SUBSCRIBE_STATES`, and a bare string would silently
-      // stop matching if supabase-js ever renamed a member.
-      channel.subscribe((status) => {
-        if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) resolve('operational');
-        if (
-          status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR ||
-          status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT
-        ) {
-          resolve('down');
-        }
-      });
-    }),
-    PROBE_TIMEOUT_MS,
-  );
-  const latencyMs = performance.now() - started;
-  void supabase.removeChannel(channel);
-
-  if (settled === null) {
-    return {
-      name: 'Realtime',
-      status: 'down',
-      detail: 'The websocket did not complete a handshake in time.',
-    };
-  }
-  if (settled === 'down') {
-    return {
-      name: 'Realtime',
-      status: 'down',
-      latencyMs,
-      detail: 'The websocket refused the subscription.',
+      name: 'Sign-in (Clerk) and API session',
+      status: statusForLatency(r.ms),
+      latencyMs: r.ms,
+      detail: 'This session token was accepted by the API.',
     };
   }
   return {
-    name: 'Realtime',
-    status: statusForLatency(latencyMs),
-    latencyMs,
-    detail: 'Subscribed and receiving. Live rota updates will arrive.',
+    name: 'Sign-in (Clerk) and API session',
+    status: 'down',
+    detail:
+      r.error instanceof Error
+        ? `The API refused this session: ${r.error.message}`
+        : 'No answer in time.',
   };
 }
 
-/**
- * Services we can only report configuration for. Marked `configuredOnly` so the
- * UI can say "configured" rather than implying a live probe happened, a key
- * being present proves the app will try, not that the far end is up.
- */
-function configuredServices(deliveryConfigured: boolean): HealthCheck[] {
+function configuredServices(): HealthCheck[] {
   const entry = (
     name: string,
     present: boolean,
-    whenPresent: string,
-    whenAbsent: string,
+    yes: string,
+    no: string,
   ): HealthCheck => ({
     name,
     status: present ? 'operational' : 'unknown',
-    detail: present ? whenPresent : whenAbsent,
+    detail: present ? yes : no,
     configuredOnly: true,
   });
-
   return [
-    entry(
-      'File storage (ImageKit)',
-      Boolean(env.imagekitUrlEndpoint),
-      'Endpoint configured. Uploads are routed to ImageKit.',
-      'No endpoint configured. Uploads fall back to local handling.',
-    ),
     entry(
       'Error monitoring (Sentry)',
       Boolean(env.sentryDsn),
       'DSN configured. Client errors are reported.',
       'No DSN. Client errors are not reported anywhere.',
-    ),
-    // Was "Background workflows (Inngest)", reporting on a key that stopped
-    // meaning anything when 0087 moved dispatch into the database. Background
-    // work is pg_cron inside Postgres now, and whether it can actually deliver
-    // is a question about the outbox's secrets, which the database answers
-    // itself (0091).
-    entry(
-      'Notification delivery',
-      deliveryConfigured,
-      'The outbox drain has every secret it needs. Queued notifications are dispatched.',
-      'A secret the outbox drain needs is missing. Notifications queue and are never sent.',
     ),
     entry(
       'Push notifications',
@@ -215,29 +100,15 @@ function configuredServices(deliveryConfigured: boolean): HealthCheck[] {
       'No VAPID key. Push subscriptions cannot be created.',
     ),
     entry(
-      'Single sign-on',
-      env.oauthProviders.length > 0,
-      `Providers offered: ${env.oauthProviders.join(', ')}.`,
-      'No OAuth providers declared. Password sign-in only.',
+      'Sign-in (Clerk)',
+      Boolean(env.clerkPublishableKey),
+      'Publishable key present. People sign in with an email code.',
+      'No publishable key. Nobody can sign in to this build.',
     ),
   ];
 }
 
-/**
- * Run every probe. Live checks run concurrently. They are independent, and
- * running them in series would make the page feel broken on a slow connection.
- */
 export async function runHealthChecks(): Promise<HealthCheck[]> {
-  const live = await Promise.all([checkDatabase(), checkAuth(), checkRealtime()]);
-
-  // Whether notifications can actually be delivered is a question only the
-  // database can answer: the outbox drain's secrets live in `vault`, and
-  // `notification_delivery_configured()` reports on them without returning
-  // any of them (0091). Failing to read it is reported as not configured —
-  // the same direction every other check here fails.
-  const { data: deliveryConfigured } = await supabase.rpc(
-    'notification_delivery_configured',
-  );
-
-  return [...live, ...configuredServices(deliveryConfigured === true)];
+  const live = await Promise.all([checkApi(), checkAuth()]);
+  return [...live, ...configuredServices()];
 }

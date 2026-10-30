@@ -1,22 +1,49 @@
-import { supabase } from '@/lib/supabase';
+import { api, isApiCode } from '@/lib/api';
 import type { AuditLog, Profile } from '@/types';
 
-/**
- * Per-account reads for `/admin/users/:userId`.
- *
- * These work because 0015 widened `profiles_select_own` to admit platform
- * administrators. Before that migration this whole file would return one row
- * or none, which is exactly the defect `/admin/users` shipped with.
- */
+/** One person in the platform console (owner, admin and support). */
+
+interface UserDetail {
+  user: {
+    id: string;
+    email: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    created_at: string;
+    last_seen_at: string | null;
+  };
+  memberships: {
+    org_id: string;
+    org_name: string;
+    org_status: string;
+    role: string;
+    status: string;
+    created_at: string;
+  }[];
+  platform_role: string | null;
+}
+
+async function detail(userId: string): Promise<UserDetail | null> {
+  try {
+    return await api.get<UserDetail>(`/platform/users/${encodeURIComponent(userId)}`);
+  } catch (error) {
+    if (isApiCode(error, 'not_found')) return null;
+    throw error;
+  }
+}
 
 export async function getProfileById(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  const d = await detail(userId);
+  if (!d) return null;
+  return {
+    id: d.user.id,
+    email: d.user.email,
+    full_name: d.user.full_name,
+    avatar_url: d.user.avatar_url,
+    is_platform_admin: d.platform_role !== null,
+    created_at: d.user.created_at,
+    updated_at: d.user.last_seen_at ?? d.user.created_at,
+  };
 }
 
 export interface UserMembershipRow {
@@ -28,46 +55,28 @@ export interface UserMembershipRow {
   joinedAt: string;
 }
 
-/** Every organisation this account belongs to, and as what. */
 export async function listUserMemberships(userId: string): Promise<UserMembershipRow[]> {
-  const { data, error } = await supabase
-    .from('memberships')
-    .select('org_id, role, status, created_at, organisation:organisations(name, status)')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-
-  return (data ?? []).map((row) => {
-    const org = row.organisation as { name: string; status: string } | null;
-    return {
-      orgId: row.org_id,
-      orgName: org?.name ?? 'Unknown organisation',
-      orgStatus: org?.status ?? 'active',
-      role: row.role,
-      status: row.status,
-      joinedAt: row.created_at,
-    };
-  });
+  const d = await detail(userId);
+  return (d?.memberships ?? []).map((row) => ({
+    orgId: row.org_id,
+    orgName: row.org_name,
+    orgStatus: row.org_status,
+    role: row.role,
+    status: row.status,
+    joinedAt: row.created_at,
+  }));
 }
 
-/**
- * What this account has done, across every tenant.
- *
- * Cross-tenant by design. The question a platform administrator brings to
- * this screen is "what has this person been doing", and scoping it to one
- * organisation would answer a different one. Only a platform administrator can
- * run it: the read policy admits other readers to their *own* actions only.
- */
 export async function listUserAuditLogs(
   userId: string,
   limit = 100,
 ): Promise<AuditLog[]> {
-  const { data, error } = await supabase
-    .from('audit_logs')
-    .select('*')
-    .eq('actor_user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ entries: (AuditLog & { id: string | number })[] }>(
+    '/platform/audit',
+    {
+      actor: userId,
+      limit: Math.min(200, limit),
+    },
+  );
+  return r.entries.map((e) => ({ ...e, id: String(e.id) }));
 }

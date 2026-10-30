@@ -31,10 +31,13 @@ final class Console implements Module
             ['POST', '/platform/admins', $this->grant(...)],
             ['POST', '/platform/admins/{u}/revoke', $this->revoke(...)],
             ['GET', '/platform/summary', $this->summary(...)],
+            ['GET', '/platform/notifications/activity', $this->notificationActivity(...)],
             ['GET', '/platform/orgs', $this->orgDirectory(...)],
             ['GET', '/platform/orgs/{o}', $this->orgDetail(...)],
+            ['GET', '/platform/orgs/{o}/structure', $this->orgStructure(...)],
             ['POST', '/platform/orgs/{o}/status', $this->setStatus(...)],
             ['GET', '/platform/users', $this->userDirectory(...)],
+            ['GET', '/platform/users/{u}', $this->userDetail(...)],
             ['GET', '/platform/support-sessions', $this->allSessions(...)],
             ['POST', '/platform/orgs/{o}/support-sessions', $this->requestSession(...)],
             ['POST', '/platform/support-sessions/{s}/revoke', $this->platformRevoke(...)],
@@ -198,6 +201,19 @@ final class Console implements Module
     // ---- directories and totals ----------------------------------------------------------------------
 
     /** Every staff role: counts only, no tenant rows. */
+    /**
+     * What the notifications console charts: recent notifications as (organisation, channel, type, read, when) with
+     * no title or body, and how many devices are subscribed to push. Owner, admin and support.
+     */
+    private function notificationActivity(array $user, array $in, string $ip): array
+    {
+        $this->staff($user, ['platform_owner', 'platform_admin', 'platform_support']);
+        $limit = (int) (Input::optNum($in, 'limit', 1, 1000) ?? 1000);
+        $rows = $this->ctx->pdo->query("SELECT org_id, channel, type, read_at, created_at FROM notifications ORDER BY created_at DESC, id DESC LIMIT $limit")->fetchAll();
+        $push = (int) $this->ctx->pdo->query('SELECT COUNT(*) FROM push_subscriptions')->fetchColumn();
+        return [200, ['notifications' => $rows, 'push_subscriptions' => $push]];
+    }
+
     private function summary(array $user, array $in, string $ip): array
     {
         $this->staff($user);
@@ -212,6 +228,8 @@ final class Console implements Module
             'active_staff' => (int) $pdo->query('SELECT COUNT(*) FROM staff_profiles WHERE active = 1')->fetchColumn(),
             'monthly_recurring_pence' => $mrr,
             'open_support_sessions' => (int) $pdo->query('SELECT COUNT(*) FROM support_access_sessions WHERE revoked_at IS NULL AND expires_at > UTC_TIMESTAMP()')->fetchColumn(),
+            'published_rotas' => (int) $pdo->query("SELECT COUNT(*) FROM rotas WHERE status = 'published'")->fetchColumn(),
+            'shifts_this_month' => (int) $pdo->query("SELECT COUNT(*) FROM shifts WHERE status <> 'cancelled' AND starts_at >= '" . gmdate('Y-m-01 00:00:00') . "'")->fetchColumn(),
         ]]];
     }
 
@@ -249,6 +267,37 @@ final class Console implements Module
     }
 
     /** One organisation's counts (never its rows: reading those needs a support session). */
+    /**
+     * A tenant's people and places for the console's organisation page (owner, admin, support): members with their
+     * name and email, sites, departments and this month's activity. No staff records, pay or contact details.
+     */
+    private function orgStructure(array $user, array $in, string $ip, string $o): array
+    {
+        $this->staff($user, ['platform_owner', 'platform_admin', 'platform_support']);
+        $pdo = $this->ctx->pdo;
+        $q = $pdo->prepare('SELECT 1 FROM organisations WHERE id = ?');
+        $q->execute([$o]);
+        if ($q->fetchColumn() === false) {
+            throw HttpError::notFound();
+        }
+        $all = static function (string $sql, array $args) use ($pdo): array {
+            $st = $pdo->prepare($sql);
+            $st->execute($args);
+            return $st->fetchAll();
+        };
+        $month = gmdate('Y-m-01 00:00:00');
+        return [200, [
+            'members' => $all('SELECT m.user_id, m.role, m.status, m.created_at, u.full_name, u.email FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.org_id = ? ORDER BY m.created_at', [$o]),
+            'locations' => $all('SELECT id, name, address, timezone, location_type, status, created_at FROM locations WHERE org_id = ? ORDER BY name', [$o]),
+            'departments' => $all('SELECT id, location_id, name, created_at FROM departments WHERE org_id = ? ORDER BY name', [$o]),
+            'counts' => [
+                'staff_total' => (int) $all('SELECT COUNT(*) AS n FROM staff_profiles WHERE org_id = ?', [$o])[0]['n'],
+                'published_rotas' => (int) $all("SELECT COUNT(*) AS n FROM rotas WHERE org_id = ? AND status = 'published'", [$o])[0]['n'],
+                'shifts_month' => (int) $all("SELECT COUNT(*) AS n FROM shifts WHERE org_id = ? AND starts_at >= ? AND status <> 'cancelled'", [$o, $month])[0]['n'],
+            ],
+        ]];
+    }
+
     private function orgDetail(array $user, array $in, string $ip, string $o): array
     {
         $this->staff($user);
@@ -286,6 +335,20 @@ final class Console implements Module
     }
 
     /** People are not for the finance role. */
+    /** One person and every organisation they belong to (owner, admin, support), for the console's user page. */
+    private function userDetail(array $user, array $in, string $ip, string $u): array
+    {
+        $this->staff($user, ['platform_owner', 'platform_admin', 'platform_support']);
+        $pdo = $this->ctx->pdo;
+        $q = $pdo->prepare('SELECT u.id, u.email, u.full_name, u.avatar_url, u.created_at, u.last_seen_at, (u.clerk_user_id IS NOT NULL) AS signed_in FROM users u WHERE u.id = ?');
+        $q->execute([$u]);
+        $row = $q->fetch() ?: throw HttpError::notFound();
+        $row['signed_in'] = (bool) $row['signed_in'];
+        $m = $pdo->prepare('SELECT m.org_id, o.name AS org_name, o.status AS org_status, m.role, m.status, m.created_at FROM memberships m JOIN organisations o ON o.id = m.org_id WHERE m.user_id = ? ORDER BY m.created_at');
+        $m->execute([$u]);
+        return [200, ['user' => $row, 'memberships' => $m->fetchAll(), 'platform_role' => Scope::platformRole($pdo, $u)]];
+    }
+
     private function userDirectory(array $user, array $in, string $ip): array
     {
         $this->staff($user, ['platform_owner', 'platform_admin', 'platform_support']);

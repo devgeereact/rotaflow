@@ -1,85 +1,92 @@
-import { supabase } from '@/lib/supabase';
+import { api, ApiError } from '@/lib/api';
 import type { PlatformSettings, PlatformSettingsUpdate } from '@/types';
 
 /**
- * Deployment-wide configuration (0018_platform_settings.sql).
- *
- * A single seeded row, so this is a `.single()` and never "which row won?".
- * Readable by every signed-in user. The maintenance banner and support address
- * are things the tenant app shows, and writable only by a platform owner or
- * administrator, enforced by the table's UPDATE policy.
- *
- * ## What is deliberately not here
- *
- * Authentication settings. Password policy, magic links, OAuth providers,
- * session duration. Belong to Supabase Auth, which this table cannot override.
- * A "require email verification" switch here would be a switch that changes
- * nothing, so the console reports the real, build-time configuration from
- * `lib/env.ts` instead and says where each setting actually lives.
+ * Platform settings (any signed-in person reads; owner and admin write). The API keeps the settings the product
+ * still uses: name, support address, URL, default time zone, registration and maintenance mode. The rest of the
+ * old row (branding, session and upload limits, email provider) read nothing and is answered with defaults.
  */
 
-/** The singleton row. Seeded by the migration, so this should never be null. */
-export async function getPlatformSettings(): Promise<PlatformSettings | null> {
-  const { data, error } = await supabase
-    .from('platform_settings')
-    .select('*')
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+interface ApiSettings {
+  platform_name: string;
+  support_email: string;
+  platform_url: string;
+  default_timezone: string;
+  registration_enabled: boolean | number;
+  maintenance_mode: boolean | number;
+  maintenance_message: string | null;
+  updated_at: string;
 }
 
-/**
- * Patch the settings row.
- *
- * Raises rather than returning empty when the caller lacks the role: the UPDATE
- * policy filters the row out, PostgREST reports zero rows changed, and
- * `.single()` turns that into an error, which is the behaviour we want, since
- * a settings save that silently did nothing is the defect this codebase already
- * shipped once on `/admin/users`.
- */
+function toSettings(s: ApiSettings): PlatformSettings {
+  return {
+    id: true,
+    platform_name: s.platform_name,
+    support_email: s.support_email,
+    platform_url: s.platform_url,
+    default_timezone: s.default_timezone,
+    registration_enabled: Boolean(Number(s.registration_enabled)),
+    maintenance_mode: Boolean(Number(s.maintenance_mode)),
+    maintenance_message: s.maintenance_message,
+    updated_at: s.updated_at,
+    created_at: s.updated_at,
+    updated_by: null,
+    admin_session_minutes: 60,
+    api_rate_limit_per_min: 60,
+    email_provider: 'smtp',
+    email_sender_address: s.support_email,
+    email_sender_name: s.platform_name,
+    favicon_url: null,
+    logo_url: null,
+    max_concurrent_sessions: 0,
+    max_upload_mb: 2,
+    permitted_file_types: [],
+    primary_colour: '',
+    public_api_enabled: false,
+    reauth_for_critical: false,
+    require_mfa: false,
+    signin_alerts: false,
+    support_branding: false,
+    webhook_max_attempts: 0,
+  };
+}
+
+export async function getPlatformSettings(): Promise<PlatformSettings | null> {
+  const r = await api.get<{ settings: ApiSettings | false | null }>('/platform/settings');
+  return r.settings ? toSettings(r.settings) : null;
+}
+
+const WRITABLE = [
+  'platform_name',
+  'support_email',
+  'platform_url',
+  'default_timezone',
+  'registration_enabled',
+  'maintenance_mode',
+  'maintenance_message',
+] as const;
+
 export async function updatePlatformSettings(
   patch: PlatformSettingsUpdate,
-  updatedBy: string,
+  _updatedBy: string,
 ): Promise<PlatformSettings> {
-  const { data, error } = await supabase
-    .from('platform_settings')
-    .update({ ...patch, updated_by: updatedBy })
-    .eq('id', true)
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data;
+  const body: Record<string, unknown> = {};
+  for (const k of WRITABLE) if (k in patch) body[k] = patch[k];
+  const r = await api.post<{ settings: ApiSettings }>('/platform/settings', body);
+  return toSettings(r.settings);
 }
 
-/**
- * Turn the console's second-factor requirement on or off (CAP-049, `0102`).
- *
- * Not a plain `update`: turning it ON is refused by the database unless the
- * caller is holding an `aal2` session at that moment. Requiring MFA from a
- * session that has not done MFA is how an administrator locks themselves out
- * of their own console, and it is a mistake the database can simply refuse to
- * make. Turning it off has no such guard, deliberately.
- */
-export async function setPlatformMfaRequired(required: boolean): Promise<boolean> {
-  const { data, error } = await supabase.rpc('set_platform_mfa_required', {
-    p_required: required,
-  });
-  if (error) throw error;
-  return data ?? required;
+const MFA_IN_CLERK =
+  'Two-step verification for platform staff is set in the Clerk dashboard (turn on multi-factor for those accounts), not here.';
+
+export async function setPlatformMfaRequired(_required: boolean): Promise<boolean> {
+  return Promise.reject(new ApiError(405, 'not_available', MFA_IN_CLERK));
 }
 
-/** The caller's own second-factor state, read server-side (`0102`). */
 export async function getMyMfaStatus(): Promise<{
   hasVerifiedFactor: boolean;
   factorCount: number;
   sessionIsAal2: boolean;
 }> {
-  const { data, error } = await supabase.rpc('my_mfa_status');
-  if (error) throw error;
-  const row = (data ?? [])[0];
-  return {
-    hasVerifiedFactor: row?.has_verified_factor ?? false,
-    factorCount: row?.factor_count ?? 0,
-    sessionIsAal2: row?.session_is_aal2 ?? false,
-  };
+  return Promise.reject(new ApiError(405, 'not_available', MFA_IN_CLERK));
 }

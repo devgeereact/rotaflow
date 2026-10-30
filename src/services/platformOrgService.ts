@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, isApiCode, orgPath } from '@/lib/api';
 import type {
   AuditLog,
   Department,
@@ -9,27 +9,87 @@ import type {
 } from '@/types';
 
 /**
- * Per-tenant reads for `/admin/organisations/:organisationId`.
- *
- * Same posture as `platformService`: plain client queries, because
- * `is_platform_admin()` is folded into `is_org_member`/`has_org_role` in 0002
- * and already grants cross-tenant read. For anyone who is not a platform
- * administrator every read here returns empty rather than raising. RLS filters
- * rows, it does not error.
- *
- * The writes are the opposite and go through RPCs that raise, because a refused
- * write must never look like a successful one.
+ * One tenant as the platform console sees it (`/platform/orgs/{o}` and its structure). Platform staff read
+ * names, sites and counts; never staff records, pay or contact details.
  */
 
-/** One tenant, or null when the id does not resolve. */
+const p = (orgId: string): string => `/platform/orgs/${encodeURIComponent(orgId)}`;
+
+interface ApiOrgDetail {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan: string;
+  trial_ends_at: string | null;
+  created_at: string;
+  support_access_allowed: boolean;
+  suspended_reason: string | null;
+  sub_status: string | null;
+  grace_until: string | null;
+  stripe_mode: string | null;
+  billing_state: string;
+  members: number;
+  active_staff: number;
+  locations: number;
+  departments: number;
+  shifts: number;
+  invoices: number;
+}
+
+interface ApiStructure {
+  members: {
+    user_id: string;
+    role: string;
+    status: string;
+    created_at: string;
+    full_name: string | null;
+    email: string | null;
+  }[];
+  locations: Omit<Location, 'org_id'>[];
+  departments: Omit<Department, 'org_id'>[];
+  counts: { staff_total: number; published_rotas: number; shifts_month: number };
+}
+
+async function detail(orgId: string): Promise<ApiOrgDetail | null> {
+  try {
+    return (await api.get<{ organisation: ApiOrgDetail }>(p(orgId))).organisation;
+  } catch (error) {
+    if (isApiCode(error, 'not_found')) return null;
+    throw error;
+  }
+}
+
+async function structure(orgId: string): Promise<ApiStructure> {
+  return api.get<ApiStructure>(`${p(orgId)}/structure`);
+}
+
 export async function getOrganisation(orgId: string): Promise<Organisation | null> {
-  const { data, error } = await supabase
-    .from('organisations')
-    .select('*')
-    .eq('id', orgId)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  const o = await detail(orgId);
+  if (!o) return null;
+  return {
+    id: o.id,
+    name: o.name,
+    slug: o.slug,
+    status: o.status,
+    plan: o.plan,
+    trial_ends_at: o.trial_ends_at,
+    created_at: o.created_at,
+    updated_at: o.created_at,
+    support_access_allowed: Boolean(o.support_access_allowed),
+    suspended_reason: o.suspended_reason,
+    suspended_at: null,
+    contact_email: null,
+    contact_phone: null,
+    country: 'United Kingdom',
+    timezone: 'Europe/London',
+    created_by: null,
+    industry: null,
+    is_demo: false,
+    last_activity_at: null,
+    onboarding_completed_at: null,
+    settings: {},
+  };
 }
 
 export interface OrgMemberRow {
@@ -41,92 +101,64 @@ export interface OrgMemberRow {
   email: string | null;
 }
 
-/**
- * Everyone with a membership in this organisation.
- *
- * The profile join resolves for a platform administrator because 0015 widened
- * `profiles_select_own` to admit them. For anyone else it returns nulls, which
- * is correct, and why this is a platform-console service rather than something
- * the tenant app shares.
- */
 export async function listOrgMembers(orgId: string): Promise<OrgMemberRow[]> {
-  const { data, error } = await supabase
-    .from('memberships')
-    .select('user_id, role, status, created_at, profile:profiles(full_name, email)')
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-
-  return (data ?? []).map((row) => {
-    const profile = row.profile as { full_name: string | null; email: string } | null;
-    return {
-      userId: row.user_id,
-      role: row.role,
-      status: row.status,
-      joinedAt: row.created_at,
-      fullName: profile?.full_name ?? null,
-      email: profile?.email ?? null,
-    };
-  });
+  return (await structure(orgId)).members.map((m) => ({
+    userId: m.user_id,
+    role: m.role,
+    status: m.status,
+    joinedAt: m.created_at,
+    fullName: m.full_name,
+    email: m.email,
+  }));
 }
 
 export async function listOrgLocations(orgId: string): Promise<Location[]> {
-  const { data, error } = await supabase
-    .from('locations')
-    .select('*')
-    .eq('org_id', orgId)
-    .order('name');
-  if (error) throw error;
-  return data ?? [];
+  return (await structure(orgId)).locations.map((l) => ({ ...l, org_id: orgId }));
 }
 
 export async function listOrgDepartments(orgId: string): Promise<Department[]> {
-  const { data, error } = await supabase
-    .from('departments')
-    .select('*')
-    .eq('org_id', orgId)
-    .order('name');
-  if (error) throw error;
-  return data ?? [];
+  return (await structure(orgId)).departments.map((d) => ({ ...d, org_id: orgId }));
 }
 
 export async function getOrgSubscription(orgId: string): Promise<Subscription | null> {
-  const { data, error } = await supabase
-    .from('subscriptions')
-    .select('*')
-    .eq('org_id', orgId)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  const o = await detail(orgId);
+  if (!o?.sub_status) return null;
+  return {
+    id: orgId,
+    org_id: orgId,
+    plan: o.plan,
+    status: o.sub_status,
+    grace_until: o.grace_until,
+    stripe_mode: o.stripe_mode ?? 'test',
+    trial_ends_at: o.trial_ends_at,
+    canceled_at: null,
+    created_at: o.created_at,
+    currency: 'GBP',
+    current_period_end: null,
+    past_due_since: null,
+    price_pence: null,
+    provider: 'stripe',
+    provider_ref: null,
+    started_at: o.created_at,
+    stripe_customer_id: null,
+    updated_at: o.created_at,
+  };
 }
 
 export interface OrgAuditPage {
   rows: AuditLog[];
-  /** Rows for this tenant, from the server. Never `rows.length`. */
   total: number;
 }
 
-/**
- * This tenant's audit trail, newest first, with the count of everything behind
- * it.
- *
- * The cap is unchanged; what changes is that the page can now say so. Before
- * this it returned 100 rows with no total, so a tenant with 4,000 audit events
- * showed a list that looked complete and there was no number anywhere that
- * would have contradicted it.
- */
 export async function listOrgAuditLogs(
   orgId: string,
   limit = 100,
 ): Promise<OrgAuditPage> {
-  const { data, error, count } = await supabase
-    .from('audit_logs')
-    .select('*', { count: 'exact' })
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return { rows: data ?? [], total: count ?? 0 };
+  const r = await api.get<{
+    entries: (AuditLog & { id: string | number })[];
+    total: number;
+  }>('/platform/audit', { scope: orgId, limit: Math.min(200, limit) });
+  return { rows: r.entries.map((e) => ({ ...e, id: String(e.id) })), total: r.total };
 }
 
 export interface OrgUsage {
@@ -138,74 +170,31 @@ export interface OrgUsage {
   shiftsThisMonth: number;
 }
 
-/**
- * Counts for the usage tab.
- *
- * Uses PostgREST's `head`+`count: 'exact'` so no rows cross the wire. This is
- * a page of numbers, and pulling every shift in a tenant to call `.length` on
- * it would be the same figure at a hundred times the cost.
- *
- * There are no limits to compare these against: no plan carries a seat or
- * location cap anywhere in the schema, so the tab reports usage and says
- * plainly that nothing enforces a ceiling, rather than inventing one.
- */
 export async function getOrgUsage(orgId: string): Promise<OrgUsage> {
-  // One SECURITY DEFINER call rather than six head-count queries.
-  //
-  // Since 0028 a platform administrator reads tenant rows only through an
-  // active support access session, so counting by selecting from
-  // `staff_profiles` would return zero for every organisation nobody currently
-  // has a session on. `platform_tenant_counts` counts past RLS and returns
-  // numbers rather than rows: how large a tenant is, without who is in it.
-  const { data, error } = await supabase.rpc('platform_tenant_counts', {
-    p_org: orgId,
-  });
-  if (error) throw error;
-
-  const row = (data ?? [])[0];
+  const [o, s] = await Promise.all([detail(orgId), structure(orgId)]);
   return {
-    staff: Number(row?.staff_total ?? 0),
-    activeStaff: Number(row?.staff_active ?? 0),
-    locations: Number(row?.locations ?? 0),
-    departments: Number(row?.departments ?? 0),
-    publishedRotas: Number(row?.published_rotas ?? 0),
-    shiftsThisMonth: Number(row?.shifts_month ?? 0),
+    staff: s.counts.staff_total,
+    activeStaff: o?.active_staff ?? 0,
+    locations: o?.locations ?? s.locations.length,
+    departments: o?.departments ?? s.departments.length,
+    publishedRotas: s.counts.published_rotas,
+    shiftsThisMonth: s.counts.shifts_month,
   };
 }
 
-/**
- * Suspend, archive or reactivate a tenant.
- *
- * **This is a billing and account state, not a lockout.** No RLS policy reads
- * `organisations.status`, so a suspended organisation's staff keep signing in
- * and clocking in. Enforcing it means a check inside `is_org_member()`, which
- * every policy in 0002 depends on. See the header of 0017. Any screen calling
- * this must say what it does and does not do.
- *
- * The reason is required by the database for anything other than reactivation,
- * and lands in the audit trail where the customer's own owner can read it.
- */
+/** Suspend or reinstate (owner, admin, finance). Archiving is the deletion flow, not a status change. */
 export async function setOrgStatus(
   orgId: string,
   status: OrganisationStatus,
   reason?: string,
 ): Promise<void> {
-  const { error } = await supabase.rpc('set_org_status', {
-    p_org: orgId,
-    p_status: status,
-    p_reason: reason ?? undefined,
-  });
-  if (error) throw error;
+  await api.post(`${p(orgId)}/status`, { status, reason: reason ?? null });
 }
 
-/** Record whether this customer permits platform support to open their data. */
+/** The organisation's owner allows or refuses platform support access; refusing ends every open session. */
 export async function setOrgSupportAccess(
   orgId: string,
   allowed: boolean,
 ): Promise<void> {
-  const { error } = await supabase.rpc('set_org_support_access', {
-    p_org: orgId,
-    p_allowed: allowed,
-  });
-  if (error) throw error;
+  await api.post(orgPath(orgId, '/support-access'), { allowed });
 }

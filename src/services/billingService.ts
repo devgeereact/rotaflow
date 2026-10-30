@@ -306,7 +306,13 @@ function sortRows(
     const x = a[key];
     const y = b[key];
     if (typeof x === 'number' && typeof y === 'number') return (x - y) * dir;
-    return String(x ?? '').localeCompare(String(y ?? '')) * dir;
+    const text = (v: unknown): string =>
+      typeof v === 'string'
+        ? v
+        : typeof v === 'number' || typeof v === 'boolean'
+          ? String(v)
+          : '';
+    return text(x).localeCompare(text(y)) * dir;
   });
 }
 

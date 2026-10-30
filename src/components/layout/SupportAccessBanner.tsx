@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/useToast';
 import { Button } from '@/components/ui/Button';
 import {
   listActiveSessionsForOrg,
-  revokeSupportAccess,
+  revokeSupportAccessForOrg,
 } from '@/services/supportAccessService';
 import {
   formatRemaining,
@@ -70,7 +70,11 @@ export function SupportAccessBanner(): JSX.Element | null {
 
   const handleRevoke = async (session: SupportAccessSession): Promise<void> => {
     try {
-      await revokeSupportAccess(session.id, 'Ended by the organisation');
+      await revokeSupportAccessForOrg(
+        session.orgId,
+        session.id,
+        'Ended by the organisation',
+      );
       showSuccess('Support access ended. RotaFlow staff can no longer view your data.');
       await load();
     } catch (error) {

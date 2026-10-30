@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, orgPath } from '@/lib/api';
 import type { SupportAccessScope, SupportAccessSession } from '@/lib/supportAccess';
 
 /**
@@ -19,7 +19,9 @@ import type { SupportAccessScope, SupportAccessSession } from '@/lib/supportAcce
 interface SessionRow {
   id: string;
   org_id: string;
+  org_name: string | null;
   admin_user_id: string;
+  admin_email: string | null;
   reason: string;
   case_ref: string;
   scope: string;
@@ -27,26 +29,15 @@ interface SessionRow {
   expires_at: string;
   revoked_at: string | null;
   revoke_reason: string | null;
-  organisations: { name: string } | null;
-  profiles: { full_name: string | null; email: string | null } | null;
 }
-
-const SELECT = `
-  id, org_id, admin_user_id, reason, case_ref, scope,
-  granted_at, expires_at, revoked_at, revoke_reason,
-  organisations:org_id ( name ),
-  profiles:admin_user_id ( full_name, email )
-`;
 
 function toSession(row: SessionRow): SupportAccessSession {
   return {
     id: row.id,
     orgId: row.org_id,
-    orgName: row.organisations?.name ?? 'Unknown organisation',
+    orgName: row.org_name ?? 'Unknown organisation',
     adminUserId: row.admin_user_id,
-    // Falls back through name → email → a stated absence. Never an empty cell:
-    // "who opened this session" is the whole point of the row.
-    adminName: row.profiles?.full_name ?? row.profiles?.email ?? 'Platform administrator',
+    adminName: row.admin_email ?? 'Platform administrator',
     reason: row.reason,
     caseRef: row.case_ref,
     scope: row.scope === 'read_write' ? 'read_write' : 'read',
@@ -57,18 +48,18 @@ function toSession(row: SessionRow): SupportAccessSession {
   };
 }
 
-/** Every session this account may see, newest first. */
+async function orgSessions(orgId: string): Promise<SupportAccessSession[]> {
+  const r = await api.get<{ sessions: SessionRow[] }>(
+    orgPath(orgId, '/support-sessions'),
+  );
+  return r.sessions.map(toSession);
+}
+
 export async function listSupportAccessSessions(
   limit = 100,
 ): Promise<SupportAccessSession[]> {
-  const { data, error } = await supabase
-    .from('support_access_sessions')
-    .select(SELECT)
-    .order('granted_at', { ascending: false })
-    .limit(limit);
-
-  if (error) throw error;
-  return ((data ?? []) as unknown as SessionRow[]).map(toSession);
+  const r = await api.get<{ sessions: SessionRow[] }>('/platform/support-sessions');
+  return r.sessions.slice(0, limit).map(toSession);
 }
 
 /**
@@ -81,16 +72,10 @@ export async function listSupportAccessSessions(
 export async function listActiveSessionsForOrg(
   orgId: string,
 ): Promise<SupportAccessSession[]> {
-  const { data, error } = await supabase
-    .from('support_access_sessions')
-    .select(SELECT)
-    .eq('org_id', orgId)
-    .is('revoked_at', null)
-    .gt('expires_at', new Date().toISOString())
-    .order('granted_at', { ascending: false });
-
-  if (error) throw error;
-  return ((data ?? []) as unknown as SessionRow[]).map(toSession);
+  const now = Date.now();
+  return (await orgSessions(orgId)).filter(
+    (s) => s.revokedAt === null && new Date(s.expiresAt).getTime() > now,
+  );
 }
 
 /**
@@ -103,14 +88,7 @@ export async function listActiveSessionsForOrg(
  * in the query instead; at tenant scope this needs no paging.
  */
 export async function listSessionsForOrg(orgId: string): Promise<SupportAccessSession[]> {
-  const { data, error } = await supabase
-    .from('support_access_sessions')
-    .select(SELECT)
-    .eq('org_id', orgId)
-    .order('granted_at', { ascending: false });
-
-  if (error) throw error;
-  return ((data ?? []) as unknown as SessionRow[]).map(toSession);
+  return orgSessions(orgId);
 }
 
 /** Open a session. Returns the new session id; raises if the database refuses. */
@@ -121,15 +99,16 @@ export async function requestSupportAccess(input: {
   scope: SupportAccessScope;
   minutes: number;
 }): Promise<string> {
-  const { data, error } = await supabase.rpc('request_support_access', {
-    p_org: input.orgId,
-    p_reason: input.reason,
-    p_case_ref: input.caseRef,
-    p_scope: input.scope,
-    p_minutes: input.minutes,
-  });
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ id: string }>(
+    `/platform/orgs/${encodeURIComponent(input.orgId)}/support-sessions`,
+    {
+      reason: input.reason,
+      case_ref: input.caseRef,
+      scope: input.scope,
+      minutes: input.minutes,
+    },
+  );
+  return r.id;
 }
 
 /**
@@ -143,9 +122,23 @@ export async function revokeSupportAccess(
   sessionId: string,
   reason?: string,
 ): Promise<void> {
-  const { error } = await supabase.rpc('revoke_support_access', {
-    p_session: sessionId,
-    p_reason: reason ?? undefined,
+  // A platform administrator ends their own or anyone's session here; an organisation's owner uses
+  // revokeSupportAccessForOrg.
+  await api.post(`/platform/support-sessions/${encodeURIComponent(sessionId)}/revoke`, {
+    reason: reason ?? null,
   });
-  if (error) throw error;
+}
+
+/** The organisation's owner (or manager) ends a support session on their organisation. */
+export async function revokeSupportAccessForOrg(
+  orgId: string,
+  sessionId: string,
+  reason?: string,
+): Promise<void> {
+  await api.post(
+    orgPath(orgId, `/support-sessions/${encodeURIComponent(sessionId)}/revoke`),
+    {
+      reason: reason ?? null,
+    },
+  );
 }

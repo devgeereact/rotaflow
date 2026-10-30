@@ -44,6 +44,11 @@ check('only an owner changes it; an admin cannot', call($api, 'adam', 'POST', '/
 check('a person who has never signed in cannot be made staff', call($api, 'root', 'POST', '/platform/admins', ['email' => 'ghost@example.test', 'role' => 'platform_support'])[1]['error']['code'] === 'no_such_user');
 check('an unknown role is 422', call($api, 'root', 'POST', '/platform/admins', ['email' => 'olga@example.test', 'role' => 'god'])[0] === 422);
 check('an owner grants a role, audited', call($api, 'root', 'POST', '/platform/admins', ['email' => 'olga@example.test', 'role' => 'platform_support'])[0] === 200 && call($api, 'olga', 'GET', '/platform/summary')[0] === 200 && (int) $pdo->query("SELECT COUNT(*) FROM audit_logs WHERE action = 'platform.role_granted'")->fetchColumn() === 1);
+$sum = call($api, 'adam', 'GET', '/platform/summary')[1]['summary'];
+check('the summary counts published rotas and this month\'s shifts', $sum['published_rotas'] === 0 && $sum['shifts_this_month'] === 0 && is_int($sum['users']), json_encode($sum));
+[$s, $r] = call($api, 'sue', 'GET', '/platform/notifications/activity');
+check('support reads notification activity without titles or bodies', $s === 200 && is_array($r['notifications']) && is_int($r['push_subscriptions']) && ($r['notifications'] === [] || !isset($r['notifications'][0]['title'])), json_encode($r));
+check('finance and ordinary people cannot', call($api, 'fin', 'GET', '/platform/notifications/activity')[0] === 404 && call($api, 'zed', 'GET', '/platform/notifications/activity')[0] === 404);
 check('the last owner cannot be demoted or revoked', call($api, 'root', 'POST', '/platform/admins', ['email' => 'root@example.test', 'role' => 'platform_admin'])[1]['error']['code'] === 'last_platform_owner' && call($api, 'root', 'POST', '/platform/admins/' . $uid('root') . '/revoke')[1]['error']['code'] === 'last_platform_owner');
 call($api, 'root', 'POST', '/platform/admins', ['email' => 'adam@example.test', 'role' => 'platform_owner']);
 check('with a second owner either may step down', call($api, 'adam', 'POST', '/platform/admins', ['email' => 'root@example.test', 'role' => 'platform_admin'])[0] === 200 && $pdo->query("SELECT role FROM platform_admins WHERE user_id = '{$uid('root')}'")->fetchColumn() === 'platform_admin');
@@ -58,6 +63,14 @@ check('the directory filters by name, status and plan, and rejects nonsense', co
 [$s, $r] = call($api, 'sue', 'GET', "/platform/orgs/$org");
 check('one organisation\'s detail is counts only, no tenant rows', $s === 200 && $r['organisation']['members'] === 2 && !isset($r['organisation']['shifts_list']) && !str_contains(json_encode($r), 'mark@example.test'));
 check('finance cannot read people', call($api, 'fin', 'GET', '/platform/users')[0] === 404 && call($api, 'sue', 'GET', '/platform/users?q=mark')[0] === 200 && count(call($api, 'sue', 'GET', '/platform/users?q=mark')[1]['users']) === 1);
+[$s, $r] = call($api, 'sue', 'GET', '/platform/users/' . $uid('mark'));
+check('a person\'s console page lists their organisations', $s === 200 && $r['user']['email'] === 'mark@example.test' && count($r['memberships']) === 1 && $r['memberships'][0]['org_id'] === $org && $r['memberships'][0]['role'] === 'manager' && $r['platform_role'] === null, json_encode($r));
+$x = [call($api, 'fin', 'GET', '/platform/users/' . $uid('mark'))[0], call($api, 'zed', 'GET', '/platform/users/' . $uid('mark'))[0]];
+check('finance and a person with no platform role cannot read a person\'s page', $x === [404, 404], json_encode($x));
+check('an unknown person is 404', call($api, 'adam', 'GET', '/platform/users/11111111-2222-4333-8444-555555555555')[0] === 404);
+[$s, $r] = call($api, 'sue', 'GET', "/platform/orgs/$org/structure");
+check('the console reads a tenant\'s members, sites and counts', $s === 200 && count($r['members']) >= 2 && in_array('mark@example.test', array_column($r['members'], 'email'), true) && is_array($r['locations']) && isset($r['counts']['published_rotas']), json_encode($r));
+check('finance and people with no platform role cannot', call($api, 'fin', 'GET', "/platform/orgs/$org/structure")[0] === 404 && call($api, 'zed', 'GET', "/platform/orgs/$org/structure")[0] === 404 && call($api, 'adam', 'GET', '/platform/orgs/11111111-2222-4333-8444-555555555555/structure')[0] === 404);
 check('the summary counts the estate', ($sm = call($api, 'fin', 'GET', '/platform/summary')[1]['summary']) && $sm['organisations']['active'] >= 2 && $sm['users'] >= 5);
 
 // ---- suspending ----------------------------------------------------------------------------------------------------------------------

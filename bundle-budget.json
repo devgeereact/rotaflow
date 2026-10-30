@@ -5,9 +5,9 @@
     "Budgets set 2026-08-30 with roughly 15% headroom: tight enough to catch a regression, loose enough that ordinary feature work does not trip it. The measured figures were re-taken on 2026-10-21 (feat/marketing-motion); the old ones had gone stale, the entry chunk read 149.9 against a real 97."
   ],
   "precacheGzipKiB": {
-    "budget": 760,
+    "budget": 775,
     "measured": 719.6,
-    "why": "What a first visit downloads before the app is usable offline. The number that matters most: a carer on hospital wifi pays it once, in full, up front."
+    "why": "What a first visit downloads before the app is usable offline. The number that matters most: a carer on hospital wifi pays it once, in full, up front. Raised 760 -> 775 on 2026-10-30 for the same temporary overlap of Clerk and supabase-js during S9."
   },
   "precacheEntries": {
     "budget": 210,
@@ -20,8 +20,8 @@
     "why": "The entry chunk blocks first paint and is the tell for code-splitting collapse. If a lazy route becomes a static import this grows while the per-route chunks vanish — the regression PR #69 fixed, where opening /app/clock pulled in the rest of the app."
   },
   "shippedGzipKiB": {
-    "budget": 760,
+    "budget": 775,
     "measured": 723.5,
-    "why": "Every JS and CSS file that reaches the server, service worker included. Excludes .map, which cpanel-deploy does not deploy. Raised 700 -> 760 on 2026-10-21 for the marketing scroll motion: GSAP + ScrollTrigger + Lenis are one 49.3KiB chunk (`assets/motion-*.js`), loaded only by the public pages after first paint, only without reduced motion, and deliberately left out of the precache, so no member of staff downloads it unless they open the homepage. Before it: 672.4."
+    "why": "Every JS and CSS file that reaches the server, service worker included. Excludes .map, which cpanel-deploy does not deploy. Raised 700 -> 760 on 2026-10-21 for the marketing scroll motion: GSAP + ScrollTrigger + Lenis are one 49.3KiB chunk (`assets/motion-*.js`), loaded only by the public pages after first paint, only without reduced motion, and deliberately left out of the precache, so no member of staff downloads it unless they open the homepage. Before it: 672.4. Raised 760 -> 775 on 2026-10-30 (S9, temporary): the Clerk SDK (@clerk/clerk-react, about 35 KiB) lands while supabase-js (about 45 KiB) is still in the bundle until the last services move; the S9 clean-up commit takes it back down."
   }
 }

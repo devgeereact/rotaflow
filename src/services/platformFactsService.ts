@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, isApiCode } from '@/lib/api';
 import type { Tables } from '@/types/database.types';
 
 export type HealthSummaryRow = Tables<'platform_health_summary'>;
@@ -30,44 +30,34 @@ export interface AuthFactsSummary {
  * a view is one grant away from exposing the whole table.
  */
 export async function getAuthFacts(userId: string): Promise<AuthFacts | null> {
-  const { data, error } = await supabase.rpc('platform_user_auth_facts', {
-    p_user: userId,
-  });
-  if (error) throw error;
-  const row = (data ?? [])[0];
-  if (!row) return null;
-  return {
-    emailConfirmedAt: row.email_confirmed_at,
-    lastSignInAt: row.last_sign_in_at,
-    mfaEnrolled: row.mfa_enrolled,
-    bannedUntil: row.banned_until,
-  };
+  // Sign-in facts live in Clerk. The API knows only when the person was last seen; email is verified by
+  // Clerk before any sign-in, and factors and bans are managed in the Clerk dashboard.
+  try {
+    const r = await api.get<{
+      user: { created_at: string; last_seen_at: string | null };
+    }>(`/platform/users/${encodeURIComponent(userId)}`);
+    return {
+      emailConfirmedAt: r.user.created_at,
+      lastSignInAt: r.user.last_seen_at,
+      mfaEnrolled: false,
+      bannedUntil: null,
+    };
+  } catch (error) {
+    if (isApiCode(error, 'not_found')) return null;
+    throw error;
+  }
 }
 
 /** The same facts across every account, as one round trip for the tiles. */
 export async function getAuthFactsSummary(): Promise<AuthFactsSummary | null> {
-  const { data, error } = await supabase.rpc('platform_auth_facts_summary');
-  if (error) throw error;
-  const row = (data ?? [])[0];
-  if (!row) return null;
-  return {
-    totalAccounts: row.total_accounts,
-    unverified: row.unverified,
-    active30d: row.active_30d,
-    inactive90d: row.inactive_90d,
-    mfaEnrolled: row.mfa_enrolled,
-    banned: row.banned,
-  };
+  // Account-level sign-in statistics are Clerk's (its dashboard); none are mirrored into the API.
+  return Promise.resolve(null);
 }
 
 /** Rolling 24-hour uptime and latency percentiles, per service. */
 export async function getHealthSummary(): Promise<HealthSummaryRow[]> {
-  const { data, error } = await supabase
-    .from('platform_health_summary')
-    .select('*')
-    .order('service');
-  if (error) throw error;
-  return data ?? [];
+  // Stored health probes are on the cut list (they probed Supabase); uptime is watched externally.
+  return Promise.resolve([]);
 }
 
 /**
@@ -77,41 +67,32 @@ export async function getHealthSummary(): Promise<HealthSummaryRow[]> {
  * into an uptime figure as though a scheduled probe produced it.
  */
 export async function recordHealthSample(
-  service: string,
-  status: 'operational' | 'degraded' | 'down',
-  latencyMs: number | null,
-  source: 'console' | 'scheduled' | 'manual' = 'console',
+  _service: string,
+  _status: 'operational' | 'degraded' | 'down',
+  _latencyMs: number | null,
+  _source: 'console' | 'scheduled' | 'manual' = 'console',
 ): Promise<void> {
-  const { error } = await supabase.rpc('record_health_sample', {
-    p_service: service,
-    p_status: status,
-    // `platform_health_samples.latency_ms` is `integer`; callers measure with
-    // `performance.now()`, which is never a whole number. PostgREST casts a
-    // JSON body value straight to the column type with no implicit rounding,
-    // so an un-rounded float 400s on every single call — round here, the one
-    // place every caller funnels through.
-    p_latency_ms: latencyMs === null ? undefined : Math.round(latencyMs),
-    p_source: source,
-  });
-  if (error) throw error;
+  // Not stored: see getHealthSummary.
 }
 
 export async function listRetentionPolicies(): Promise<RetentionPolicy[]> {
-  const { data, error } = await supabase
-    .from('retention_policies')
-    .select('*')
-    .order('label');
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{
+    policies: {
+      data_type: string;
+      label: string;
+      retain_months: number | null;
+      enforced: boolean | number;
+      note: string;
+    }[];
+  }>('/platform/retention');
+  return r.policies
+    .map((p) => ({ ...p, enforced: Boolean(Number(p.enforced)), updated_at: '' }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export async function listIpAllowlist(): Promise<IpAllowlistEntry[]> {
-  const { data, error } = await supabase
-    .from('platform_ip_allowlist')
-    .select('*')
-    .order('created_at');
-  if (error) throw error;
-  return data ?? [];
+  // On the cut list: nothing ever enforced it (docs/MERGE-TARGET.md section 5).
+  return Promise.resolve([]);
 }
 
 export interface QueueDepth {
@@ -145,12 +126,6 @@ export interface QueueDepth {
  * capped page and report it as the estate's queue depth.
  */
 export async function getQueueDepths(): Promise<QueueDepth[]> {
-  const { data, error } = await supabase.rpc('platform_queue_depths');
-  if (error) throw error;
-  return (data ?? []).map((row) => ({
-    queue: row.queue,
-    queued: Number(row.queued ?? 0),
-    failed: Number(row.failed ?? 0),
-    oldestAt: row.oldest_at ?? null,
-  }));
+  // The notification outbox is drained by the API's cron; its depth has no console route yet.
+  return Promise.resolve([]);
 }
