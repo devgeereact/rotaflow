@@ -8,10 +8,17 @@ declare(strict_types=1);
 // org-scoped routes answer a stranger and a non-member with 404 and no data; random ids never leak.
 use RotaFlow\{Ctx, Modules, RateLimiter};
 
-$api = test_api($pdo);
-$ctx = new Ctx($pdo, new RateLimiter($pdo), 'https://rotaflow.example.test', test_private_root());
-$routes = [];
+// Stripe is configured (test mode) so billing routes run their real checks instead of answering "not set up"; any attempt to reach Stripe is counted, and must be none.
+$stripeReached = 0;
+$noStripe = static function () use (&$stripeReached): array { $stripeReached++; return [500, '{}']; };
+$ctx = new Ctx($pdo, new RateLimiter($pdo), 'https://rotaflow.example.test', test_private_root(), null, 'open', test_config(['stripe' => ['mode' => 'test', 'test_secret_key' => 'sk_test_' . str_repeat('a', 24), 'test_webhook_secret' => 'whsec_sweep']]));
+$mods = [];
 foreach (Modules::all($ctx) as $mod) {
+    $mods[] = $mod instanceof RotaFlow\Mod\Billing ? new RotaFlow\Mod\Billing($ctx, $noStripe) : ($mod instanceof RotaFlow\Mod\StripeWebhook ? new RotaFlow\Mod\StripeWebhook($ctx, $noStripe) : $mod);
+}
+$api = test_api($pdo, $mods);
+$routes = [];
+foreach ($mods as $mod) {
     foreach ($mod->routes() as $r) { $routes[] = $r; }
 }
 check('the sweep found the route table', count($routes) >= 40, 'routes=' . count($routes));
@@ -58,3 +65,5 @@ foreach ([['name' => ['a']], ['name' => 5], ['token' => ['x']], ['email' => ['x'
     }
 }
 check('wrong-typed inputs never produce a 500', true);
+
+check('no route in the sweep reached Stripe', $stripeReached === 0, "calls=$stripeReached");

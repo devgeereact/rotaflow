@@ -204,13 +204,15 @@ final class Staff implements Module
         $m = Scope::membership($pdo, $user['id'], $o);
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
-        // Plan seat limits are enforced in S7 (billing); until then there is none.
         $f = $this->fields($in, $o, null);
         $f['first_name'] ??= Input::reqStr($in, 'first_name', 100);
         $id = Db::uuid();
         $cols = array_merge(['id' => $id, 'org_id' => $o, 'last_name' => '', 'active' => 1, 'skills' => '[]'], $f);
         $pdo->beginTransaction();
         try {
+            if (!empty($cols['active'])) {
+                \RotaFlow\Billing::requireSeat($pdo, $o);
+            }
             if (($cols['email'] ?? null) !== null) {
                 $cols['user_id'] = $this->linkableUser($o, $cols['email']);
             }
@@ -254,11 +256,21 @@ final class Staff implements Module
         if ($f === []) {
             return [200, ['id' => $s]];
         }
+        $reactivating = !empty($f['active']) && empty($cur['active']);
+        $pdo->beginTransaction();
         try {
+            if ($reactivating) {
+                \RotaFlow\Billing::requireSeat($pdo, $o); // a seat is taken when someone becomes active again
+            }
             $set = implode(', ', array_map(static fn (string $k): string => "$k = ?", array_keys($f)));
             $pdo->prepare("UPDATE staff_profiles SET $set WHERE id = ? AND org_id = ?")->execute([...array_values($f), $s, $o]);
+            $pdo->commit();
         } catch (\PDOException $e) {
+            $pdo->rollBack();
             throw $this->duplicate($e);
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
         }
         Audit::log($pdo, $o, $user['id'], 'staff.updated', 'staff_profiles', $s, ['fields' => array_keys($f)], 'info', 'org', $ip);
         return [200, ['id' => $s]];

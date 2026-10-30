@@ -20,5 +20,8 @@ return [
     // The platform's own mail account, used when an organisation has none. Port 465 = implicit TLS; 587 = STARTTLS. Omit to send no platform email.
     'smtp' => ['host' => 'mail.example.com', 'port' => 465, 'user' => 'noreply@rotaflow.space', 'password' => 'REPLACE_ME', 'from_email' => 'noreply@rotaflow.space', 'from_name' => 'RotaFlow'],
     // Web push (the existing VAPID keys). public = the value of VITE_VAPID_PUBLIC_KEY. Omit to leave push off.
+    // Stripe. mode = 'test' (default; omit to leave billing off) or 'live'. A key must match the mode or billing refuses to start. Webhook secrets are per mode:
+    // the endpoint in the Stripe dashboard is https://rotaflow.space/api/stripe/webhook, subscribed to the seven events in docs/API-SPEC.md.
+    'stripe' => ['mode' => 'test', 'test_secret_key' => 'REPLACE_ME', 'test_webhook_secret' => 'REPLACE_ME', 'secret_key' => 'REPLACE_ME', 'webhook_secret' => 'REPLACE_ME'],
     'vapid' => ['public' => 'REPLACE_ME', 'private' => 'REPLACE_ME', 'subject' => 'mailto:support@rotaflow.space'],
 ];

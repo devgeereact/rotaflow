@@ -104,6 +104,7 @@ final class Shifts implements Module
         $m = Scope::membership($pdo, $user['id'], $o);
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
+        \RotaFlow\Billing::requireNotReadOnly($pdo, $o);
         $ins = $pdo->prepare('INSERT INTO shifts (id, org_id, rota_id, location_id, department_id, staff_profile_id, shift_type_id, starts_at, ends_at, break_minutes, status, colour, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
         $ids = [];
         $pdo->beginTransaction();
@@ -133,6 +134,7 @@ final class Shifts implements Module
         $m = Scope::membership($pdo, $user['id'], $o);
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
+        \RotaFlow\Billing::requireNotReadOnly($pdo, $o);
         $pdo->beginTransaction();
         try {
             $q = $pdo->prepare('SELECT * FROM shifts WHERE id = ? AND org_id = ? FOR UPDATE');
@@ -164,6 +166,7 @@ final class Shifts implements Module
         $m = Scope::membership($pdo, $user['id'], $o);
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
+        \RotaFlow\Billing::requireNotReadOnly($pdo, $o);
         $pdo->beginTransaction();
         try {
             $q = $pdo->prepare('SELECT rota_id FROM shifts WHERE id = ? AND org_id = ? FOR UPDATE');

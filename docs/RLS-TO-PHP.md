@@ -182,8 +182,41 @@ status directly, the API exposes named actions instead, so the rule cannot be by
 | `enqueue_announcement_notification`, `announcement_audience` | Tell the audience once, on first publish | `Announcements::doPublish`, `audience` | 125 | DONE |
 | `remind_announcement_unread` | Owner and manager; remind those in the audience who have not read it | `Announcements::remind` (rate limited 6 an hour) | 125 | DONE |
 | `enqueue_scheduled_alerts` (missed clock-in) | One alert per shift to owners and managers, 30 minutes to 12 hours after the start, none if clocked in | `Notifications::scheduledAlerts` with a dedupe key | 120 | DONE |
-| `enqueue_scheduled_alerts` (document expiry, trial ending) | Alert owners and managers | Documents (S8, S10) and billing (S7) | none yet | PLANNED |
+| `enqueue_scheduled_alerts` (free trial ending, `0157`) | Owners of an active organisation whose own trial ends within three days and which has not chosen a plan, once per trial end | `Notifications::trialEndingAlerts`, dedupe `trial_ending:<org>:<end>` | 140 | DONE |
+| `enqueue_scheduled_alerts` (document expiry) | Alert owners and managers | Documents (S8, S10) | none yet | PLANNED |
 | `dispatch_notification_outbox`, `verify_notification_secret`, vault | Shared-secret HTTP hop to an Edge Function | Gone: the Dispatcher runs inside the cron process, so there is nothing to authenticate | n/a | DONE (removed) |
 | `send-notification` matrix and mute | Org matrix 5 x 3, person's mute for email and push only, permissive defaults | `Dispatcher::deliver`, `matrix` | 120; mutations | DONE |
 | `send-invite` | Email the invitation | `Invites::email`, `resend` | 125 | DONE |
 | `test-smtp` | Test an organisation's account | `OrgSettings::testSmtp` | 125 | DONE |
+
+## S7: billing (Stripe, test mode)
+
+Stripe stays in **test mode** until the owner sets `stripe.mode` to `live` in private config. A subscription row records the mode that created it,
+and no code path crosses modes: a test event never touches a live row, and a live key in test mode (or the reverse) is refused before any request.
+
+| Table | Policy | Postgres rule (final) | PHP check | Test | Status |
+| ----- | ------ | --------------------- | --------- | ---- | ------ |
+| plans | `plans_select` | Any signed-in user reads the price list; no client write | `Mod\Billing::plans` (signed in; the Stripe price ids are never returned). Written by migration only | 140 | DONE |
+| subscriptions | `subscriptions_select` | Owner, or platform billing roles, read; **no client write** | `Billing::account` and `stateRoute` (owner / any member); the table is written only by the webhook (`Billing::applySubscription`). No route accepts a subscription from a client | 140; 099 | DONE (owner read); platform read arrives with the console (S8) |
+| invoices | `invoices_select` | Owner, or platform billing roles, read; no client write | `Billing::account` (owner), `invoiceLinks` (owner, by our own invoice id, scoped to the organisation); written only by the webhook | 140 | DONE (owner read); platform read in S8 |
+| billing_events | RLS on, no policy | Service role only | No route reads it; `StripeWebhook::receive` writes it. Unique per provider, mode and event id | 140 | DONE |
+
+| Postgres function or trigger | Rule | PHP | Test | Status |
+| ---------------------------- | ---- | --- | ---- | ------ |
+| `org_billing_state`, `my_org_billing_state` | active / trialing / grace / trial / read_only | `Billing::stateOf`, `state`; `GET /orgs/{o}/billing/state` for any member | 140 incl. the edges | DONE |
+| `org_is_read_only`, `enforce_org_not_read_only` | Read-only blocks building rotas and shifts and inviting; never clocking in, leave or swaps | `Billing::requireNotReadOnly` in `Rotas` (all writes), `Shifts` (create, batch, edit, delete), `Planning` (minimum cover, revision), `Invites` (create, resend, accept) | 140 (each blocked, and leave and clock still allowed); mutation | DONE |
+| `org_has_feature` | The plan's features, unless read-only | `Billing::hasFeature` (used by the AI assistant and reports in S8) | 140 | DONE |
+| `enforce_seat_limit` | Active staff may not exceed the plan; reactivating counts | `Billing::requireSeat` in `Staff::createStaff` and on reactivation, inside the transaction, with the organisation row locked so two requests cannot take the last seat | 140; mutation | DONE |
+| `enforce_location_limit` | Locations may not exceed the plan | `Billing::requireLocationRoom` in `Places::saveLocation`, same locking | 140 | DONE |
+| `sync_org_plan_from_subscription` | `organisations.plan` follows the subscription while it entitles, else `professional` during the organisation's own trial | `Billing::syncPlan`, called from `applySubscription` | 140 | DONE |
+| `subscriptions_track_grace_window` | 14 days from the first move to past due; a further failure does not extend it; any other status clears it | `Billing::applySubscription` | 140; mutation | DONE |
+| `set_org_status` | Suspend or reinstate with a reason, audited | `Billing::setOrgStatus` (the webhook suspends; reinstating is a platform act, S8) | 140 | DONE (suspend); reinstate PLANNED |
+| `claim_billing_event`, `complete_billing_event`, `fail_billing_event` | One row per event; a redelivery of a processed event does nothing; a failure is kept and the event retried | `StripeWebhook::receive` | 140; mutation | DONE |
+| `create-checkout-session` | Owner only; plan with a price for the mode; refuse a second live subscription; carry the remaining trial if over 49 hours | `Billing::checkout`, `BillingRules::checkoutAllowed`, `checkoutTrialEnd` | 140 | DONE. **Tightened:** return URLs come from the configured `app_url`, not the browser's Origin header |
+| `create-portal-session` | Owner only; the organisation's own customer, in this mode | `Billing::portal` | 140 | DONE |
+| `billing-account` | Owner only; sync the contact email to Stripe; fresh invoice links | `Billing::syncContact`, `invoiceLinks` | 140 | DONE |
+| `stripe-webhook` | Signature; mode isolation; idempotent; fresh subscription retrieval; pinned to one subscription | `StripeWebhook` and `BillingRules::verifySignature`, `subscriptionScope`, `freshestSubscription`, `suspendOnDeleted` | 140; 099 (anonymous refusal); mutations | DONE |
+
+Not tested against Stripe itself: every Stripe call is answered by a fake transport, so **NOT TESTED** against the real API until a test-mode
+checkout is run end to end with the owner's test keys and a Stripe CLI or dashboard webhook endpoint.
+

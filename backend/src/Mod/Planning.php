@@ -182,6 +182,7 @@ final class Planning implements Module
         $m = Scope::membership($this->ctx->pdo, $user['id'], $o);
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
+        \RotaFlow\Billing::requireNotReadOnly($this->ctx->pdo, $o);
     }
 
     /** HH:MM or HH:MM:SS, or null. */

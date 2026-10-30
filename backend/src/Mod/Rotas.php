@@ -361,6 +361,7 @@ final class Rotas implements Module
         $m = Scope::membership($this->ctx->pdo, $user['id'], $o);
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
+        \RotaFlow\Billing::requireNotReadOnly($this->ctx->pdo, $o);
         return $m;
     }
 

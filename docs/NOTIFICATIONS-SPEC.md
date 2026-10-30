@@ -24,7 +24,7 @@ path below until the cutover. When the cutover happens the rest of this file is 
 | Invitations | `send-invite` function | `Mod\Invites` emails the link on creation and on resend, best effort; the invitation is never lost if the send fails, and its `send_error` says why |
 | Enquiries | `public-enquiry` function | Platform console slice (S8) |
 
-Not yet in PHP: expiring-document alerts (arrive with documents, S8 and S10) and the trial-ending reminder (billing, S7). The daily and
+Not yet in PHP: expiring-document alerts (arrive with documents, S8 and S10). The billing notices (Stripe `trial_will_end`, `payment_failed`, and the free-trial reminder) are in PHP since S7: the first two are written by `Mod\StripeWebhook`, the third by `Notifications::trialEndingAlerts` in the same cron run. The daily and
 weekly email summary remains unbuilt, as before. Web push has never been seen arriving on a real device; that stays **NOT TESTED**.
 
 The one cron entry the host needs (the owner adds it; `bin/doctor.php` first):

@@ -62,8 +62,16 @@ final class Places implements Module
         $vals = [Input::reqStr($in, 'name', 120), Input::optStr($in, 'address', 300), $lat, $lng, $tz, $radius, $type, $status];
         if ($l === null) {
             $id = Db::uuid();
-            $pdo->prepare('INSERT INTO locations (name, address, latitude, longitude, timezone, geofence_radius_m, location_type, status, id, org_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-                ->execute([...$vals, $id, $o]);
+            $pdo->beginTransaction();
+            try {
+                \RotaFlow\Billing::requireLocationRoom($pdo, $o);
+                $pdo->prepare('INSERT INTO locations (name, address, latitude, longitude, timezone, geofence_radius_m, location_type, status, id, org_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+                    ->execute([...$vals, $id, $o]);
+                $pdo->commit();
+            } catch (\Throwable $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
             Audit::log($pdo, $o, $user['id'], 'location.created', 'locations', $id, [], 'info', 'org', $ip);
             return [201, ['id' => $id]];
         }

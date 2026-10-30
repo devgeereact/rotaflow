@@ -477,3 +477,21 @@ Placeholders: `{n}` announcement. The Dispatcher and the cron entry have no HTTP
 | `POST /orgs/{o}/invites/{i}/resend` | owner, manager | A fresh link for a pending invitation, emailed; the old link stops working |
 
 Creating or resending an invitation now also reports `email_sent` and `email_error` (`no_mail_account`, `connect_failed`, `smtp_550`, ...).
+
+### Slice S7: billing
+
+Placeholders: `{i}` invoice. Stripe is in test mode until `stripe.mode` is changed in private config. `GET /plans` and the owner routes answer 503 `billing_unavailable` where Stripe is not set up.
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /plans` | any signed-in person | The price list: code, name, monthly price in pence, seat and location limits (`null` is unlimited), features, and whether it can be bought now. Stripe ids are never returned |
+| `GET /orgs/{o}/billing/state` | any member | `{state, plan, trial_ends_at, grace_until}`; `state` is `active`, `trialing`, `grace`, `trial` or `read_only` |
+| `GET /orgs/{o}/billing` | owner | The state, the subscription's status and period, the latest 36 invoices (without Stripe ids) and `stripe_configured` |
+| `POST /orgs/{o}/billing/checkout` | owner | `{plan: starter|professional|business}` returns `{url}` for Stripe Checkout. 409 `already_subscribed` if this mode already holds a live subscription; 409 `plan_unavailable` if the plan has no price yet; 422 for enterprise (by arrangement). Return URLs are on `app_url` |
+| `POST /orgs/{o}/billing/portal` | owner | `{url}` for the Stripe billing portal for the organisation's own customer. 404 before a first checkout; 409 if the customer belongs to the other mode |
+| `POST /orgs/{o}/billing/sync-contact` | owner | Writes the organisation's contact email (column, else `settings.contact_email`) to the Stripe customer; 422 `no_contact_email` |
+| `POST /orgs/{o}/billing/invoices/{i}/links` | owner | Fresh `{hosted_invoice_url, invoice_pdf}` from Stripe, only ever Stripe's own hosts |
+| `POST /stripe/webhook` | public, **signed** | Raw body and `Stripe-Signature` (HMAC-SHA256, 300 s tolerance, secret per mode). 400 on a bad signature; 200 and ignored for an event of the other mode; 200 `duplicate` for one already processed; 500 (Stripe retries) when handling failed. Events handled: `checkout.session.completed`, `customer.subscription.updated`, `.deleted`, `.trial_will_end`, `invoice.finalized`, `.paid`, `.payment_failed` |
+
+Plan limits answer **402** with `seat_limit` or `location_limit`; a read-only organisation answers **402** `billing_read_only` to building a rota or shifts and to inviting.
+

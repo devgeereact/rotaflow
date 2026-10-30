@@ -11,7 +11,7 @@ final class Api
 {
     private const MAX_BODY = 262144; // 256 KB of JSON: room for a 500-shift batch
 
-    /** @var list<array{0:string,1:string,2:callable,3:bool}> */
+    /** @var list<array{0:string,1:string,2:callable,3:bool,4:bool}> */
     private array $compiled = [];
 
     /**
@@ -32,7 +32,8 @@ final class Api
             [$m, $tpl, $handler] = $r;
             // {x} placeholders become named UUID groups; everything else is matched literally.
             $re = '#^' . preg_replace_callback('/\{([a-z])\}|[^{]+/', static fn (array $p): string => ($p[1] ?? '') !== '' ? '(?P<' . $p[1] . '>[0-9a-f-]{36})' : preg_quote($p[0], '#'), $tpl) . '$#';
-            $this->compiled[] = [$m, $re, $handler, ($r[3] ?? '') === 'public'];
+            // 4th element 'public': no sign-in. 5th element 'raw': the handler gets the untouched body and headers (a signed webhook needs the exact bytes).
+            $this->compiled[] = [$m, $re, $handler, ($r[3] ?? '') === 'public', ($r[4] ?? '') === 'raw'];
         }
     }
 
@@ -48,6 +49,15 @@ final class Api
             if ($path === '/health') {
                 return [200, ['ok' => true]];
             }
+            foreach ($this->compiled as [$m, $re, $handler, $public, $raw]) {
+                if ($raw && $public && $m === $method && preg_match($re, $path) === 1) {
+                    if (strlen($body) > 1048576) {
+                        throw new HttpError(413, 'too_large', 'Request too large');
+                    }
+                    $this->limits->hit('api-public', $ip, 300, 60);
+                    return $handler(null, ['__raw' => $body, '__headers' => $headers], $ip);
+                }
+            }
             if (strlen($body) > self::MAX_BODY) {
                 throw new HttpError(413, 'too_large', 'Request too large');
             }
@@ -61,7 +71,7 @@ final class Api
             if ($method === 'GET' && $query !== []) {
                 $input = $query;
             }
-            foreach ($this->compiled as [$m, $re, $handler, $public]) {
+            foreach ($this->compiled as [$m, $re, $handler, $public, $raw]) {
                 if ($public && $m === $method && preg_match($re, $path, $mt) === 1) {
                     $this->limits->hit('api-public', $ip, 300, 60);
                     return $handler(null, $input, $ip, ...array_values(array_filter($mt, 'is_string', ARRAY_FILTER_USE_KEY)));
@@ -69,7 +79,7 @@ final class Api
             }
             $principal = $this->principal($headers);
             $this->limits->hit('api-user', (string) $principal['sub'], 600, 60);
-            foreach ($this->compiled as [$m, $re, $handler, $public]) {
+            foreach ($this->compiled as [$m, $re, $handler, $public, $raw]) {
                 if (!$public && $m === $method && preg_match($re, $path, $mt) === 1) {
                     return $handler($principal, $input, $ip, ...array_values(array_filter($mt, 'is_string', ARRAY_FILTER_USE_KEY)));
                 }

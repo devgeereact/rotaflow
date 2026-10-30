@@ -46,6 +46,9 @@ try {
     } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
         $headers['authorization'] = (string) $_SERVER['REDIRECT_HTTP_AUTHORIZATION']; // cPanel/Apache quirk
     }
+    if (isset($_SERVER['HTTP_STRIPE_SIGNATURE'])) {
+        $headers['stripe-signature'] = (string) $_SERVER['HTTP_STRIPE_SIGNATURE'];
+    }
     $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
     $ip = (($config['trust_cf_connecting_ip'] ?? false) && Bootstrap::fromCloudflare($remote) && isset($_SERVER['HTTP_CF_CONNECTING_IP'])) ? (string) $_SERVER['HTTP_CF_CONNECTING_IP'] : $remote;
     $limits = new RateLimiter($pdo);

@@ -110,7 +110,8 @@ final class Notifications implements Module
 
     /**
      * A shift that started more than 30 minutes ago (and less than 12 hours ago) with nobody clocked in tells the organisation's owners
-     * and managers, once per shift. Expiring documents and trials ending are added with documents (S8/S10) and billing (S7).
+     * and managers, once per shift. A free trial ending within three days tells the owners once per trial end. Expiring documents arrive
+     * with documents (S8/S10).
      */
     public static function scheduledAlerts(Ctx $ctx): int
     {
@@ -137,6 +138,30 @@ final class Notifications implements Module
             $at = (new \DateTimeImmutable($s['starts_at'] . ' UTC'))->setTimezone(new \DateTimeZone($s['tz']))->format('H:i');
             $before = (int) $pdo->query('SELECT COUNT(*) FROM notification_outbox')->fetchColumn();
             Notify::enqueue($pdo, $s['org_id'], 'alert/missed_clock_in', $managers, 'attendance', trim($s['first_name'] . ' ' . $s['last_name']) . ' has not clocked in', "Their shift started at $at. Nothing has been recorded since.", 'missed_clock_in:' . $s['id']);
+            $n += (int) $pdo->query('SELECT COUNT(*) FROM notification_outbox')->fetchColumn() - $before;
+        }
+        return $n + self::trialEndingAlerts($ctx);
+    }
+
+    /**
+     * An active organisation whose own free trial ends within three days, and which has not chosen a plan (its state is still "trial"), tells its
+     * owners once. The dedupe key names the trial end, so a trial the platform extends is reminded again before its new end.
+     */
+    private static function trialEndingAlerts(Ctx $ctx): int
+    {
+        $pdo = $ctx->pdo;
+        $orgs = $pdo->query("SELECT id, trial_ends_at FROM organisations WHERE status = 'active' AND trial_ends_at > UTC_TIMESTAMP() AND trial_ends_at <= DATE_ADD(UTC_TIMESTAMP(), INTERVAL 3 DAY) LIMIT 500")->fetchAll();
+        $n = 0;
+        foreach ($orgs as $o) {
+            if (\RotaFlow\Billing::state($pdo, $o['id'])['state'] !== 'trial') {
+                continue;
+            }
+            $owners = $pdo->prepare("SELECT user_id FROM memberships WHERE org_id = ? AND role = 'owner' AND status = 'active'");
+            $owners->execute([$o['id']]);
+            $ids = $owners->fetchAll(\PDO::FETCH_COLUMN);
+            $before = (int) $pdo->query('SELECT COUNT(*) FROM notification_outbox')->fetchColumn();
+            Notify::enqueue($pdo, $o['id'], 'billing/trial_ending', $ids, 'billing', 'Your free trial ends on ' . (new \DateTimeImmutable($o['trial_ends_at'] . ' UTC'))->setTimezone(new \DateTimeZone('Europe/London'))->format('j F'),
+                'After that, managers cannot build rotas or invite people until a plan is chosen. Your rotas and records stay as they are. Choose a plan in Settings, Billing.', 'trial_ending:' . $o['id'] . ':' . $o['trial_ends_at']);
             $n += (int) $pdo->query('SELECT COUNT(*) FROM notification_outbox')->fetchColumn() - $before;
         }
         return $n;

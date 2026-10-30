@@ -50,6 +50,7 @@ final class Invites implements Module
         $m = Scope::membership($pdo, $user['id'], $o);
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
+        \RotaFlow\Billing::requireNotReadOnly($pdo, $o);
         $email = strtolower(trim(Input::str($in, 'email')));
         $role = $in['role'] ?? null;
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 255) {
@@ -121,6 +122,7 @@ final class Invites implements Module
         $m = Scope::membership($pdo, $user['id'], $o);
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
+        \RotaFlow\Billing::requireNotReadOnly($pdo, $o);
         $this->ctx->limits->hit('invite-resend', $o, 30, 3600);
         $q = $pdo->prepare("SELECT email, role FROM invites WHERE id = ? AND org_id = ? AND accepted_at IS NULL AND revoked_at IS NULL");
         $q->execute([$i, $o]);
@@ -175,6 +177,7 @@ final class Invites implements Module
         $pdo->beginTransaction();
         try {
             $inv = $this->pending($token, true);
+            \RotaFlow\Billing::requireNotReadOnly($pdo, $inv['org_id']);
             if (!hash_equals(strtolower($inv['email']), $user['email'])) {
                 throw new HttpError(403, 'invite_email_mismatch', 'This invitation was sent to a different email address');
             }
