@@ -16,7 +16,7 @@ final class Lifecycle implements Module
 {
     private const ATTEMPTS = 5;
     /** Tables that are the child side of a RESTRICT link inside an organisation, in the order they must go. */
-    public const CLEAR_FIRST = ['shift_swaps', 'shifts', 'rotas', 'staff_profiles', 'departments'];
+    public const CLEAR_FIRST = ['shift_swaps', 'shifts', 'rotas', 'documents', 'staff_profiles', 'departments'];
     private const RETENTION_HOUR_MINUTE = '02:15';
 
     public function __construct(private readonly Ctx $ctx) {}

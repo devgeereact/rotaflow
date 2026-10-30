@@ -11,8 +11,9 @@ final class Api
 {
     private const MAX_BODY = 262144; // 256 KB of JSON: room for a 500-shift batch
     private const MAX_UPLOAD_BODY = 3145728; // 3 MiB for the routes that carry a picture as base64 (6th route element 'upload')
+    private const MAX_DOCUMENT_BODY = 14680064; // 14 MiB for a staff document (10 MiB file as base64; 6th route element 'upload-document')
 
-    /** @var list<array{0:string,1:string,2:callable,3:bool,4:bool}> */
+    /** @var list<array{0:string,1:string,2:callable,3:bool,4:bool,5:int}> */
     private array $compiled = [];
 
     /**
@@ -34,7 +35,7 @@ final class Api
             // {x} placeholders become named UUID groups; everything else is matched literally.
             $re = '#^' . preg_replace_callback('/\{([a-z])\}|[^{]+/', static fn (array $p): string => ($p[1] ?? '') !== '' ? '(?P<' . $p[1] . '>[0-9a-f-]{36})' : preg_quote($p[0], '#'), $tpl) . '$#';
             // 4th element 'public': no sign-in. 5th element 'raw': the handler gets the untouched body and headers (a signed webhook needs the exact bytes).
-            $this->compiled[] = [$m, $re, $handler, ($r[3] ?? '') === 'public', ($r[4] ?? '') === 'raw', ($r[5] ?? '') === 'upload'];
+            $this->compiled[] = [$m, $re, $handler, ($r[3] ?? '') === 'public', ($r[4] ?? '') === 'raw', match ($r[5] ?? '') { 'upload' => self::MAX_UPLOAD_BODY, 'upload-document' => self::MAX_DOCUMENT_BODY, default => 0 }];
         }
     }
 
@@ -59,14 +60,14 @@ final class Api
                     return $handler(null, ['__raw' => $body, '__headers' => $headers], $ip);
                 }
             }
-            $upload = false;
+            $limit = self::MAX_BODY;
             foreach ($this->compiled as $c) {
-                if ($c[5] && $c[0] === $method && preg_match($c[1], $path) === 1) {
-                    $upload = true;
+                if ($c[5] > 0 && $c[0] === $method && preg_match($c[1], $path) === 1) {
+                    $limit = $c[5];
                     break;
                 }
             }
-            if (strlen($body) > ($upload ? self::MAX_UPLOAD_BODY : self::MAX_BODY)) {
+            if (strlen($body) > $limit) {
                 throw new HttpError(413, 'too_large', 'Request too large');
             }
             $input = [];

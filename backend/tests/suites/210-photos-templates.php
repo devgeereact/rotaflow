@@ -65,6 +65,7 @@ check('a link to a removed picture dies at once, though its file may still be on
 check('removing again is harmless', call($api, 'sam', 'POST', "/orgs/$org/staff/{$staff['sam']}/photo/delete")[0] === 200);
 $ctx = new RotaFlow\Ctx($pdo, new RotaFlow\RateLimiter($pdo), 'https://rotaflow.example.test', test_private_root(), null, 'open', test_config());
 RotaFlow\Mod\Lifecycle::cron($ctx);
+RotaFlow\Mod\Lifecycle::cron($ctx); // the drain takes 20 a run and the rate-limit test above queued ~20 in the same second, so order within it is not fixed
 check('cron then deletes the file', !$store->exists(FileStore::PHOTOS, $cur) && !$store->exists(FileStore::PHOTOS, $first));
 $pp = (string) $pdo->query("SELECT photo_path FROM staff_profiles WHERE id = '{$staff['pat']}'")->fetchColumn();
 call($api, 'olga', 'POST', "/orgs/$org/staff/{$staff['pat']}/erase");
