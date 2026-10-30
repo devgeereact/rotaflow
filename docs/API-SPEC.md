@@ -495,3 +495,33 @@ Placeholders: `{i}` invoice. Stripe is in test mode until `stripe.mode` is chang
 
 Plan limits answer **402** with `seat_limit` or `location_limit`; a read-only organisation answers **402** `billing_read_only` to building a rota or shifts and to inviting.
 
+### Slice S8a: the console
+
+Placeholders: `{u}` user, `{s}` support session, `{c}` support case, `{i}` incident, `{e}` enquiry. Everything under `/platform` is 404 to anyone who is not the right kind of platform staff.
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /platform/settings` | any signed-in person | Platform name, support email, URL, time zone, registration, maintenance notice |
+| `POST /platform/settings` | owner, admin | Any of those fields; audited |
+| `GET /platform/admins`, `POST /platform/admins` `{email, role}`, `POST /platform/admins/{u}/revoke` | read: all staff; write: owner | The roster. The person must have signed in once. The last owner cannot be demoted or revoked; revoking ends their support sessions |
+| `GET /platform/summary` | all staff | Counts: organisations by status and plan, subscriptions, users, active staff, monthly recurring pence, open support sessions |
+| `GET /platform/orgs[?q&status&plan&limit&offset]`, `GET /platform/orgs/{o}` | all staff | Directory and one organisation's counts, with billing state. Never tenant rows |
+| `POST /platform/orgs/{o}/status` `{status: active|suspended, reason}` | owner, admin, finance | Suspend (reason of 5+ characters) or reinstate |
+| `GET /platform/users[?q]` | owner, admin, support | People directory (not finance) |
+| `POST /platform/orgs/{o}/support-sessions` `{reason, case_ref, scope, minutes}` | owner, admin, support | Needs the organisation's consent; 409 `session_open` if one is open |
+| `GET /platform/support-sessions`, `POST /platform/support-sessions/{s}/revoke` | owner, admin, support | List; end one (own, or any if owner or admin) |
+| `POST /orgs/{o}/support-access` `{allowed}` | owner (a real owner) | The customer's consent. Turning it off ends every open session |
+| `GET /orgs/{o}/support-sessions`, `POST .../{s}/revoke` | owner, manager read; owner end | Who has been inside, why, and for how long |
+| `POST /support/cases` `{subject, body, category, priority?, org_id?, requester_email?}` | signed in | `requester_email` is honoured for staff only. Returns `CASE-4120`-style `reference` |
+| `GET /support/cases`, `GET /support/cases/{c}` | the requester; an owner of the case's organisation; staff (who also see internal notes and the assignee) | Messages and the SLA state (`on_track|due_soon|met|breached`, minutes remaining) |
+| `POST /support/cases/{c}/reply` `{body, internal?}` | as above; `internal` is staff only | The first public staff reply stamps the response and moves open to pending; the requester is notified |
+| `POST /support/cases/{c}/rate` `{score 1-5, comment?}` | the requester, once resolved | A re-rating overwrites; a reopen keeps it |
+| `GET /platform/support/cases[?status&priority&category&assigned&q&limit]`, `POST .../{c}/status` `{status, note?}`, `POST .../{c}/assign` `{agent_user_id|null}` | owner, admin, support | The queue (urgent first, each with its SLA), status, assignment |
+| `GET/POST /platform/support/sla` | read: operational; write: owner, admin | Response and resolution promises by priority |
+| `GET /platform/incidents[?open=1]`, `GET .../{i}`, `POST /platform/incidents`, `POST .../{i}/updates`, `POST .../{i}/resolve` | operational | `INC-0138`-style references; resolving needs a note |
+| `GET /orgs/{o}/features` | any member | Features on for this organisation: `flag` and `plan` sources |
+| `GET /platform/flags`, `GET /platform/flags/changes?key=` | all staff | Flags and their history |
+| `POST /platform/flags` `{key, enabled?, rollout?, plans?}`, `POST /platform/flags/targets` `{key, org_id, targeted}` | owner, admin | Absent means unchanged; a retired flag is refused |
+| `POST /enquiries` | public | The contact form: JSON up to 16 KB, honeypot `website`, optional Turnstile `turnstileToken`. 201 `{ok:true}`; 400 `invalid` with field names only, or `verification_failed`; 403 `origin_not_allowed`; 413; 415; 429 |
+| `GET /platform/enquiries[?status]`, `POST .../{e}/status` | operational | The inbox (no address hash or user agent) and its status |
+

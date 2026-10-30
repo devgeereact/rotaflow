@@ -13,7 +13,9 @@ final class Scope
     public const MANAGERS = ['owner', 'manager'];
 
     /**
-     * @return array{id:string,org_id:string,user_id:string,role:string,effective_role:string,delegated:bool,org_status:string,org_name:string}
+     * A platform administrator holding a live support session (consent given, not expired, not revoked, still staff) is let in as a
+     * `support` member with a manager's reach and never an owner's. A `read` session also refuses every write (requireWritable).
+     * @return array{id:?string,org_id:string,user_id:string,role:string,effective_role:string,delegated:bool,org_status:string,org_name:string,support:?string}
      */
     public static function membership(\PDO $pdo, string $userId, string $orgId, int $now = 0): array
     {
@@ -28,8 +30,9 @@ final class Scope
         $q->execute([$orgId, $userId]);
         $m = $q->fetch();
         if ($m === false) {
-            throw HttpError::notFound();
+            return self::supportMembership($pdo, $userId, $orgId, $now) ?? throw HttpError::notFound();
         }
+        $m['support'] = null;
         $m['effective_role'] = $m['role'];
         $m['delegated'] = false;
         if ($m['role'] === 'staff' && self::hasLiveDelegation($pdo, $orgId, $userId, $now)) {
@@ -55,12 +58,33 @@ final class Scope
         }
     }
 
-    /** Writes are refused for an organisation that is not active (suspended). ASSUMPTION: matches set_org_status semantics, re-checked with billing in S7. */
+    /** Writes are refused for an organisation that is not active (suspended), and during a read-only support session. */
     public static function requireWritable(array $m): void
     {
+        if (($m['support'] ?? null) === 'read') {
+            throw new HttpError(403, 'support_read_only', 'This support session is read-only');
+        }
         if ($m['org_status'] !== 'active') {
             throw new HttpError(403, 'org_not_active', 'This organisation is not active');
         }
+    }
+
+    /** @return ?array<string,mixed> */
+    private static function supportMembership(\PDO $pdo, string $userId, string $orgId, int $now): ?array
+    {
+        $at = gmdate('Y-m-d H:i:s', $now ?: time());
+        $q = $pdo->prepare(
+            "SELECT s.scope, o.status AS org_status, o.name AS org_name
+               FROM support_access_sessions s
+               JOIN organisations o ON o.id = s.org_id AND o.support_access_allowed = 1 AND o.status <> 'archived'
+               JOIN platform_admins pa ON pa.user_id = s.admin_user_id AND pa.revoked_at IS NULL AND pa.role IN ('platform_owner','platform_admin','platform_support')
+              WHERE s.org_id = ? AND s.admin_user_id = ? AND s.revoked_at IS NULL AND s.expires_at > ?
+              ORDER BY s.expires_at DESC LIMIT 1"
+        );
+        $q->execute([$orgId, $userId, $at]);
+        $r = $q->fetch();
+        return $r === false ? null : ['id' => null, 'org_id' => $orgId, 'user_id' => $userId, 'role' => 'support', 'effective_role' => 'manager', 'delegated' => false,
+            'org_status' => $r['org_status'], 'org_name' => $r['org_name'], 'support' => $r['scope'] === 'read_write' ? 'read_write' : 'read'];
     }
 
     /** The caller's staff record id in this organisation (my_staff_profile_id), or null if they have none. */

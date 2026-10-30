@@ -27,6 +27,8 @@ path below until the cutover. When the cutover happens the rest of this file is 
 Not yet in PHP: expiring-document alerts (arrive with documents, S8 and S10). The billing notices (Stripe `trial_will_end`, `payment_failed`, and the free-trial reminder) are in PHP since S7: the first two are written by `Mod\StripeWebhook`, the third by `Notifications::trialEndingAlerts` in the same cron run. The daily and
 weekly email summary remains unbuilt, as before. Web push has never been seen arriving on a real device; that stays **NOT TESTED**.
 
+Two more notices come from S8a. A public reply from support on a case queues one `support/replied` row (type `support`, title "Reply on CASE-nnnn", first 240 characters of the reply) to the person who raised it, never for an internal note. A new website enquiry is announced to `enquiry_notify_email` by `Enquiries::cron` with no visitor text in it (name, address and message stay in the console), and nothing is sent if that address or the platform mail account is not set.
+
 The one cron entry the host needs (the owner adds it; `bin/doctor.php` first):
 
 ```text

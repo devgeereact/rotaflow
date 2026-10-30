@@ -23,5 +23,10 @@ return [
     // Stripe. mode = 'test' (default; omit to leave billing off) or 'live'. A key must match the mode or billing refuses to start. Webhook secrets are per mode:
     // the endpoint in the Stripe dashboard is https://rotaflow.space/api/stripe/webhook, subscribed to the seven events in docs/API-SPEC.md.
     'stripe' => ['mode' => 'test', 'test_secret_key' => 'REPLACE_ME', 'test_webhook_secret' => 'REPLACE_ME', 'secret_key' => 'REPLACE_ME', 'webhook_secret' => 'REPLACE_ME'],
+    // Website enquiries. turnstile_secret: set it together with VITE_TURNSTILE_SITE_KEY, or neither (a secret without a site key refuses every enquiry).
+    // enquiry_ip_salt: random text that keys the address hash (omit to derive one from secret_key). enquiry_notify_email: who is told a form arrived.
+    'turnstile_secret' => 'REPLACE_ME',
+    'enquiry_ip_salt' => 'REPLACE_ME',
+    'enquiry_notify_email' => 'support@rotaflow.space',
     'vapid' => ['public' => 'REPLACE_ME', 'private' => 'REPLACE_ME', 'subject' => 'mailto:support@rotaflow.space'],
 ];
