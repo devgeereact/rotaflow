@@ -916,9 +916,15 @@ export function useToast(): UseToast;
 #### 11. `useRealtimeRefresh`
 
 `src/hooks/useRealtimeRefresh.ts`
-Subscribes to Supabase Realtime `postgres_changes` and calls back (debounced)
-when data behind the current screen changes, so a published rota or an approved
-request appears without a manual reload.
+Calls back on a timer while the screen is open, so a published rota or an approved
+request appears without a manual reload. **Changed 2026-10-30 (merge slice S4):**
+it polled nothing before; it listened to Supabase Realtime. The PHP host has no
+long-lived socket, so the hook now polls (15 s for clock events up to 120 s for
+locations, the fastest of the tables asked for), only while the tab is visible and
+the browser online, and once more when the tab returns or the network comes back.
+It never fires on mount. The signature and the meaning of `onChange` are unchanged,
+so no caller changed. A later optimisation is a "what changed" stamp endpoint so
+a poll only refetches when something did.
 
 ```ts
 type RealtimeTable =
@@ -951,13 +957,10 @@ interface UseRealtimeRefresh {
 export function useRealtimeRefresh(o: UseRealtimeRefreshOptions): UseRealtimeRefresh;
 ```
 
-> **Rule: treat an event as a signal, never as data.** The payload is
-> deliberately ignored; `onChange` re-queries through the screen's normal
-> RLS-protected path. Realtime does apply RLS to `postgres_changes`, but DELETE
-> payloads carry only the primary key and cannot be filtered the way
-> INSERT/UPDATE are, so rendering a payload is the one way a row the viewer
-> could not otherwise read could reach the screen. Re-querying means the data
-> always arrives through a query the database has already authorised.
+> **Rule: treat a tick as a signal, never as data.** `onChange` re-queries through
+> the screen's normal authorised path (the API checks membership and role on every
+> request). Nothing from the timer is ever rendered, so there is no route by which a
+> row the viewer could not otherwise read could reach the screen.
 
 > **Rule: live updates are an enhancement, never a dependency.** If the socket
 > never connects, every screen still loads and refetches exactly as before.

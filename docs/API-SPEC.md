@@ -350,7 +350,7 @@ Every error is `{"error":{"code","message"}}` with a stable `code`; a 500 adds a
 trace. Placeholders (`{o}` organisation, `{m}` membership, `{i}` invite, `{d}` delegation) are UUIDs. An
 organisation id the caller does not belong to, a malformed id and an unknown route all answer 404 once
 signed in, and 401 when not, so ids and routes cannot be probed. Limits: 300 per minute per address on public
-routes, 600 per minute per person elsewhere, request body 64 KB.
+routes, 600 per minute per person elsewhere, request body 256 KB.
 
 | Method and path | Who | Does | Notable codes |
 | --------------- | --- | ---- | ------------- |
@@ -400,3 +400,28 @@ All under `/api`, all org-scoped (`{o}`); `{l}` location, `{d}` department, `{t}
 | `GET /orgs/{o}/audit[?limit&before_id]` | owner: the organisation's trail; others: only their own acts | Platform-only entries never shown. Newest first, 1 to 100 per page |
 
 An invitation (`POST /orgs/{o}/invites`) may also carry `department_id` and `location_id`; accepting applies them to the person's staff record.
+
+### Slice S4: the rota
+
+Placeholders: `{r}` rota, `{h}` shift, `{y}` shift type, `{a}` availability. Times are ISO 8601 **with an offset**
+(a time with none is refused); they are stored in UTC and returned with a trailing `Z`. Writes need owner or manager unless stated.
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /orgs/{o}/rotas[?location_id&from&to]` | member | Rotas. Staff see published and archived only |
+| `POST /orgs/{o}/rotas` | owner, manager | `{name, period_start, period_end, location_id?}`: a draft. One draft per site and period (`rota_exists` 409); at most a year |
+| `POST /orgs/{o}/rotas/{r}` | owner, manager | Rename or re-date a draft (`rota_not_draft` 409 otherwise) |
+| `POST /orgs/{o}/rotas/{r}/publish` | owner, manager | Draft to published. Refused with `cover_below_minimum` 409 (message names the site, day and shortfall) while a future day is under its minimum. Idempotent. Publishing an amendment archives the rota it supersedes in the same step |
+| `POST /orgs/{o}/rotas/{r}/unpublish` | owner, manager | Published back to a draft. `open_amendment` 409 while an amendment exists |
+| `POST /orgs/{o}/rotas/{r}/revision` | owner, manager | Start or resume an amendment of a published rota: a draft that supersedes it, with a copy of its shifts |
+| `POST /orgs/{o}/rotas/{r}/discard` | owner, manager | Delete an open amendment and its shifts; returns the published rota. `not_an_amendment` 409 |
+| `POST /orgs/{o}/rotas/{r}/repeat` | owner, manager | `{weeks: 1..26}`: copy into the following weeks, skipping published weeks and weeks that already have shifts. Returns `weeks_created`, `shifts_created`, `weeks_skipped` |
+| `GET /orgs/{o}/shifts` | member | `?rota_ids=a,b` (up to 50; cancelled included), or `?from=&to=` (shifts starting in the window; add `&overlapping=1` for shifts running during it), each with optional `location_id`, `staff_profile_id`. Up to 5000 rows (`truncated: true` beyond). Each shift carries `rota: {status, supersedes_rota_id}` |
+| `POST /orgs/{o}/shifts`, `POST .../shifts/batch` | owner, manager | One shift, or `{shifts: [...]}` of up to 500, all or nothing. A shift with no `rota_id` is a loose shift. `rota_published` or `rota_archived` 409 for a rota that cannot take changes |
+| `POST /orgs/{o}/shifts/{h}`, `.../{h}/delete` | owner, manager | Edit (including moving between draft rotas) or delete |
+| `GET/POST /orgs/{o}/shift-types`, `POST .../{y}`, `.../{y}/delete` | read: member; write: owner, manager | `shift_type_in_use` 409 on delete |
+| `GET/POST /orgs/{o}/availability`, `POST .../{a}/delete` | the person (own); owner and manager (anyone) | A weekday (0 = Sunday) or one date, optional start and end together, status `available`, `unavailable` or `preferred` |
+| `GET/POST /orgs/{o}/minimum-cover` | read: member; write: owner, manager | `{location_id, weekday, min_staff}`; one rule per site per weekday |
+
+Request bodies may be up to 256 KB. Deleting a location or department that rotas or shifts use is refused
+(`location_in_use`, `department_in_use`): mark the location inactive instead.

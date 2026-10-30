@@ -39,7 +39,7 @@ check('a public route needs no sign-in', $s === 200 && $r === ['signed_in' => fa
 check('a JSON body reaches the handler', $s === 200 && $r === ['got' => ['a' => 1]]);
 [$s, $r] = $api->handle('POST', '/echo', ['authorization' => 'Bearer tok-ann'], '[1,2', '203.0.113.1');
 check('invalid JSON is 422 invalid_input', $s === 422 && $r['error']['code'] === 'invalid_input');
-[$s, $r] = $api->handle('POST', '/echo', ['authorization' => 'Bearer tok-ann'], str_repeat('x', 70000), '203.0.113.1');
+[$s, $r] = $api->handle('POST', '/echo', ['authorization' => 'Bearer tok-ann'], str_repeat('x', 300000), '203.0.113.1');
 check('an oversized body is 413', $s === 413 && $r['error']['code'] === 'too_large');
 [$s, $r] = call($api, 'ann', 'POST', "/orgs/$org/ping");
 check('the wrong method on a known path is 404', $s === 404);

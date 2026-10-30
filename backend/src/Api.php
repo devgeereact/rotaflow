@@ -9,7 +9,7 @@ namespace RotaFlow;
  */
 final class Api
 {
-    private const MAX_BODY = 65536;
+    private const MAX_BODY = 262144; // 256 KB of JSON: room for a 500-shift batch
 
     /** @var list<array{0:string,1:string,2:callable,3:bool}> */
     private array $compiled = [];

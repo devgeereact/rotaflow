@@ -81,6 +81,12 @@ final class Places implements Module
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
         $this->mustExist('locations', $l, $o);
+        // A rota or shift at this site is history that must stay readable; archive the site instead (status: inactive).
+        $used = $pdo->prepare('SELECT 1 FROM rotas WHERE org_id = ? AND location_id = ? UNION SELECT 1 FROM shifts WHERE org_id = ? AND location_id = ? LIMIT 1');
+        $used->execute([$o, $l, $o, $l]);
+        if ($used->fetchColumn() !== false) {
+            throw HttpError::conflict('location_in_use', 'Rotas or shifts still use this location. Mark it inactive instead of deleting it');
+        }
         $pdo->beginTransaction();
         try {
             // The composite key cannot SET NULL one column, so what pointed here is cleared first (departments become unplaced).
@@ -133,6 +139,11 @@ final class Places implements Module
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
         $this->mustExist('departments', $d, $o);
+        $used = $pdo->prepare('SELECT 1 FROM shifts WHERE org_id = ? AND department_id = ? LIMIT 1');
+        $used->execute([$o, $d]);
+        if ($used->fetchColumn() !== false) {
+            throw HttpError::conflict('department_in_use', 'Shifts still use this department');
+        }
         $pdo->beginTransaction();
         try {
             $pdo->prepare('UPDATE staff_profiles SET department_id = NULL WHERE org_id = ? AND department_id = ?')->execute([$o, $d]);

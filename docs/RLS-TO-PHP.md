@@ -3,7 +3,7 @@
 Status: **PARTIAL.** The Supabase back end is being replaced (`docs/MERGE-TARGET.md`). Row-level security has no
 MariaDB equivalent, so every policy becomes an explicit check in `backend/`, and this table is the proof that none
 was lost. The target is every one of the 119 final policies (113 on public tables, 6 on `storage.objects`)
-accounted for here. **29 are mapped so far (slices S2 and S3).** A row is not DONE until the test named in it passes.
+accounted for here. **41 are mapped so far (slices S2, S3 and S4).** A row is not DONE until the test named in it passes.
 
 How to read it. The Postgres rule is the final-state policy after all migrations (replayed, not the first
 definition). The PHP check names the code that now enforces it. Tests are in `backend/tests/suites/`.
@@ -86,3 +86,36 @@ owner and manager). The replay below is of the final state.
 | `accept_invite` (staff part) | Link an HR record by email; apply the invited department and site | `Staff::linkOnAccept` | 080 | DONE |
 | `audit_logs_select` | Owner reads the trail; anyone else only their own acts; platform-only rows hidden | `Account::audit` | 085 | DONE (organisation view); platform view PLANNED S8 |
 | `current_pay_rates`, `labour_cost` | Cost without exposing rates | With the rota and reports, S4 and later | none yet | PLANNED |
+
+## S4: the rota
+
+`rotas` and `shifts` lost their single write policy in `0161` and gained separate insert, update and delete policies;
+`shift_types` follows the org-shared loop (member reads, owner and manager write) and `availability` the personal loop.
+Readability of a rota is `my_readable_rota_ids()`: the caller is a member and the rota is published or archived, or the
+caller is an owner or manager.
+
+| Table | Policy | Postgres rule (final) | PHP check | Test | Status |
+| ----- | ------ | --------------------- | --------- | ---- | ------ |
+| rotas | `rotas_select` | A rota the caller may read | `Rotas::list`: staff get published and archived only; owner and manager (including a delegate) get drafts too | 090 | DONE |
+| rotas | `rotas_insert`, `rotas_update`, `rotas_delete` | Owner or manager | `Rotas::create`, `rename`, `publish`, `unpublish`, `beginRevision`, `discardRevision`, `repeat`: `Scope::require(MANAGERS)`. No delete endpoint exists; only an amendment is discarded | 090 | DONE |
+| rotas | trigger `rotas_guard_status_change` | A status changes only through publish, unpublish, amend or discard, never by writing the column | The API has no way to write `status`. Transitions are the five functions above, each under the rota's row lock | 090 | DONE |
+| shifts | `shifts_select` | Member, and a loose shift or one in a readable rota | `Shifts::list`: loose shifts and published or archived rotas for staff; drafts too for owner and manager | 095 | DONE |
+| shifts | `shifts_insert`, `shifts_update`, `shifts_delete` | Owner or manager | `Shifts::write`, `update`, `delete`: `Scope::require(MANAGERS)` and `requireWritable`; every reference must belong to the organisation (and the composite keys back it) | 095 incl. direct SQL | DONE |
+| shifts | trigger `shifts_guard_immutable_rota` | Shifts of a published rota (ROTA1) or an archived one (ROTA2) never change | `Shifts::lockRotas`: `rota_published` 409, `rota_archived` 409, taken under the rota's row lock so it queues behind a publish. Covers insert, update (the old and the new rota) and delete | 090, 095; mutation of the rule | DONE |
+| shift_types | `shift_types_select`, `_write` | Member reads; owner and manager write | `Planning::listTypes`, `saveType`, `deleteType`. Deleting a type still in use is refused (`shift_type_in_use`): the old foreign key would have tried to blank it on published history | 095 | DONE |
+| availability | `availability_select`, `_write` | The person, or owner and manager | `Planning::listAvailability`, `addAvailability`, `deleteAvailability`: own record, or owner and manager for anyone | 095 | DONE |
+| minimum_cover_rules | `minimum_cover_rules_select`, `_write` | Member reads; owner and manager write | `Planning::listCover`, `setCover` (one rule per site per weekday) | 095 | DONE |
+
+| Postgres function | Rule | PHP | Test | Status |
+| ----------------- | ---- | --- | ---- | ------ |
+| `publish_rota` | Owner or manager; a draft only; refuse while a future day is below its site's minimum (ROTA7); archive the superseded rota first; stamp who and when | `Rotas::publish` with the pure `MinimumCover::firstShortfall` | 089 (16 cases incl. time zones, past days, ordering), 090 | DONE |
+| `begin_rota_revision` | Published rotas only; resume an open amendment; else adopt a draft for the same week; else create one; copy the non-cancelled shifts if it has none | `Rotas::beginRevision` | 090 | DONE |
+| `discard_rota_revision` | An open amendment only; delete its shifts and itself; return the source | `Rotas::discardRevision` | 090 | DONE |
+| `unpublish_rota` | Published to draft, unless an amendment is open | `Rotas::unpublish` | 090 | DONE |
+| `repeat_rota_weeks` | 1 to 26 weeks; skip a published week or one with shifts; keep local hours across clock changes | `Rotas::repeat`, `Time::plusLocalDays` | 090 incl. the March 2030 clock change | DONE |
+| one draft and one published rota per site and period (partial unique indexes) | Uniqueness among drafts, and among published rotas | Unique keys over generated `is_draft` and `is_published` columns plus a `site_key`; `rota_exists` 409 | 090 | DONE |
+| `rota_amendment_changes`, `enqueue_rota_published_notification` | What changed for each person; notify on publish | Notifications: S6 | none yet | PLANNED S6 |
+| `open_shifts`, `claim_open_shift` | Open shifts and the first-claim-wins rule | S5 | none yet | PLANNED S5 |
+| `enforce_org_not_read_only` on rotas and shifts | Read-only organisations cannot publish or edit | Billing state: S7 | none yet | PLANNED S7 |
+| Realtime on `shifts`, `rotas`, `availability`, `shift_types` | A signal to refetch | `useRealtimeRefresh` now polls | `src/hooks/useRealtimeRefresh.test.ts` | DONE |
+| `FK ... ON DELETE SET NULL` on shifts (location, department, shift type) | The reference is blanked when its target is deleted | Deleting a location, department or shift type that shifts use is refused (`location_in_use`, `department_in_use`, `shift_type_in_use`). **Deliberate change:** the old behaviour would have rewritten published history | 095 | DONE |
