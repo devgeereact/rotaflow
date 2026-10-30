@@ -184,6 +184,18 @@ Two long-standing ❌ rows here have been closed and moved:
   queue behind `canApprove` (§5, §10).
 - **The Super Admin console** ships, as 18 screens under `/admin` (§11).
 
+## 7a. Compliance (R2 slice S10), behind the `staff_documents` flag
+
+No design reference; built in the existing components. Every screen below is hidden while the flag is off (the
+default), so the module ships dark.
+
+| Status | Screen | Route | What it does |
+| ------ | ------ | ----- | ------------ |
+| ✅ | Compliance (managers) / My documents (staff) | `/app/compliance`, rail row after Overtime | Staff: what is required of them with a status chip each, whether they are cleared, and "Upload or manage". Owners and managers also get four tiles (awaiting review, expiring in 30 days, expired, people not cleared), the review queue oldest first (open, Approve, Not accepted with a reason; Approve is disabled with the reason in its title for your own document or one you uploaded), and required documents by type |
+| ✅ | Documents window | Staff → a person → Documents; Staff profile → Upload document; Compliance → Upload or manage | Each document with its status chip (Draft, Awaiting review, Approved, Not accepted, Withdrawn, Replaced, Expired) and the reason if not accepted; Send for review and Withdraw where allowed; upload against a type with an optional name, issue and expiry dates, and "Send for review now" (else a draft). The profile's own documents list shows approved documents only |
+| ✅ | Settings: Document types | `/app/settings/document-types` (owners and managers; tab after Policies) | Active types with "Required to work", add and edit (name, description, months it lasts, required, needs an expiry date), archive with a confirmation, and the UK examples to add in one click (not legal advice) |
+| ✅ | Eligibility chip | Rota builder, under each name; Open shifts, on each card | "Not cleared" (the missing types in the title and for screen readers) or "Expiring". It informs and never blocks: rostering stays the manager's decision, and the open-shift claim gains the server check in S12 |
+
 ## 8. Tables with no UI
 
 **`platform_health_probes` and `rate_limit_events`. Both correctly so.**

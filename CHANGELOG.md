@@ -13,6 +13,13 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Compliance, behind the `staff_documents` flag (R2 slice S10, branch `r2/s10-compliance`, 30 October
+  2026).** Document types with UK examples; staff upload documents against a type and they count only once an
+  owner or manager approves them (never the person themself; a manager cannot approve what they uploaded for
+  someone, an owner can); approving replaces the earlier one and keeps it as history; expiry is judged in the
+  organisation's timezone; reminders at 30, 14 and 7 days and on expiry, once each, to the person and the managers
+  (the old expiring-document alert, folded in). New Compliance / My documents page, Settings Document types, and an
+  eligibility chip on the rota builder and open shifts. Migration `backend/migrations/015-compliance.sql`. Ships off.
 - **`@vitejs/plugin-react` 6 (22 October 2026).** The plugin no longer depends on
   Babel; an `overrides` pin keeps npm from resolving its unused optional Babel 8
   peer chain. eslint 10 and TypeScript 7 stay held: their plugins' latest releases

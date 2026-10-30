@@ -3,7 +3,7 @@
 Status: **PARTIAL.** The Supabase back end is being replaced (`docs/MERGE-TARGET.md`). Row-level security has no
 MariaDB equivalent, so every policy becomes an explicit check in `backend/`, and this table is the proof that none
 was lost. The target is every one of the 119 final policies (113 on public tables, 6 on `storage.objects`)
-accounted for here. **69 are mapped so far (slices S2 to S6).** A row is not DONE until the test named in it passes.
+accounted for here. **69 were mapped by S6; S10 adds 5 (`documents_select`, `documents_write` and the three `staff-documents` storage policies). Later slices list their rows below without recounting the total.** A row is not DONE until the test named in it passes.
 
 How to read it. The Postgres rule is the final-state policy after all migrations (replayed, not the first
 definition). The PHP check names the code that now enforces it. Tests are in `backend/tests/suites/`.
@@ -312,4 +312,17 @@ Documents (`staff-documents`) use the same store and arrive with the Compliance 
 | `my_mfa_status`, `set_platform_mfa_required` | Platform MFA in the database | Dropped: Clerk enforces a second factor for platform staff accounts | n/a | DROPPED (Clerk) |
 | `set_invoice_status`, `issue_invoice` | Platform finance, manual invoicing | Dropped: invoices come only from the signed Stripe webhook | n/a | DROPPED |
 | `connect_integration`, `set_org_integration_status`, `platform_ip_allowlist`, `record_health_sample` | Cut list | Not ported; the screens read empty and writes are refused | n/a | CUT |
-| `documents` and `staff-documents` storage | Members and managers | Arrive with Compliance (S10); hidden behind the `staff_documents` flag until then | n/a | R2 (S10) |
+| `documents` and `staff-documents` storage | Members and managers | Arrived with Compliance (S10), below | 230 | DONE (S10) |
+
+## S10: compliance (document types, staff documents, review, reminders)
+
+| Table or function | Postgres rule (final) | PHP check | Test | Status |
+| ----------------- | --------------------- | --------- | ---- | ------ |
+| `documents_select` | The person themselves, or an owner or manager | `Compliance::listDocuments`, `link`, `mine`: owners and managers (delegates included) any record in the organisation; anyone else only their own staff record, and asking for someone else's is 404 | 230 | DONE. **Tightened:** a platform support session gets 403 on every compliance route (Super Admin has no role here) |
+| `documents_write` | The person themselves, or an owner or manager, insert and delete | `Compliance::createDocument` (own record, or owner/manager for any active record; `requireWritable`), `submit`, `withdraw`. There is no delete: a withdrawn row is kept as history; erasure (`Gdpr::eraseStaff`) and organisation deletion remove rows | 230 | DONE. **Changed:** uploads wait for review (`awaiting_review`) and count only once approved; staff cannot withdraw an approved document |
+| `staff_documents_select` / `_insert` / `_delete` on `storage.objects` | Path `<org>/<staff>/<file>`; the person or an owner or manager | Files sit in the private store (`FileStore::DOCUMENTS`), written only by `createDocument` at `<org>/<staff>/<random>.<ext>`; opened through `GET /document-files`, authorised by an HMAC over bucket, path and a one-minute expiry, and only while a `documents` row still names that path; the type is judged by the bytes | 230 | DONE |
+| `queue_document_file_deletion`, `queue_person_folder_deletion`, `queue_organisation_folder_deletion` | Triggers fill `storage_deletions` | Erasure queues the person's folder in both buckets and deletes their document rows in the same transaction; organisation deletion queues the tenant's folders (`Lifecycle::CLEAR_FIRST` now clears `documents` before `staff_profiles`) | 230, 190 | DONE |
+| Review (new) | n/a (no review existed) | `Compliance::review`: owners and managers; never the person the document is about (owners included); a manager who uploaded for someone cannot approve it, an owner can; approving supersedes the earlier approved row of that type in the same transaction | 230 incl. mutation | NEW |
+| Document types (new) | n/a | `Compliance::createType`, `addPreset`, `updateType`, `archiveType`: owners and managers, optimistic version, one name check per organisation under a row lock | 230 | NEW |
+| `enqueue_scheduled_alerts` (expiring documents, `0093`) | Owners and managers told at 30 days and on expiry, deduplicated per document and date | `Compliance::cron` / `runReminders`: d30, d14, d7 and `expired`, once per document and stage (`document_reminders` primary key), in the organisation's timezone; the person (if they have a login) and the owners and managers | 230 | DONE (folded in, not duplicated) |
+

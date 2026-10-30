@@ -525,6 +525,36 @@ role. `dispatch_account_deletions()` posts each row to the `delete-account` Edge
 Function every five minutes. `supabase/tests/database/erasure_tail.test.sql`
 covers both halves, including deleting the user the way the Admin API does.
 
+### 4.16 Compliance (MariaDB `backend/migrations/015-compliance.sql`, R2 slice S10)
+
+The first R2 table set, in the new MariaDB schema (the PHP API, `docs/MERGE-TARGET.md`). Rules are PHP checks
+(`backend/src/Mod/Compliance.php`), mapped in `docs/RLS-TO-PHP.md` (S10).
+
+- **`document_types`**: per organisation; `name` (unique among active types, checked under an organisation row
+  lock), `description`, `requires_expiry`, `default_validity_months` (1 to 120; fills a missing expiry from the
+  issue date), `required` (every active staff record must hold an approved, in-date document of this type to be
+  cleared to work), `preset_key` (one of the UK examples), `status` active or archived (never deleted), `version`
+  for optimistic edits, `created_by`. At most 100 active.
+- **`documents`**: RotaFlow's existing table (`0002`, `0159`) in MariaDB for the first time. Kept columns, same
+  names: `type` (free text; for a new row the type's name), `name`, `file_url` (a moved pasted link), `storage_path`
+  (the private store, `<org>/<staff>/<file>`, unique), `issued_at`, `expires_at`. Added: `document_type_id`
+  (null only on a row moved from before types), `mime` (from the bytes), `status`
+  (`uploaded`, `awaiting_review`, `approved`, `rejected`, `withdrawn`, `superseded`; **defaults to `approved`**, so
+  a row moved from Postgres stays valid), `rejection_reason`, `uploaded_by`, `submitted_at`, `reviewed_by`,
+  `reviewed_at`, `superseded_by` (the approved row that replaced this one), `version`. Checks: exactly one of
+  `file_url` and `storage_path`; the path sits in the row's own organisation and person folder; expiry not before
+  issue. Composite foreign keys keep the staff record and the type inside the organisation. "Expired" is never
+  stored: it is computed from `expires_at` in the organisation's timezone (valid through the expiry date).
+  A moved row whose free-text `type` equals a type's name counts for that type.
+- **`document_reminders`**: one row per (document, stage) ever sent; stages `d30`, `d14`, `d7`, `expired`. The
+  primary key is what makes the reminder job once-only.
+- **Flag**: `feature_flags.staff_documents` is seeded **off**; the screens show only where the platform turns it on.
+- **Deletion**: erasing a person deletes their document rows (and reminders) and queues their folder in both
+  buckets; deleting an organisation clears `documents` before `staff_profiles` (`Lifecycle::CLEAR_FIRST`, because
+  `documents_type` restricts). Withdrawn and replaced rows, and their files, are kept as history until then.
+- **Not copied from SiteRelay**: `document_type_sites`, `member_documents`, `member_profiles` (RotaFlow has staff
+  records, emergency contacts and this `documents` table).
+
 ## 5. Row Level Security
 
 RLS is **enabled on every table**. Policies use `security definer` helper functions

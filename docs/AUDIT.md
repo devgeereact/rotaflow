@@ -51,3 +51,73 @@ run on Supabase until the R1 cutover is approved.
   the old REST paths and now render without data.
 - Playwright e2e specs (they target the Supabase flows and were not run).
 - Real Stripe, real push, real SMTP, real OpenRouter, real Turnstile (unchanged from S6 to S8).
+
+## 2026-10-30: S10 (R2), compliance: document types, staff documents with review, reminders
+
+Branch `r2/s10-compliance` from `move/cpanel-clerk` (5d5c9d6), local commits only. Nothing pushed or deployed.
+Spec: `docs/RESTRUCTURE-PLAN.md` section 4, "S10 Compliance". Ported from SiteRelay's `Compliance` module and its
+`060-compliance` suite (read only), re-made for RotaFlow's staff records and roles.
+
+**What changed**
+
+- Migration `backend/migrations/015-compliance.sql`: `document_types`, `documents` (review columns; `status` defaults
+  to `approved`), `document_reminders`, and the `staff_documents` feature flag seeded **off**.
+- `backend/src/Mod/Compliance.php` (13 org routes and the public signed `GET /document-files`) and the pure
+  `backend/src/ComplianceRules.php`. Eligibility is an internal service (`Compliance::eligible`) for S12.
+- Reminders d30, d14, d7 and expired run from the existing one-minute `bin/cron.php`, at most once in fifteen
+  minutes; they replace the `0093` expiring-document alert rather than adding a second one.
+- `Gdpr::eraseStaff` deletes the person's documents; `Lifecycle::CLEAR_FIRST` clears `documents` before staff
+  records; `Api` gives the upload route a 14 MiB body limit (a 10 MB file as base64), every other route unchanged.
+- Front end: `documentService` on the real endpoints, the Documents window (typed upload, status chips, send for
+  review, withdraw), `/app/compliance` (Compliance for managers, My documents for staff), Settings, Document types,
+  and the eligibility chip in the rota builder and on open shifts. All of it only while the flag is on.
+
+**Decisions where the spec met the code (the safer option taken)**
+
+1. The plan says `documents` is "altered". It did not exist in MariaDB yet (S8 left it for S10), so 015 creates it
+   with the Postgres column names kept, so moved rows need no mapping. The plan's `issued_on` is the existing
+   `issued_at` column, not a second one.
+2. Four eyes: nobody reviews a document about themself, **owners included** (SiteRelay let an owner approve their
+   own). A manager who uploaded for someone cannot approve it; an owner can, as the spec says.
+3. "Super Admin: none" is enforced: a platform support session gets 403 on every compliance route, although
+   support otherwise has a manager's reach.
+4. SiteRelay required types per role (worker, supervisor) and per site. RotaFlow has neither dimension in its
+   approved model, so a type is either required of every active staff record or of nobody (`required`).
+5. A row moved from Postgres has no type. It counts for a type whose name equals its free-text `type`, so an
+   approved DBS on file is not made worthless when a manager creates a required "DBS check".
+6. Withdrawn, rejected and replaced documents (and their files) are kept as review history until the person is
+   erased or the organisation deleted. Whether to remove them sooner is an owner decision (`docs/SECURITY.md`).
+7. The reminder days are fixed at 30, 14 and 7 (SiteRelay's per-company setting was not ported; the spec names
+   the three stages).
+8. The chip informs and never blocks; the open-shift claim gains the server-side document check in S12, as planned.
+9. A suspended organisation refuses compliance writes; the billing read-only state does not (it is about building
+   rotas, and a person must still be able to file a renewed certificate).
+10. `210-photos-templates` "cron then deletes the file" (the flake recorded under S9) was traced to the deletion
+    drain taking 20 rows a run while about 20 were queued in the same second; the test now drains twice.
+
+**Evidence (local, 30 October 2026)**
+
+- `pnpm run check` exit 0 before each commit (ESLint, Biome, `tsc`, vitest, build, bundle, migration safety,
+  doc counts, export coverage, PHP lint and suites).
+- PHP: 1755 assertions, 0 failed (S9 ended at 1639 by its own record; 1639 + 116). Suite `230-compliance`: 116,
+  covering type rules and presets, upload limits and byte sniffing, who sees what, signed links, four eyes,
+  supersede, eligibility (including Auckland local midnight and DST-safe London dates), moved rows, the summary,
+  archive, support refused, suspended organisation, every reminder stage, missed runs, timezone, no-login staff,
+  deactivated staff, the 15-minute gate, the real `bin/cron.php`, erasure and organisation deletion. The access
+  sweep (`099`) covers the new routes as anonymous, a stranger and a user with no organisation.
+- Mutation checks (each made the suite fail, then reverted): removing the uploader four-eyes rule; counting
+  `awaiting_review` documents as eligible; letting a support session through.
+- vitest: `src/lib/compliance.test.ts` (11, the PHP cases mirrored: expiry state, display status, calendar days,
+  organisation-local today across the clock change, eligibility on a date, actions) and
+  `src/lib/complianceNav.test.ts` (3, the flag hides the row and the tab). Bundle 713.8 KiB of 760.
+
+**NOT TESTED**
+
+- Any compliance screen in a browser against a running API (shapes matched by reading the handlers).
+- A 10 MB upload through Apache, PHP and Cloudflare on the host: it needs `post_max_size` (and any
+  `LimitRequestBody`) of at least 15 MB; the local tests call the API in process.
+- Opening a document through `/api/document-files` in a real tab under the production CSP; HEIC files.
+- Migration 015 on MariaDB 11.4 (the live version); only the local 13.0.2 test database ran it.
+- Moving existing Supabase `documents` rows and their Storage objects into the private store (a cutover task).
+- Reminder emails and pushes through real SMTP and a real device; the job under the host's cron.
+- Playwright.

@@ -739,6 +739,17 @@ nightly at 02:15 UTC (`0029`, fixed by `0057`), with each run recorded in
 
 Nothing is anonymised by retention; every branch is a hard `DELETE`.
 
+**Staff documents in the PHP API (R2 slice S10, `backend/src/Mod/Compliance.php`).** A document row and its file are
+kept for as long as the person's staff record exists, **including withdrawn, rejected and replaced rows**, which are the
+review history. They go when the person is erased (rows deleted, both folders queued in `storage_deletions` and removed
+by `Lifecycle::cron` within minutes) or the organisation is deleted. Nothing removes them on a timer: there is no
+`retention_policies` row for documents. **REQUIRES OWNER INPUT:** whether withdrawn and rejected uploads (which may be
+the wrong person's passport) should be removed sooner, and a retention period for documents of people who have left.
+The file itself is never at a guessable address: it is served only through a one-minute HMAC-signed link, only while a
+row still names it, with the type judged from the bytes (PDF, JPEG, PNG, WebP, HEIC; 10 MB). A platform support session
+cannot read documents at all. The audit trail records uploads, reviews and withdrawals by id and type, never a document's
+name or number.
+
 **Every period above REQUIRES LEGAL REVIEW.** They were chosen when the
 schedule was built and have not been justified against a statutory or business
 requirement. Indefinite audit retention is the one most worth defending or

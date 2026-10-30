@@ -598,4 +598,34 @@ Routes added because a screen needed them and they were R1 scope:
 
 Not on the API, by decision: manual invoice issue and status (Stripe's webhook owns invoices); the platform
 require-MFA switch (Clerk's dashboard); integrations, the IP allow-list and stored health probes (cut list).
-Staff documents wait for S10 behind the `staff_documents` feature flag.
+Staff documents arrived with S10, below; the screens stay behind the `staff_documents` feature flag.
+
+### Slice S10 (R2): compliance
+
+Owners and managers include delegates (a staff member lent manager authority). A platform support session gets 403 on
+every route here. Writes refuse a suspended organisation (`org_not_active`). Dates are `YYYY-MM-DD` in the
+organisation's timezone; a document row carries `status` (computed: an approved or pending row past its expiry reads
+`expired`) and `stored_status`, never its storage path (`stored: true` instead).
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /orgs/{o}/document-types` | any member | Active types; owners and managers also get archived ones and `presets` (UK examples with `added`) |
+| `POST /orgs/{o}/document-types` `{name, description?, requires_expiry?, default_validity_months?, required?}` | owner, manager | 201 `{type}`; 409 `duplicate_name`, `type_limit` (100 active); 60 an hour |
+| `POST /orgs/{o}/document-types/presets` `{key}` | owner, manager | Adds a UK example; 422 unknown key; 409 if already there |
+| `POST /orgs/{o}/document-types/{t}/update` `{..., expected_version}` | owner, manager | 409 `version_conflict` or `archived` |
+| `POST /orgs/{o}/document-types/{t}/archive` `{expected_version}` | owner, manager | Lifts the requirement; filed documents stay |
+| `GET /orgs/{o}/documents[?staff_profile_id]` | owner, manager: anyone's or all; staff: their own (404 for someone else's) | Rows newest first, history included, at most 500 |
+| `POST /orgs/{o}/documents` `{staff_profile_id?, document_type_id, name?, issued_at?, expires_at?, submit?, data}` | the person for their own record; owner, manager for any active record | `data` is the file, base64: PDF, JPEG, PNG, WebP or HEIC up to 10 MB, judged by its bytes (this route accepts a body up to 14 MiB). 201 `{document}` as `awaiting_review` (or `uploaded`, a draft, with `submit: false`). 413 `document_too_large`, 415 `document_type`, 422 for a future issue date, an expiry before issue or already past, a missing expiry the type needs; 60 an hour |
+| `GET /orgs/{o}/documents/queue` | owner, manager | Awaiting review, oldest first, with `staff_name`, `own`, `can_approve` |
+| `POST /orgs/{o}/documents/{d}/submit` `{expected_version?}` | the person, owner, manager | A draft to review; 409 `wrong_status`, `document_expired` |
+| `POST /orgs/{o}/documents/{d}/review` `{decision: approve\|reject, reason?, expected_version}` | owner, manager | Four eyes: 403 for the person the document is about (owners too) and for a manager approving what they uploaded (an owner may). Approving supersedes the earlier approved row of the type. A reason (3 to 500 characters) is required to reject. 409 `wrong_status`, `version_conflict`, `document_expired` |
+| `POST /orgs/{o}/documents/{d}/withdraw` `{expected_version?}` | the person (draft, pending, rejected); owner, manager (also approved) | Kept as history; 403 for staff on an approved document |
+| `GET /orgs/{o}/documents/{d}/link` | the person, owner, manager | `{url, expires_at}` good for a minute; a moved row's pasted link is returned as it is |
+| `GET /api/document-files?p&e&s` | public, signed | The file itself, `Cache-Control: private, no-store`; 404 for any bad, expired or stale link |
+| `GET /orgs/{o}/compliance/me` | any member | `{today, staff_profile_id, requirements[{type_id, name, state, expires_at}], counts, documents}`; a member with no staff record has nothing required |
+| `GET /orgs/{o}/compliance/summary` | owner, manager: `scope: org` with `counts`, `by_type` and `people[{staff_profile_id, eligible, missing, expiring}]`; staff: `scope: me` with their own `counts` | The numbers behind the Compliance page and the rota builder's eligibility chip |
+
+Eligibility is an internal service, not an endpoint: `Compliance::eligible(pdo, org, staffProfileId, atUtc)` returns
+`{ok, missing}` for the organisation-local date of that instant. S12 (cover, and the instant claim on open shifts)
+consumes it.
+

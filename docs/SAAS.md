@@ -324,7 +324,7 @@ precisely because they cannot be, and "it works" throughout this document means
 | Status                | Count |
 | --------------------- | ----- |
 | 🟢 Complete           | 113   |
-| 🟡 Partial            | 5     |
+| 🟡 Partial            | 6     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -924,6 +924,14 @@ itself: a restore, a real charge, and a phone.
       `supabase/migrations/0097_overtime_evidence.sql` · 7 pgTAP assertions
 - [x] CAP-088 🟢 Document expiry — alerts a manager on a schedule, once per document per expiry date
       `supabase/migrations/0093_scheduled_alerts.sql` · GAP-013 closed #214
+      **PHP API (R2 slice S10, branch `r2/s10-compliance`, not released):** folded into the compliance module's
+      reminder job (d30, d14, d7 and expired, once per document and stage, organisation timezone, the person and the
+      managers). `backend/src/Mod/Compliance.php` · suite `230-compliance` (116 assertions)
+- [ ] CAP-088b 🟡 Compliance: document types (UK presets), uploads that count only once approved, four-eyes review,
+      supersede on approval, the eligibility service S12 consumes, and the eligibility chip on the rota and open shifts.
+      **Built on the branch, behind the `staff_documents` flag (seeded off), not released.** Becomes 🟢 when the owner
+      turns the flag on after a local-live walk-through. `backend/migrations/015-compliance.sql` ·
+      `backend/src/Mod/Compliance.php` · suite `230-compliance` · `src/lib/compliance.test.ts`
 - [x] CAP-089 🟢 Multi-location workers — **and the row's proposed fix would have been wrong.**
       It said `staff_profiles` has no `location_id`; adding one cannot express a person who
       works two sites, which is the thing being asked for. The real shape: a site is inherited

@@ -24,7 +24,18 @@ path below until the cutover. When the cutover happens the rest of this file is 
 | Invitations | `send-invite` function | `Mod\Invites` emails the link on creation and on resend, best effort; the invitation is never lost if the send fails, and its `send_error` says why |
 | Enquiries | `public-enquiry` function | Platform console slice (S8) |
 
-Not yet in PHP: expiring-document alerts (arrive with documents, S8 and S10). The billing notices (Stripe `trial_will_end`, `payment_failed`, and the free-trial reminder) are in PHP since S7: the first two are written by `Mod\StripeWebhook`, the third by `Notifications::trialEndingAlerts` in the same cron run. The daily and
+Compliance (R2 slice S10) adds the document notices, all type `document`. `compliance/submitted` tells the owners and
+managers (not the uploader) that a document awaits review; `compliance/approved` and `compliance/rejected` (with the
+reason) tell the person. The expiring-document alert of `0093` is folded into `Compliance::cron`, not duplicated: on the
+quarter-hour (the job runs at most once in fifteen minutes, keyed by a stamp in the private cache folder) it sends
+`compliance/expiring` 30, 14 and 7 days before an approved document's expiry date and `compliance/expired` the first day
+after it, each stage once per document (`document_reminders` primary key, plus an outbox `dedupe_key`
+`document_reminder:<id>:<stage>:person|managers`). Days are counted in the organisation's timezone; missed runs send only
+the most urgent stage due. The person is told if they have a login, and the owners and managers always (a record with no
+login still alerts them, as `0093` did). Deactivated staff, archived types and replaced rows are skipped. No new cron line
+is needed: the existing one-minute `bin/cron.php` runs it.
+
+The billing notices (Stripe `trial_will_end`, `payment_failed`, and the free-trial reminder) are in PHP since S7: the first two are written by `Mod\StripeWebhook`, the third by `Notifications::trialEndingAlerts` in the same cron run. The daily and
 weekly email summary remains unbuilt, as before. Web push has never been seen arriving on a real device; that stays **NOT TESTED**.
 
 Two more notices come from S8a. A public reply from support on a case queues one `support/replied` row (type `support`, title "Reply on CASE-nnnn", first 240 characters of the reply) to the person who raised it, never for an internal note. A new website enquiry is announced to `enquiry_notify_email` by `Enquiries::cron` with no visitor text in it (name, address and message stay in the console), and nothing is sent if that address or the platform mail account is not set.
