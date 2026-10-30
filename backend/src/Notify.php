@@ -13,16 +13,19 @@ final class Notify
      * @param list<string> $userIds recipients (user ids); non-members are dropped at delivery
      * @param string $type rota | leave | swap | announcement | attendance | document | billing
      * @param ?string $dedupe a stable key that makes a scheduled alert once-only
+     * @return ?string the outbox row's id, or null if nothing was queued (no recipients, or the dedupe key was already used)
      */
-    public static function enqueue(\PDO $pdo, string $orgId, string $event, array $userIds, string $type, string $title, ?string $body = null, ?string $dedupe = null): void
+    public static function enqueue(\PDO $pdo, string $orgId, string $event, array $userIds, string $type, string $title, ?string $body = null, ?string $dedupe = null): ?string
     {
         $userIds = array_values(array_unique(array_filter($userIds, static fn (mixed $u): bool => is_string($u) && $u !== '')));
         if ($userIds === []) {
-            return;
+            return null;
         }
         $payload = json_encode(['orgId' => $orgId, 'userIds' => $userIds, 'type' => $type, 'title' => Str::cut($title, 300), 'body' => $body === null ? null : Str::cut($body, 4000)], JSON_UNESCAPED_UNICODE);
-        $pdo->prepare('INSERT IGNORE INTO notification_outbox (id, org_id, event_name, payload, dedupe_key) VALUES (?, ?, ?, ?, ?)')
-            ->execute([Db::uuid(), $orgId, $event, $payload, $dedupe]);
+        $id = Db::uuid();
+        $ins = $pdo->prepare('INSERT IGNORE INTO notification_outbox (id, org_id, event_name, payload, dedupe_key) VALUES (?, ?, ?, ?, ?)');
+        $ins->execute([$id, $orgId, $event, $payload, $dedupe]);
+        return $ins->rowCount() === 1 ? $id : null;
     }
 
     /** @return list<string> the active owners and managers of an organisation */

@@ -29,6 +29,8 @@ weekly email summary remains unbuilt, as before. Web push has never been seen ar
 
 Two more notices come from S8a. A public reply from support on a case queues one `support/replied` row (type `support`, title "Reply on CASE-nnnn", first 240 characters of the reply) to the person who raised it, never for an internal note. A new website enquiry is announced to `enquiry_notify_email` by `Enquiries::cron` with no visitor text in it (name, address and message stay in the console), and nothing is sent if that address or the platform mail account is not set.
 
+Platform announcements (S8b-2) use the same outbox: `PlatformAnnouncements::cron` runs after `Notifications::cron` (modules run in name order), so a delivery is stamped delivered or failed in the same run that sent it.
+
 The one cron entry the host needs (the owner adds it; `bin/doctor.php` first):
 
 ```text

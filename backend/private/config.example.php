@@ -30,5 +30,9 @@ return [
     'enquiry_notify_email' => 'support@rotaflow.space',
     // Clerk Backend API secret key (sk_live_...). Used ONLY to delete a person's login when an erasure request is completed. Omit and those deletions wait in the queue.
     'clerk_secret_key' => 'REPLACE_ME',
+    // OpenRouter (the only AI provider). Omit the key to leave the AI assistant off (503). Models are optional.
+    'openrouter_api_key' => 'REPLACE_ME',
+    'openrouter_model' => 'openai/gpt-4o-mini',
+    'openrouter_fallback_model' => 'google/gemini-3.5-flash-lite',
     'vapid' => ['public' => 'REPLACE_ME', 'private' => 'REPLACE_ME', 'subject' => 'mailto:support@rotaflow.space'],
 ];

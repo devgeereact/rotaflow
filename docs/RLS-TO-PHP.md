@@ -257,3 +257,32 @@ Not in S8a, by plan: platform announcements, GDPR requests and erasure, retentio
 
 Not here: platform announcements, invoice credits and the platform audit read (S8b-2); the private file endpoints for photos and documents (S8c).
 
+## S8c-1: the AI rota assistant
+
+Gating is three independent checks, all failing closed, all before any outside call: the caller is an owner or manager by effective role (never a support session), the plan includes `ai_rota_assistant`, and the `ai_rota_assistant` flag is on for the organisation (the platform's kill switch).
+
+| Table or function | Postgres rule (final) | PHP check | Test | Status |
+| ----------------- | --------------------- | --------- | ---- | ------ |
+| reads for grounding (staff_profiles, shift_types, shifts, leave_requests, availability, locations) | The caller's JWT and RLS scoped every read | Every query carries `org_id = ?` after `Scope::membership`; row ceilings refuse rather than truncate (413) | 180 incl. a second tenant, and a mutation on the shift query | DONE |
+| `ai-rota-assistant` role gate | `has_org_role(org, [owner, manager])` | `Scope::membership`, effective role in `Scope::MANAGERS`; a `support` member refused; `requireWritable` | 180 | DONE. **Tightened:** support sessions and suspended organisations cannot spend the AI budget |
+| plan gate | `org_has_feature('ai_rota_assistant')`, fail closed | `Billing::hasFeature` (403 `plan_required`, original wording) | 180; mutation | DONE |
+| feature flag | `flag_enabled_for_org` | `Flags::enabledForOrg` (403 `feature_off`); a missing flag row is off | 180; mutation | DONE. The old function never read the flag; here it is a real kill switch |
+| rate limits | 30 an hour per person, 200 an hour per organisation | `RateLimiter::hit` buckets `ai-assistant`, `ai-assistant-org`; a broken limiter refuses (503) | 180; mutations | DONE |
+| OpenRouter call | `OPENROUTER_API_KEY` secret | Private config `openrouter_api_key`; injectable transport; 503 `ai_unavailable` when unset; the key, the provider body and the model's reply are never logged or returned | 180 (key never in any response, log or audit row) | DONE. Real OpenRouter NOT TESTED |
+| safeguards | `index.ts`, `grounding.ts`, `staffAliases.ts` | `Mod\AiAssistant`, `AiGrounding`, `AiStaffAliases`: staff are aliases with no names; leave sent as dates only; ids matched to real rows; times snapped; overlaps, leave and unavailable days dropped; an announcement with an ungrounded date refused | 180 (every case of the two TypeScript test files, plus the module); 25 mutations, 24 caught and the 25th fixed | DONE. **Tightened:** shifts overlapping the period count; dates must be real calendar dates; the time zone comes from a deterministic site |
+
+## S8b-2: platform announcements, invoice credits, the platform audit read
+
+| Table or function | Postgres rule (final) | PHP check | Test | Status |
+| ----------------- | --------------------- | --------- | ---- | ------ |
+| platform_announcements, `create/publish/cancel_platform_announcement` | Owner and admin write and send; draft, scheduled, sent, cancelled; a sent one cannot be re-sent or cancelled | `PlatformAnnouncements::create`, `publish`, `cancel`, under a lock on the announcement | 200; mutations | DONE. **Tightened:** audience `organisations` (which silently reached nobody) is not offered; `plans` needs at least one plan |
+| platform_announcement_deliveries, `reconcile_announcement_deliveries` | One row per organisation; delivered only when the outbox row really went; failed when it was abandoned | `PlatformAnnouncements::reconcile`, run by cron after the outbox drain | 200; mutation | DONE |
+| platform_announcement_optouts | An owner opts the organisation out of product, billing and policy notices; maintenance and incident ignore it | `PlatformAnnouncements::optOut`, `publish` | 200; mutation | DONE |
+| `publish_due_platform_announcements` | Every minute, twenty at a time, a failure retried | `PlatformAnnouncements::cron` | 200 | DONE |
+| `mark_announcement_read` | Any member, every organisation they belong to | `PlatformAnnouncements::read` for the organisation's owners and managers (who were addressed) | 200 | DONE. **Tightened:** staff cannot mark a notice they were never sent |
+| `platform_announcement_stats` | Operational staff only | `PlatformAnnouncements::list` (finance sees the list without counts) | 200 | DONE |
+| invoice_credits, `credit_invoice` | Owner, admin, finance; open, past-due or paid invoices; positive; reason of 10+ characters; ceiling is net plus tax less earlier credits; idempotency key returns the same credit; the invoice is not changed | `PlatformBilling::credit`, under a lock on the invoice | 200; mutations | DONE |
+| `platform_billing_summary`, `platform_invoice_directory` | Per currency, never converted; MRR from active and past-due subscriptions; collections by payment date | `PlatformBilling::summary`, `invoices` | 200 | DONE |
+| audit_logs read (`audit_logs_select`) | Operational staff read all; a tenant owner reads their organisation's non-platform-only entries; finance reads none | `PlatformAudit::search` for staff (filters: scope, actor, severity, search, from, to; newest first with an id tie-break); organisation routes for owners | 200 | DONE. The audit table keeps no snapshot of the actor's email or name (a deleted person is `null`, not retained personal data) |
+| `platform_user_auth_facts`, `revoke_my_other_sessions`, `my_sessions` | Read Supabase's own auth tables | **Not carried over.** Clerk owns verification, sessions, MFA and bans | n/a | DONE (removed) |
+

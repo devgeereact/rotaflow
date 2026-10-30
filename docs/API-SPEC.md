@@ -541,3 +541,26 @@ Placeholders: `{g}` data-subject request.
 | `GET /platform/orgs/{o}/deletion-preview`, `POST /platform/orgs/{o}/delete` | owner, admin | The same, for a platform administrator |
 | `GET /platform/retention`, `POST /platform/retention/dry-run` | read: all staff; dry run: owner, admin | Policies and the last 50 runs; count what the next run would remove |
 
+### Slice S8c-1: the AI rota assistant
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `POST /orgs/{o}/ai/rota` `{prompt, periodStart, periodEnd}` | owner, manager (not a support session); plan with `ai_rota_assistant`; flag on | `{summary, suggestions[]}`. 403 `plan_required` / `feature_off`, 503 `ai_unavailable`, 429 `rate_limited`, 413 `context_too_large` |
+| `POST /orgs/{o}/ai/announcement` `{prompt, periodStart, periodEnd}` | the same | `{title, body, urgent, reasoning, unverified[]}`; refused with `ai_ungrounded_date` if the draft names a date it was not given |
+
+### Slice S8b-2: announcements, credits, audit
+
+Placeholders: `{a}` platform announcement, `{i}` invoice.
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /platform/announcements`, `POST /platform/announcements` `{title, body, kind, audience: all|plans, plans?, scheduled_for?}` | read: all staff (counts for operational only); write: owner, admin | Draft, or scheduled when a time is given |
+| `POST /platform/announcements/{a}/publish`, `.../cancel` | owner, admin | Publish returns how many organisations were queued; 409 `already_sent` / `cancelled` |
+| `GET /orgs/{o}/platform-announcements`, `POST .../{a}/read` | owner, manager | What the platform sent the organisation; mark read |
+| `POST /orgs/{o}/platform-announcements/opt-out` `{opted_out}` | owner | Silences product, billing and policy notices |
+| `GET /platform/billing/summary` | owner, admin, finance | Per currency: MRR, collected this and last month, outstanding, past due, refunded |
+| `GET /platform/invoices[?q&status&currency&org_id&from&to&limit&offset]` | owner, admin, finance | The invoice directory with `credited_pence` and a `total` |
+| `GET/POST /platform/invoices/{i}/credits` `{amount_pence, reason, idempotency_key?}` | owner, admin, finance | Record a credit (201; 200 `already_recorded` for a repeated key); 422 `not_creditable` |
+| `GET /orgs/{o}/invoices/{i}/credits` | owner | The credits on the organisation's own invoice |
+| `GET /platform/audit[?scope&actor&severity&q&from&to&limit&offset]` | owner, admin, support | The trail across organisations: `scope=platform` or an organisation id; severity is a comma list |
+
