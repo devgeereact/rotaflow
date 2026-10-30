@@ -50,13 +50,17 @@ final class Orgs implements Module
         if (mb_strlen($name) < 2 || mb_strlen($name) > 120) {
             throw HttpError::invalid('Organisation name must be 2 to 120 characters');
         }
+        if ($this->ctx->orgCreation !== 'open' && !in_array(Scope::platformRole($this->ctx->pdo, $user['id']), ['platform_owner', 'platform_admin'], true)) {
+            // Organisations are by invitation: a platform administrator creates one and invites its first owner (Platform module).
+            throw new HttpError(403, 'org_creation_closed', 'New organisations are by invitation only');
+        }
         $this->ctx->limits->hit('org-create', $user['id'], self::MAX_ORGS_PER_HOUR, 3600);
         $pdo = $this->ctx->pdo;
         $id = Db::uuid();
         $mid = Db::uuid();
         $pdo->beginTransaction();
         try {
-            $slug = $this->freeSlug($name);
+            $slug = self::freeSlug($pdo, $name);
             $pdo->prepare("INSERT INTO organisations (id, name, slug, trial_ends_at, created_by) VALUES (?, ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY), ?)")
                 ->execute([$id, $name, $slug, $user['id']]);
             $pdo->prepare("INSERT INTO memberships (id, org_id, user_id, role, status) VALUES (?, ?, ?, 'owner', 'active')")->execute([$mid, $id, $user['id']]);
@@ -253,11 +257,11 @@ final class Orgs implements Module
         return $q->fetch() ?: throw HttpError::notFound();
     }
 
-    private function freeSlug(string $name): string
+    public static function freeSlug(\PDO $pdo, string $name): string
     {
         $base = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower((string) iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name))), '-');
         $base = substr($base !== '' ? $base : 'org', 0, 60);
-        $q = $this->ctx->pdo->prepare('SELECT 1 FROM organisations WHERE slug = ?');
+        $q = $pdo->prepare('SELECT 1 FROM organisations WHERE slug = ?');
         for ($i = 0; $i < 20; $i++) {
             $slug = $i === 0 ? $base : $base . '-' . bin2hex(random_bytes(2));
             $q->execute([$slug]);

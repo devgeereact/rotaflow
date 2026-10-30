@@ -77,7 +77,7 @@ function test_private_root(): string
  * (JWT verification itself is covered in the core suite.)
  * @param list<RotaFlow\Module> $modules
  */
-function test_api(PDO $pdo, ?array $modules = null): Api
+function test_api(PDO $pdo, ?array $modules = null, string $orgCreation = 'open'): Api
 {
     $verify = static function (string $t) use ($pdo): array {
         if (preg_match('/^tok-([a-z0-9]+)$/', $t, $m) !== 1) {
@@ -87,7 +87,7 @@ function test_api(PDO $pdo, ?array $modules = null): Api
     };
     $limits = new RateLimiter($pdo);
     if ($modules === null) {
-        $ctx = new RotaFlow\Ctx($pdo, $limits, 'https://rotaflow.example.test', test_private_root());
+        $ctx = new RotaFlow\Ctx($pdo, $limits, 'https://rotaflow.example.test', test_private_root(), null, $orgCreation);
         $modules = RotaFlow\Modules::all($ctx);
     }
     return new Api($pdo, $verify, $limits, $modules);

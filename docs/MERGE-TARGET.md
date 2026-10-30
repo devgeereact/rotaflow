@@ -146,7 +146,17 @@ Fixes that are not removals but must land with the port: encrypt `org_smtp_setti
 the three edge functions never deployed (`public-enquiry`, `purge-storage`, `delete-account`)
 become PHP endpoints that are actually live; the content-security policy names the five Clerk hosts.
 
-## 6. Decisions still open
+## 6. Decisions taken after approval
+
+- **2026-10-30, organisations are by invitation only.** Clerk sign-up stays public, because an invited person
+  has to be able to create a login. A new organisation, however, can only be created by a platform owner or
+  admin, who invites its first owner (`POST /platform/orgs`). Staff and managers join by invitation as before.
+  A person who signs up without an invitation has an account and no organisation. The private-config key
+  `org_creation` (`invite_only` by default, or `open`) reverses this without a code change. The first platform
+  owner is created by `backend/bin/grant-platform-owner.php`, run once on the server; no endpoint can do it.
+  The existing Stripe checkout is unaffected: it belongs to an existing organisation.
+
+## 7. Decisions still open
 
 1. Module list in section 4: confirm or change.
 2. Super Admin as a database role keyed by Clerk id (recommended: RotaFlow already has the roster

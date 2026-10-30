@@ -356,7 +356,7 @@ routes, 600 per minute per person elsewhere, request body 64 KB.
 | --------------- | --- | ---- | ------------- |
 | `GET /health` | anyone | Entrypoint is alive; answered before config is read | |
 | `GET /me` | signed in | The person, their active and invited memberships, and their platform role | `email_in_use` 409 |
-| `POST /orgs` | signed in | Create an organisation (30-day trial, `professional`, support access off); the caller becomes owner. 5 per hour | `rate_limited` 429, `invalid_input` 422 |
+| `POST /orgs` | signed in, **only when `org_creation` is `open` or the caller is a platform owner or admin** | Create an organisation (30-day trial, `professional`, support access off); the caller becomes owner. 5 per hour. In production the default is `invite_only`, so ordinary people get `org_creation_closed` | `org_creation_closed` 403, `rate_limited` 429, `invalid_input` 422 |
 | `GET /orgs/{o}` | member | The organisation and the caller's own membership | |
 | `POST /orgs/{o}` | owner | Rename | `org_not_active` 403 |
 | `GET /orgs/{o}/members` | member | Members; email and name only for owner and manager | |
@@ -369,8 +369,10 @@ routes, 600 per minute per person elsewhere, request body 64 KB.
 | `GET /orgs/{o}/invites` | owner, manager | Invitations with a derived `state`; never a token | |
 | `POST /orgs/{o}/invites` | owner, manager | `{email, role: manager|staff}`; returns the token once. 60 per hour per organisation, 3 per address per day | `invite_pending`, `already_member` 409 |
 | `POST /orgs/{o}/invites/{i}/revoke` | owner, manager | Revoke a pending invitation | |
+| `POST /platform/orgs` | platform owner, admin (everyone else 404) | `{name, owner_email}`: creates an organisation with no members and an owner invitation; returns the token once. 20 per hour | `invalid_input` 422 |
+| `POST /platform/orgs/{o}/owner-invites` | platform owner, admin | `{owner_email}`: replaces the pending owner invitation, only while the organisation has no members | `org_has_members` 409 |
 | `POST /invites/preview` | public | `{token}` returns organisation name, role, email, expiry. 30 per minute per address | `invite_invalid` 404 |
-| `POST /invites/accept` | signed in | `{token}`; the verified email must equal the invited address | `invite_email_mismatch` 403, `invite_invalid` 404 |
+| `POST /invites/accept` | signed in | `{token}`; the verified email must equal the invited address; an owner invitation is refused if the organisation already has an owner | `invite_email_mismatch` 403, `invite_invalid` 404, `owner_exists` 409 |
 
 A role check uses the **effective** role: a live delegation lifts a staff member to manager (never owner) and
 ends the moment its lender stops being an owner or manager. Acts a delegate must never perform (lending cover

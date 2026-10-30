@@ -126,6 +126,13 @@ final class Invites implements Module
             if ($had !== false && $had['status'] === 'suspended') {
                 throw HttpError::forbidden('Your access to this organisation is suspended');
             }
+            if ($inv['role'] === 'owner') {
+                $owners = $pdo->prepare("SELECT COUNT(*) FROM memberships WHERE org_id = ? AND role = 'owner' AND status = 'active'");
+                $owners->execute([$inv['org_id']]);
+                if ((int) $owners->fetchColumn() > 0) {
+                    throw HttpError::conflict('owner_exists', 'This organisation already has an owner');
+                }
+            }
             $mid = $had !== false ? $had['id'] : Db::uuid();
             if ($had === false) {
                 $pdo->prepare("INSERT INTO memberships (id, org_id, user_id, role, status) VALUES (?, ?, ?, ?, 'active')")->execute([$mid, $inv['org_id'], $user['id'], $inv['role']]);

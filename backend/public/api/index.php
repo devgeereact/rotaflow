@@ -49,7 +49,7 @@ try {
     $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
     $ip = (($config['trust_cf_connecting_ip'] ?? false) && Bootstrap::fromCloudflare($remote) && isset($_SERVER['HTTP_CF_CONNECTING_IP'])) ? (string) $_SERVER['HTTP_CF_CONNECTING_IP'] : $remote;
     $limits = new RateLimiter($pdo);
-    $ctx = new Ctx($pdo, $limits, (string) ($config['app_url'] ?? ''), $root, static fn (string $m) => Bootstrap::log($root, $m));
+    $ctx = new Ctx($pdo, $limits, (string) ($config['app_url'] ?? ''), $root, static fn (string $m) => Bootstrap::log($root, $m), (string) ($config['org_creation'] ?? 'invite_only'));
     $api = new Api($pdo, static fn (string $t): array => Users::resolve($pdo, $jwt->verify($t)), $limits, Modules::all($ctx));
     [$status, $payload] = $api->handle($method, $path, $headers, (string) file_get_contents('php://input'), $ip, $_GET);
     $respond($status, $payload);

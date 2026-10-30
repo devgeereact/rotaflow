@@ -384,6 +384,7 @@ system. `backend/` is the one top-level folder added by the merge.
 | `backend/src/`                | `Jwt` (Clerk RS256 against the issuer's cached JWKS), `Api` (router, sign-in gate, rate limits), `Db`, `RateLimiter`, `Sql` (statement splitter), `Bootstrap` |
 | `backend/bin/migrate.php`     | Numbered `NNN-name.sql` files, a checksum per applied file (a changed file aborts the run), run as the migration identity                                |
 | `backend/bin/cron.php`        | One cPanel cron entry; runs each module's `cron()` job under a lock. No long-running worker exists on the host                                           |
+| `backend/bin/grant-platform-owner.php` | Creates the first Super Admin from an email address. Run once on the server; there is deliberately no endpoint for it |
 | Private root                  | `rotaflow-private/` outside every web root on the server: `config/`, `cache/` (JWKS), `logs/`. Located by `ROTAFLOW_PRIVATE_ROOT`, never by the request      |
 | Tests                         | `backend/tests/`, run with `pnpm run test:php` against a throwaway MariaDB on `127.0.0.1:3308` (`scripts/test-db.sh up`), never against live data         |
 

@@ -12,4 +12,7 @@ return [
     'clerk_authorized_parties' => ['https://rotaflow.space'],
     // Honour CF-Connecting-IP only when the request really came from Cloudflare.
     'trust_cf_connecting_ip' => true,
+    // 'invite_only' (default): a platform administrator creates organisations and invites the first owner.
+    // 'open': any signed-in person may create one.
+    'org_creation' => 'invite_only',
 ];
