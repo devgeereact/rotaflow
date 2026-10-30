@@ -724,6 +724,12 @@ Reactive network connectivity based on `online`/`offline` window events.
 export function useOnlineStatus(): boolean; // true when online
 ```
 
+> **Offline queue and the PHP API (merge slice S5).** The queue's idempotency no longer depends on a Postgres error naming an index:
+> the API answers a replayed write `200 already_applied`, so a replay is simply a success. `classifyFailure` also understands
+> `ApiError` (`src/lib/apiClient.ts`): a dropped connection (status 0) and an expired session (401) are kept and retried, any other
+> 4xx is the server rejecting that payload and is dead-lettered with its stable `code`. The Postgres branches stay until the services
+> are re-pointed in S9.
+
 ### 3. `useSupabaseAuth`
 
 `src/hooks/useSupabaseAuth.ts`

@@ -32,6 +32,7 @@ import {
   retryDeadLetteredWrite,
   listQueuedWrites,
 } from '@/services/syncQueue';
+import { ApiError } from '@/lib/apiClient';
 
 const mockedRecordClockEvent = vi.mocked(recordClockEvent);
 
@@ -83,6 +84,26 @@ const USER = 'user-a';
 const OTHER_USER = 'user-b';
 
 describe('classifyFailure', () => {
+  it("treats the PHP API's errors by status: a dropped connection and an expired session are kept, a rejected payload is not", () => {
+    expect(
+      classifyFailure(new ApiError(0, 'network', 'Could not reach the server')),
+    ).toBe('transient');
+    expect(classifyFailure(new ApiError(401, 'unauthorized', 'Sign in required'))).toBe(
+      'transient',
+    );
+    expect(classifyFailure(new ApiError(503, 'http_error', 'Unavailable'))).toBe(
+      'transient',
+    );
+    expect(classifyFailure(new ApiError(409, 'leave_overlap', 'Already booked'))).toBe(
+      'permanent',
+    );
+    expect(
+      classifyFailure(new ApiError(409, 'client_event_conflict', 'Different record')),
+    ).toBe('permanent');
+    expect(classifyFailure(new ApiError(422, 'invalid_input', 'Bad'))).toBe('permanent');
+    expect(classifyFailure(new ApiError(403, 'forbidden', 'No'))).toBe('permanent');
+  });
+
   it('treats a dropped connection as transient', () => {
     expect(classifyFailure(networkError())).toBe('transient');
   });

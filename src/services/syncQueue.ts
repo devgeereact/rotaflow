@@ -75,7 +75,8 @@ export type FailureKind = 'permanent' | 'transient';
 const TRANSIENT_SQLSTATE_CLASSES = new Set(['08', '40', '53', '57', '58']);
 
 /** Request timeout, too-early, and rate limited: all worth retrying. */
-const TRANSIENT_HTTP_STATUSES = new Set([408, 425, 429]);
+// 401 is a Clerk session token that aged out while the device was in a pocket: the next attempt carries a fresh one, so the write is kept.
+const TRANSIENT_HTTP_STATUSES = new Set([401, 408, 425, 429]);
 
 function messageOf(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -122,6 +123,9 @@ export function classifyFailure(error: unknown): FailureKind {
     if (/^[0-9A-Z]{5}$/.test(code)) {
       return TRANSIENT_SQLSTATE_CLASSES.has(code.slice(0, 2)) ? 'transient' : 'permanent';
     }
+
+    // The PHP API's own client (`ApiError`, `src/lib/apiClient.ts`): status 0 with code 'network' is a dropped connection.
+    if (code === 'network') return 'transient';
 
     // Node/undici network codes seen through supabase-js.
     if (/^(ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED)$/.test(code)) {

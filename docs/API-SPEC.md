@@ -425,3 +425,34 @@ Placeholders: `{r}` rota, `{h}` shift, `{y}` shift type, `{a}` availability. Tim
 
 Request bodies may be up to 256 KB. Deleting a location or department that rotas or shifts use is refused
 (`location_in_use`, `department_in_use`): mark the location inactive instead.
+
+### Slice S5: time and requests
+
+Placeholders: `{e}` clock event, `{l}` leave request, `{v}` overtime request, `{w}` swap, `{h}` shift, `{t}` timesheet.
+**Idempotency:** `POST` clock events, leave and swaps accept an optional `client_event_id` (a UUID the device mints before its first attempt).
+A replay answers `200` with `already_applied: true` and the original record; the same key used by someone else answers `409 client_event_conflict`.
+Nothing about a unique index is exposed. A member reads only their own records on every list below; owner and manager read anyone's.
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /orgs/{o}/clock-events[?staff_profile_id&from&to&limit&latest=1]` | member (own), owner, manager | Events, newest first |
+| `POST /orgs/{o}/clock-events` | the person (own), owner, manager (anyone) | `{type: in|out|break_start|break_end, event_at?, latitude?, longitude?, accuracy?, method?, location_name?, shift_id?, staff_profile_id?}`. A person's time more than 5 minutes ahead or 72 hours behind is replaced by the server's (the claim is kept as `event_at_reported`). `already_clocked_in` 409 |
+| `POST /orgs/{o}/clock-events/{e}/correct` | owner, manager | `{reason (3 to 500), event_at?, type?, expected_updated_at?}`; `record_changed` 409; flags approved timesheets. `GET .../{e}/corrections` lists the history. `POST .../{e}/delete` deletes |
+| `GET/POST /orgs/{o}/leave`, `POST .../{l}/review`, `.../{l}/cancel` | request: the person, or owner and manager for anyone; review: owner, manager | `{type?, start_date, end_date, starts_half?, ends_half?, reason?}`; `leave_overlap` 409; a pending request is decided once (`already_decided` 409); responses include `days` |
+| `GET/POST /orgs/{o}/overtime`, `POST .../{v}/review`, `.../{v}/cancel` | as leave; cancel: pending only | `{date, hours (0.25 to 24), note?}` |
+| `GET /orgs/{o}/overtime/evidence?staff_profile_id&date` | owner, manager, the person | `scheduled_minutes`, `worked_minutes`, `unpaired_events` |
+| `GET /orgs/{o}/attention` | owner, manager | `leave_pending`, `overtime_pending`, `swaps_pending` for the nav badges |
+| `GET /orgs/{o}/swaps[?status]`, `POST /orgs/{o}/swaps` | member (those involved, plus the open board); owner and manager see all | `{shift_id, target_staff_profile_id?, note?}`; the shift must be yours and not cancelled |
+| `POST .../swaps/{w}/respond` | the target | `{status: accepted|rejected}` while pending |
+| `POST .../swaps/{w}/claim` | any member except the requester | Take an open-board swap; `swap_unavailable` 409 if it has gone |
+| `POST .../swaps/{w}/cancel` | the requester, owner, manager | Before a decision |
+| `POST .../swaps/{w}/decide` | owner, manager; the requester once the colleague accepted | `{status: approved|rejected}`. Approving moves the shift atomically. Returns `outcome` (`approved`, `declined`, `already-decided`), `reassigned`. `shift_reassigned`, `target_inactive`, `rota_archived`, `shift_gone` 409 change nothing |
+| `POST .../swaps/{w}/reassign` | the requester, owner, manager | Move the shift of an approved swap that never moved it |
+| `GET /orgs/{o}/open-shifts` | member | Future, unassigned, open shifts on published rotas, with `clashes_with_mine` |
+| `POST /orgs/{o}/open-shifts/{h}/claim` | a member with a staff record | `shift_taken`, `already_working` 409; `not_published`, `already_started` 403 |
+| `GET /orgs/{o}/timesheets[?period_start&period_end&staff_profile_id&status]` | member (own), owner, manager | |
+| `POST /orgs/{o}/timesheets/submit` | the person | `{period_start, period_end, total_minutes}`; `timesheet_locked` 409 once approved or exported |
+| `POST /orgs/{o}/timesheets/approve` | owner, manager | `{period_start, period_end, approvals: [{staff_profile_id, total_minutes}]}`, up to 500, all or nothing; bumps `version`, clears `recalculation_required_at` |
+| `POST /orgs/{o}/timesheets/{t}/reopen` | owner, manager | Back to `open`; the approval history stays |
+
+Deleting a shift removes the swaps that offered it; clock events that pointed at it keep their record and lose the link.

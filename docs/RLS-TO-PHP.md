@@ -3,7 +3,7 @@
 Status: **PARTIAL.** The Supabase back end is being replaced (`docs/MERGE-TARGET.md`). Row-level security has no
 MariaDB equivalent, so every policy becomes an explicit check in `backend/`, and this table is the proof that none
 was lost. The target is every one of the 119 final policies (113 on public tables, 6 on `storage.objects`)
-accounted for here. **41 are mapped so far (slices S2, S3 and S4).** A row is not DONE until the test named in it passes.
+accounted for here. **57 are mapped so far (slices S2 to S5).** A row is not DONE until the test named in it passes.
 
 How to read it. The Postgres rule is the final-state policy after all migrations (replayed, not the first
 definition). The PHP check names the code that now enforces it. Tests are in `backend/tests/suites/`.
@@ -119,3 +119,43 @@ caller is an owner or manager.
 | `enforce_org_not_read_only` on rotas and shifts | Read-only organisations cannot publish or edit | Billing state: S7 | none yet | PLANNED S7 |
 | Realtime on `shifts`, `rotas`, `availability`, `shift_types` | A signal to refetch | `useRealtimeRefresh` now polls | `src/hooks/useRealtimeRefresh.test.ts` | DONE |
 | `FK ... ON DELETE SET NULL` on shifts (location, department, shift type) | The reference is blanked when its target is deleted | Deleting a location, department or shift type that shifts use is refused (`location_in_use`, `department_in_use`, `shift_type_in_use`). **Deliberate change:** the old behaviour would have rewritten published history | 095 | DONE |
+
+## S5: time and requests
+
+Policies replayed to their final state (`0037`, `0044`, `0128`, `0136`, `0146`). Where the old policy let a person write a
+status directly, the API exposes named actions instead, so the rule cannot be bypassed by a crafted write.
+
+| Table | Policy | Postgres rule (final) | PHP check | Test | Status |
+| ----- | ------ | --------------------- | --------- | ---- | ------ |
+| clock_events | `clock_events_select` | Owner and manager read all; a person reads their own | `Clock::list`: a member's query is forced to their own staff record | 100 | DONE |
+| clock_events | `clock_events_insert` | The person for themselves, or owner and manager for anyone | `Clock::record`: own staff record, or `Scope::MANAGERS` for anyone in this organisation | 100 | DONE |
+| clock_events | `clock_events_delete` | Owner and manager | `Clock::delete` | 100 | DONE |
+| clock_event_corrections | `clock_event_corrections_select` | Owner and manager | `Clock::corrections`; table is append-only (triggers) | 100 incl. direct SQL | DONE |
+| leave_requests | `leave_requests_select` | The person, or owner and manager | `Leave::listLeave` forces a member's query to their own | 105 | DONE |
+| leave_requests | `leave_requests_write` | The person may write `pending` or `cancelled` on their own; owner and manager anything | `createLeave` (own, or any person for owner and manager), `reviewLeave` (owner and manager, a pending request once), `cancelLeave` (the person or owner and manager, from pending or approved). **Tightened:** the old policy let a person set an approved request back to pending | 105 | DONE |
+| overtime_requests | `overtime_requests_select`, `_write` | As leave; the person may only write `pending` | `Leave::listOvertime`, `createOvertime`, `reviewOvertime`, `cancelOvertime` (pending only) | 105 | DONE |
+| timesheets | `timesheets_select` | The person, or owner and manager | `Timesheets::list` | 115 | DONE |
+| timesheets | `timesheets_write` | The person may write `open` or `submitted`; owner and manager anything | `submit` (the person, own, not once approved or exported), `approve` and `reopen` (owner and manager) | 115 | DONE |
+| shift_swaps | `shift_swaps_select` | Requester, target, or owner and manager | `Swaps::list` | 110 | DONE |
+| shift_swaps | `shift_swaps_select_open_board` | Any member sees a pending swap with no target | `Swaps::list` includes the open board for every member | 110 | DONE |
+| shift_swaps | `shift_swaps_write` (0146) | The requester manages their own pending or cancelled request; owner and manager manage any swap **except approving it** | `Swaps::create`, `cancel` (requester or manager, before a decision). Approval only through `decide` | 110 | DONE |
+| shift_swaps | `shift_swaps_target_respond` | The target moves a pending swap to accepted or rejected | `Swaps::respond` | 110 | DONE |
+| shift_swaps | `shift_swaps_claim_open` | A member (not the requester) takes a pending swap with no target: they become the target and it is accepted | `Swaps::claim`, one atomic conditional update; the second claim loses (`swap_unavailable`) | 110 | DONE |
+| shift_swaps | `shift_swaps_requester_finalize` | The requester rejects their own accepted swap | `Swaps::decide` (rejected), allowed to the requester once the colleague accepted | 110 | DONE |
+
+| Postgres function or trigger | Rule | PHP | Test | Status |
+| ---------------------------- | ---- | --- | ---- | ------ |
+| `clock_events_guard_event_at` | For a person (not owner or manager) an event time more than 5 minutes ahead or 72 hours behind is replaced by the server time; the claim is kept as `event_at_reported` | `Clock::record` | 100; mutation of the rule | DONE |
+| `clock_events_guard_sequence` | A person cannot clock in when the previous event within five minutes was also "in"; a replay of an event that already exists is exempt (CLK01) | `Clock::record` (`already_clocked_in` 409) | 100; mutation | DONE |
+| `correct_clock_event` | Owner and manager; a reason of 3 to 500 characters; optimistic concurrency; keeps before and after; flags approved or exported timesheets that cover the old or new day | `Clock::correct` | 100, 115 | DONE |
+| `client_event_id` unique indexes on clock, leave, swaps | A replayed offline write must not duplicate | A lookup before insert; a replay answers 200 `already_applied`, a different person's key 409 `client_event_conflict`. The browser no longer parses an index name | 100, 105, 110 | DONE |
+| `leave_requests_no_live_overlap` (exclusion constraint) | One person, one live booking per day, whatever the type | `Leave::createLeave`: a lock on the person's staff record, then an overlap query, in one transaction (`leave_overlap` 409) | 105; mutation | DONE |
+| `leave_days` | Calendar days with half days at either end; never zero | `Leave::presentLeave` (`days`) | 105 | DONE |
+| `decide_shift_swap` | Owner and manager decide a pending or accepted swap; the requester finalises an accepted one; approving moves the shift in one transaction; already decided answers harmlessly | `Swaps::decide` | 110 | DONE |
+| `apply_swap_reassignment` | Only an approved swap with a target that has not yet moved; the shift must still be the requester's, its rota not archived, the new holder active; audited | `Swaps::applyReassignment`, `reassign`. Writes into a published rota on purpose | 110; mutation | DONE |
+| `open_shifts`, `claim_open_shift` | Future, unassigned, open shifts on a published rota; claiming checks started, overlap and who got there first | `Swaps::openShifts`, `claimOpenShift` | 110 | DONE |
+| `approve_timesheets` | Owner and manager; an array; a batch is one transaction; replaces the figure and bumps the version | `Timesheets::approve` (all or nothing; clears the recalculation flag) | 115 | DONE |
+| `overtime_evidence` | Scheduled minutes less breaks, worked minutes from paired in and out, forgotten clock-outs | `Leave::evidence`. **Tightened:** the old function answered any member about anyone; it is now owner, manager or the person | 105 | DONE |
+| Realtime badges (`useNavBadgeCounts`) | Counts of requests waiting | `GET /orgs/{o}/attention` (owner and manager) | 105, 110 | DONE |
+| Review notification triggers (leave, swap, rota) | A message to the person | Notifications: S6 | none yet | PLANNED S6 |
+| `enforce_org_not_read_only` on these tables | Read-only organisations cannot write | Billing state: S7 | none yet | PLANNED S7 |
