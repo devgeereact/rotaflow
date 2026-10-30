@@ -119,6 +119,13 @@ final class Rotas implements Module
                 return [200, ['rota' => $this->present($rota)]];
             }
             $this->mustBeDraft($rota, 'rota_not_draft', 'Only a draft rota can be published.');
+            // S11: with the scheduling module on, a double-booked person stops the publish (warnings never do). Off, nothing changes.
+            if (Scheduling::on($pdo, $o) && ($clash = Scheduling::overlaps($pdo, $o, $rota)) !== []) {
+                throw HttpError::conflict('shift_overlap', sprintf(
+                    '%d %s someone in two places at once. Open the publish preview to see which, and move one of each pair.',
+                    count($clash), count($clash) === 1 ? 'shift puts' : 'shifts put'
+                ));
+            }
             $short = $this->shortfall($o, $rota);
             if ($short !== null) {
                 throw HttpError::conflict('cover_below_minimum', sprintf(

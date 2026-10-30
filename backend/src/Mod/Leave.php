@@ -113,7 +113,13 @@ final class Leave implements Module
     /** Owner or manager: a pending request becomes approved or rejected, once. */
     private function reviewLeave(array $user, array $in, string $ip, string $o, string $l): array
     {
-        return $this->review('leave_requests', 'leave', $user, $in, $ip, $o, $l, $this->presentLeave(...));
+        [$status, $body] = $this->review('leave_requests', 'leave', $user, $in, $ip, $o, $l, $this->presentLeave(...));
+        // S11: with the scheduling module on, an approval also lists the person's shifts that now clash, so cover can be arranged. Off, the
+        // response is exactly as before.
+        if (Scheduling::on($this->ctx->pdo, $o)) {
+            $body['clashing_shifts'] = $body['leave']['status'] === 'approved' ? Scheduling::leaveClashes($this->ctx->pdo, $o, $this->row('leave_requests', $o, $l)) : [];
+        }
+        return [$status, $body];
     }
 
     /** The person (or a manager) withdraws a pending or approved request. */
