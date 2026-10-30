@@ -100,7 +100,7 @@ export function EmergencyContactsModal({
     });
     if (!ok) return;
     try {
-      await deleteEmergencyContact(orgId, contact.id);
+      await deleteEmergencyContact(orgId, contact.id, contact.staff_profile_id);
       setContacts((prev) => prev.filter((c) => c.id !== contact.id));
     } catch (err) {
       reportError(err, { area: 'staff:emergency-contacts-delete' });

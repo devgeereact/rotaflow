@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase';
-import { fetchAllPages } from '@/lib/pagination';
+import { activeOrgPath, api, isApiCode, orgPath, seg } from '@/lib/api';
 import { normaliseJobTitleName } from '@/lib/jobTitlePalette';
 import type { JobTitle, JobTitleInsert, JobTitleUpdate } from '@/types';
 
@@ -15,7 +14,6 @@ import type { JobTitle, JobTitleInsert, JobTitleUpdate } from '@/types';
  */
 
 /** Postgres' unique-violation SQLSTATE. */
-const UNIQUE_VIOLATION = '23505';
 
 export class JobTitleConflictError extends Error {
   constructor(
@@ -37,21 +35,17 @@ export class JobTitleConflictError extends Error {
  * still compiling.
  */
 function translateConflict(error: unknown): never {
-  const details = error as { code?: string; message?: string } | null;
-  if (details?.code === UNIQUE_VIOLATION) {
-    const message = details.message ?? '';
-    if (message.includes('job_titles_org_active_colour_key')) {
-      throw new JobTitleConflictError(
-        'Another active job title already uses that colour. Pick a free one, or archive the title that has it.',
-        'colour',
-      );
-    }
-    if (message.includes('job_titles_org_name_key')) {
-      throw new JobTitleConflictError(
-        'A job title with that name already exists. Names are compared without regard to capitals or extra spaces.',
-        'name',
-      );
-    }
+  if (isApiCode(error, 'colour_in_use')) {
+    throw new JobTitleConflictError(
+      'Another active job title already uses that colour. Pick a free one, or archive the title that has it.',
+      'colour',
+    );
+  }
+  if (isApiCode(error, 'title_exists')) {
+    throw new JobTitleConflictError(
+      'A job title with that name already exists. Names are compared without regard to capitals or extra spaces.',
+      'name',
+    );
   }
   throw error;
 }
@@ -65,17 +59,12 @@ function translateConflict(error: unknown): never {
  * `active` themselves — see `activeJobTitles`.
  */
 export async function listJobTitles(orgId: string): Promise<JobTitle[]> {
-  return fetchAllPages(async (from, to) => {
-    const { data, error } = await supabase
-      .from('job_titles')
-      .select('*')
-      .eq('org_id', orgId)
-      .order('name', { ascending: true })
-      .order('id', { ascending: true })
-      .range(from, to);
-    if (error) throw error;
-    return data ?? [];
-  });
+  const r = await api.get<{ job_titles: Omit<JobTitle, 'org_id'>[] }>(
+    orgPath(orgId, '/job-titles'),
+  );
+  return r.job_titles
+    .map((t) => ({ ...t, org_id: orgId, active: Boolean(t.active) }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
 export function activeJobTitles(titles: JobTitle[]): JobTitle[] {
@@ -90,27 +79,48 @@ export function usedColourIds(titles: JobTitle[]): string[] {
 }
 
 export async function createJobTitle(input: JobTitleInsert): Promise<JobTitle> {
-  const { data, error } = await supabase
-    .from('job_titles')
-    .insert({ ...input, name: input.name.trim() })
-    .select('*')
-    .single();
-  if (error) translateConflict(error);
-  return data;
+  let id: string;
+  try {
+    id = (
+      await api.post<{ id: string }>(orgPath(input.org_id, '/job-titles'), {
+        name: input.name.trim(),
+        colour: input.colour ?? null,
+        active: input.active ?? true,
+      })
+    ).id;
+  } catch (error) {
+    translateConflict(error);
+  }
+  const found = (await listJobTitles(input.org_id)).find((t) => t.id === id);
+  if (!found) throw new Error('Job title not found');
+  return found;
 }
 
 export async function updateJobTitle(
   id: string,
   patch: JobTitleUpdate,
 ): Promise<JobTitle> {
-  const { data, error } = await supabase
-    .from('job_titles')
-    .update(patch.name === undefined ? patch : { ...patch, name: patch.name.trim() })
-    .eq('id', id)
-    .select('*')
-    .single();
-  if (error) translateConflict(error);
-  return data;
+  const path = patch.org_id
+    ? orgPath(patch.org_id, '/job-titles')
+    : activeOrgPath('/job-titles');
+  const r = await api.get<{ job_titles: JobTitle[] }>(path);
+  const current = r.job_titles.find((t) => t.id === id);
+  if (!current) throw new Error('Job title not found');
+  const merged = {
+    ...current,
+    ...patch,
+    active: patch.active ?? Boolean(current.active),
+  };
+  try {
+    await api.post(`${path}/${seg(id)}`, {
+      name: merged.name.trim(),
+      colour: merged.colour ?? null,
+      active: merged.active,
+    });
+  } catch (error) {
+    translateConflict(error);
+  }
+  return { ...merged, name: merged.name.trim() };
 }
 
 /**
@@ -140,17 +150,9 @@ export async function isJobTitleNameFree(
 ): Promise<boolean> {
   const normalised = normaliseJobTitleName(name);
   if (normalised === '') return false;
-
-  let request = supabase
-    .from('job_titles')
-    .select('id')
-    .eq('org_id', orgId)
-    .eq('name_normalised', normalised);
-  if (excludeId) request = request.neq('id', excludeId);
-
-  const { data, error } = await request.limit(1);
-  if (error) throw error;
-  return (data ?? []).length === 0;
+  return !(await listJobTitles(orgId)).some(
+    (t) => t.id !== excludeId && normaliseJobTitleName(t.name) === normalised,
+  );
 }
 
 /**
@@ -162,7 +164,14 @@ export async function isJobTitleNameFree(
  * button the policy then refuses.
  */
 export async function canManageJobTitles(orgId: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc('can_manage_job_titles', { p_org: orgId });
-  if (error) throw error;
-  return data === true;
+  // The API's rule (Staff::titleManager): the owner always; managers when the owner has said so.
+  const r = await api.get<{
+    org: { settings: { job_titles_managed_by?: string } | null };
+    membership: { effective_role: string };
+  }>(orgPath(orgId));
+  const role = r.membership.effective_role;
+  return (
+    role === 'owner' ||
+    (role === 'manager' && r.org.settings?.job_titles_managed_by === 'managers')
+  );
 }

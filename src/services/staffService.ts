@@ -1,41 +1,65 @@
-import { supabase } from '@/lib/supabase';
+import { activeOrgPath, api, orgPath, seg } from '@/lib/api';
 import type { StaffProfile, StaffProfileInsert, StaffProfileUpdate } from '@/types';
 
 /**
- * Reads go through `staff_profiles_visible`, writes go to `staff_profiles`.
+ * Staff records through the API (`/orgs/{o}/staff`).
  *
- * `0150` closed GAP-117: any member of an organisation could ask PostgREST for
- * a colleague's `payroll_id`, `email`, `phone`, `start_date` and
- * `holiday_allowance`, because `staff_profiles_select` admits every member and
- * column privileges are granted per ROLE — a manager and a cleaner are both
- * `authenticated`, so the grant could not tell them apart.
- *
- * Those five columns are now revoked from `authenticated` on the base table.
- * The view returns them only to an owner or manager of that organisation, or
- * on the reader's own record, and nulls them otherwise. So `select('*')`
- * against `staff_profiles` would now FAIL rather than leak, which is the point:
- * the mistake is loud instead of quiet.
- *
- * Writes are unaffected — the column UPDATE grants are unchanged — but a
- * `RETURNING *` needs read privilege on what it returns, so the three write
- * paths below insert or update, then read the row back through the view.
+ * The API nulls the sensitive columns (payroll id, email, phone, start date, holiday allowance) unless the reader is
+ * an owner or manager of that organisation or it is their own record, so a list is safe to hand to any screen. A
+ * person who is not a manager may change only their own phone and photo (403 `self_edit_restricted` otherwise).
  */
-const READ_VIEW = 'staff_profiles_visible' as const;
 
-/** Ids per read-back request. 100 UUIDs is ~3.8 KB of query string. */
-const READ_BACK_CHUNK = 100;
+type ApiStaff = StaffProfile & { location_ids?: string[] };
+
+const toNum = (v: unknown): number | null =>
+  v === null || v === undefined || v === '' ? null : Number(v);
+
+function toStaff(r: ApiStaff): StaffProfile {
+  const row: StaffProfile & { location_ids?: string[] } = { ...r };
+  delete row.location_ids;
+  return {
+    ...row,
+    active: Boolean(row.active),
+    weekly_hours: toNum(row.weekly_hours),
+    holiday_allowance: toNum(row.holiday_allowance),
+  };
+}
+
+const FIELDS = [
+  'first_name',
+  'last_name',
+  'email',
+  'job_title',
+  'job_title_id',
+  'department_id',
+  'contract_type',
+  'weekly_hours',
+  'holiday_allowance',
+  'skills',
+  'payroll_id',
+  'start_date',
+  'phone',
+  'photo_url',
+  'active',
+] as const;
+
+function body(row: Partial<StaffProfile>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of FIELDS) if (k in row) out[k] = row[k as keyof StaffProfile];
+  return out;
+}
+
+async function fetchStaff(orgId: string, activeOnly: boolean): Promise<StaffProfile[]> {
+  const r = await api.get<{ staff: ApiStaff[] }>(
+    orgPath(orgId, '/staff'),
+    activeOnly ? { active: 1 } : undefined,
+  );
+  return r.staff.map(toStaff);
+}
 
 /** Active staff for an org, used to give the rota assistant real people to schedule. */
 export async function listActiveStaff(orgId: string): Promise<StaffProfile[]> {
-  const { data, error } = await supabase
-    .from(READ_VIEW)
-    .select('*')
-    .eq('org_id', orgId)
-    .eq('active', true)
-    .order('first_name', { ascending: true });
-
-  if (error) throw error;
-  return data ?? [];
+  return fetchStaff(orgId, true);
 }
 
 export interface ListStaffOptions {
@@ -47,62 +71,40 @@ export async function listStaff(
   orgId: string,
   opts: ListStaffOptions = {},
 ): Promise<StaffProfile[]> {
-  let query = supabase.from(READ_VIEW).select('*').eq('org_id', orgId);
-  if (!opts.includeInactive) query = query.eq('active', true);
-
-  const { data, error } = await query.order('first_name', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  return fetchStaff(orgId, !opts.includeInactive);
 }
 
 /**
- * The signed-in user's own staff profile in this org, if they have one.
- *
- * Returns null for a manager or owner who was never added to the staff
- * directory, a real case, since membership and staff record are separate
- * things. Callers must handle it rather than assuming everyone is staff.
+ * The signed-in user's own staff profile in this org, if they have one. Null for a manager or owner who was never
+ * added to the staff directory; callers must handle it.
  */
 export async function getMyStaffProfile(
   orgId: string,
   userId: string,
 ): Promise<StaffProfile | null> {
-  const { data, error } = await supabase
-    .from(READ_VIEW)
-    .select('*')
-    .eq('org_id', orgId)
-    .eq('user_id', userId)
-    .maybeSingle();
+  return (await fetchStaff(orgId, false)).find((s) => s.user_id === userId) ?? null;
+}
 
-  if (error) throw error;
-  return data;
+async function getIn(path: string, id: string): Promise<StaffProfile | null> {
+  try {
+    const r = await api.get<{ staff: ApiStaff }>(`${path}/${seg(id)}`);
+    return toStaff(r.staff);
+  } catch (error) {
+    if ((error as { status?: number }).status === 404) return null;
+    throw error;
+  }
 }
 
 export async function getStaffProfile(id: string): Promise<StaffProfile | null> {
-  const { data, error } = await supabase
-    .from(READ_VIEW)
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
+  return getIn(activeOrgPath('/staff'), id);
 }
 
 export async function createStaffProfile(
   input: StaffProfileInsert,
 ): Promise<StaffProfile> {
-  // `RETURNING *` would ask for the five columns `0150` revoked, so the write
-  // returns its id and the row is read back through the view. One extra round
-  // trip, and the alternative is a service that only works for readers who do
-  // not need the fix.
-  const { data, error } = await supabase
-    .from('staff_profiles')
-    .insert(input)
-    .select('id')
-    .single();
-
-  if (error) throw error;
-  const created = await getStaffProfile(data.id);
+  const path = orgPath(input.org_id, '/staff');
+  const r = await api.post<{ id: string }>(path, body(input));
+  const created = await getIn(path, r.id);
   if (!created) throw new Error('Staff record was created but could not be read back.');
   return created;
 }
@@ -111,24 +113,9 @@ export async function updateStaffProfile(
   id: string,
   patch: StaffProfileUpdate,
 ): Promise<StaffProfile> {
-  // Same reason as `createStaffProfile`: read the row back through the view
-  // rather than returning columns this role may no longer select. `id` is
-  // still granted, so the write can return it — and it has to, because an
-  // update that matches nothing is not an error in PostgREST. Without this the
-  // only symptom of a wrong id was the read-back finding no row, reported as
-  // "could not be read back", which reads like a permissions fault.
-  const { data: matched, error } = await supabase
-    .from('staff_profiles')
-    .update(patch)
-    .eq('id', id)
-    .select('id');
-
-  if (error) throw error;
-  if (!matched || matched.length === 0) {
-    throw new Error('No staff record with that id in an organisation you can write to.');
-  }
-
-  const updated = await getStaffProfile(id);
+  const path = patch.org_id ? orgPath(patch.org_id, '/staff') : activeOrgPath('/staff');
+  await api.post(`${path}/${seg(id)}`, body(patch as Partial<StaffProfile>));
+  const updated = await getIn(path, id);
   if (!updated) throw new Error('Staff record was updated but could not be read back.');
   return updated;
 }
@@ -138,115 +125,58 @@ export async function deactivateStaffProfile(id: string): Promise<StaffProfile> 
   return updateStaffProfile(id, { active: false });
 }
 
+/** Takes a seat again: refused when the plan's seats are full. */
 export async function reactivateStaffProfile(id: string): Promise<StaffProfile> {
   return updateStaffProfile(id, { active: true });
 }
 
 /**
- * Create several staff records in one round trip (CAP-084).
- *
- * One `insert` with an array rather than a loop of single inserts: sixty
- * round trips on a hotel wifi is a minute of a progress bar, and a loop that
- * fails on row 41 leaves the customer with a half-imported team and no way to
- * tell which half.
- *
- * It is NOT one transaction — PostgREST does not offer one — so the seat
- * limit (`0070`) can still refuse the batch partway. That is why the caller
- * reports how many landed rather than "done", and why the preview screen
- * shows the seat count before anything is sent.
+ * Create several staff records (CAP-084). One request per row, in order: the seat limit can refuse partway, which
+ * is why the caller reports how many landed. Stops at the first refusal and returns what was created.
  */
 export async function createStaffProfiles(
   rows: readonly StaffProfileInsert[],
 ): Promise<StaffProfile[]> {
   if (rows.length === 0) return [];
-
-  const { data, error } = await supabase
-    .from('staff_profiles')
-    .insert(rows as StaffProfileInsert[])
-    .select('id');
-
-  if (error) throw error;
-  const ids = (data ?? []).map((r) => r.id);
-  if (ids.length === 0) return [];
-
-  // Read back through the view, for the reason given on `createStaffProfile`.
-  //
-  // In chunks, because the read-back is a GET and every id goes in the query
-  // string: sixty is about 2.3 KB and fine, but this path exists to import a
-  // whole team at once and a few hundred would reach the proxy's URL limit,
-  // where the symptom is a 414 on an import that already wrote every row.
-  const created: StaffProfile[] = [];
-  for (let i = 0; i < ids.length; i += READ_BACK_CHUNK) {
-    const { data: chunk, error: readError } = await supabase
-      .from(READ_VIEW)
-      .select('*')
-      .in('id', ids.slice(i, i + READ_BACK_CHUNK));
-
-    if (readError) throw readError;
-    created.push(...(chunk ?? []));
+  const orgId = rows[0]?.org_id ?? '';
+  const ids: string[] = [];
+  let failure: Error | null = null;
+  for (const row of rows) {
+    try {
+      const r = await api.post<{ id: string }>(orgPath(row.org_id, '/staff'), body(row));
+      ids.push(r.id);
+    } catch (error) {
+      failure = error instanceof Error ? error : new Error(String(error));
+      break;
+    }
   }
-
-  return created.sort((a, b) => a.first_name.localeCompare(b.first_name));
+  if (ids.length === 0 && failure) throw failure;
+  const wanted = new Set(ids);
+  return (await fetchStaff(orgId, false))
+    .filter((s) => wanted.has(s.id))
+    .sort((a, b) => a.first_name.localeCompare(b.first_name));
 }
 
 /**
- * Where a person works, as a set (CAP-089, `0105`).
- *
- * A site used to be inherited from the department, so somebody had exactly
- * one by construction. That is why the team filter could not answer "who can
- * cover at Ward B tonight" for anybody whose department lives at Ward A.
- *
- * Absence means "nothing recorded", not "works nowhere" — every read falls
- * back to the department's site, so an organisation that never opens the
- * control sees what it saw before.
+ * Where a person works, as a set (CAP-089). Absence means "nothing recorded", not "works nowhere": every read falls
+ * back to the department's site.
  */
 export async function listStaffLocations(orgId: string): Promise<Map<string, string[]>> {
-  const { data, error } = await supabase
-    .from('staff_locations')
-    .select('staff_profile_id, location_id')
-    .eq('org_id', orgId);
-
-  if (error) throw error;
-
+  const r = await api.get<{ staff: ApiStaff[] }>(orgPath(orgId, '/staff'));
   const byStaff = new Map<string, string[]>();
-  for (const row of data ?? []) {
-    const existing = byStaff.get(row.staff_profile_id) ?? [];
-    existing.push(row.location_id);
-    byStaff.set(row.staff_profile_id, existing);
+  for (const s of r.staff) {
+    if (s.location_ids && s.location_ids.length > 0) byStaff.set(s.id, s.location_ids);
   }
   return byStaff;
 }
 
-/**
- * Replace one person's sites.
- *
- * Delete-then-insert rather than a diff: the table is two foreign keys, the
- * sets are tiny, and a diff would be more code to get subtly wrong for no
- * measurable gain. Not a transaction — PostgREST has none — so the delete is
- * ordered first: a failed insert leaves somebody with no sites recorded,
- * which reads as "nothing recorded" and falls back to their department,
- * rather than leaving a half-applied set nobody can tell is wrong.
- */
+/** Replace one person's sites in one transaction. */
 export async function setStaffLocations(
   orgId: string,
   staffProfileId: string,
   locationIds: readonly string[],
 ): Promise<void> {
-  const { error: deleteError } = await supabase
-    .from('staff_locations')
-    .delete()
-    .eq('org_id', orgId)
-    .eq('staff_profile_id', staffProfileId);
-  if (deleteError) throw deleteError;
-
-  if (locationIds.length === 0) return;
-
-  const { error } = await supabase.from('staff_locations').insert(
-    locationIds.map((locationId) => ({
-      org_id: orgId,
-      staff_profile_id: staffProfileId,
-      location_id: locationId,
-    })),
-  );
-  if (error) throw error;
+  await api.post(orgPath(orgId, `/staff/${seg(staffProfileId)}/locations`), {
+    location_ids: [...locationIds],
+  });
 }

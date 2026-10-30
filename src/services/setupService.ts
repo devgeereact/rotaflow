@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, orgPath } from '@/lib/api';
 import { getOrganisation } from '@/services/orgService';
 import type { SetupFacts } from '@/lib/setupProgress';
 
@@ -25,19 +25,10 @@ import type { SetupFacts } from '@/lib/setupProgress';
  * Nothing here catches an error into a zero. A failed count rendered as
  * "0 locations" would tell a customer with six sites to go and create one.
  */
-async function readCount(
-  query: PromiseLike<{ count: number | null; error: { message: string } | null }>,
-): Promise<number> {
-  const { count, error } = await query;
-  // Rethrown as an Error rather than the PostgREST object: the object is not
-  // an Error, so the lint rule is right, and the message is the part any
-  // caller or Sentry breadcrumb actually reads.
-  if (error) throw new Error(error.message);
-  return count ?? 0;
+async function count(orgId: string, path: string, key: string): Promise<unknown[]> {
+  const r = await api.get<Record<string, unknown[]>>(orgPath(orgId, path));
+  return r[key] ?? [];
 }
-
-/** `count: 'exact', head: true` — the row payload is never sent. */
-const HEAD = { count: 'exact', head: true } as const;
 
 interface InviteCounts {
   pending: number;
@@ -62,12 +53,15 @@ interface InviteCounts {
  * organisation is small by construction (a live invitation expires).
  */
 async function countInvites(orgId: string): Promise<InviteCounts> {
-  const { data, error } = await supabase
-    .from('invites')
-    .select('accepted_at, revoked_at, expires_at, last_sent_at, send_error')
-    .eq('org_id', orgId)
-    .is('revoked_at', null);
-  if (error) throw error;
+  const r = await api.get<{
+    invites: {
+      accepted_at: string | null;
+      revoked_at: string | null;
+      expires_at: string;
+      last_sent_at: string | null;
+      send_error: string | null;
+    }[];
+  }>(orgPath(orgId, '/invites'));
 
   const now = Date.now();
   const counts: InviteCounts = {
@@ -77,8 +71,8 @@ async function countInvites(orgId: string): Promise<InviteCounts> {
     neverSent: 0,
     failed: 0,
   };
-
-  for (const row of data ?? []) {
+  for (const row of r.invites) {
+    if (row.revoked_at) continue;
     if (row.accepted_at) {
       counts.accepted += 1;
       continue;
@@ -88,13 +82,9 @@ async function countInvites(orgId: string): Promise<InviteCounts> {
       continue;
     }
     counts.pending += 1;
-    // Only live, unaccepted invitations are worth chasing. An expired one is
-    // reissued rather than re-sent, and an accepted one's delivery history is
-    // of no further interest.
     if (row.send_error) counts.failed += 1;
     else if (!row.last_sent_at) counts.neverSent += 1;
   }
-
   return counts;
 }
 
@@ -112,57 +102,36 @@ export async function loadSetupFacts(orgId: string): Promise<SetupFacts> {
     departments,
     jobTitles,
     shiftTypes,
-    minimumCoverRules,
-    staff,
-    staffWithoutAccount,
-    rotasAny,
-    rotasPublished,
+    cover,
+    staffRows,
+    rotaRows,
     invites,
   ] = await Promise.all([
     getOrganisation(orgId),
-    readCount(supabase.from('locations').select('id', HEAD).eq('org_id', orgId)),
-    readCount(supabase.from('departments').select('id', HEAD).eq('org_id', orgId)),
-    // Archived titles still count as "set up": the catalogue exists, and an
-    // organisation that has retired one is further along, not further back.
-    readCount(supabase.from('job_titles').select('id', HEAD).eq('org_id', orgId)),
-    readCount(supabase.from('shift_types').select('id', HEAD).eq('org_id', orgId)),
-    readCount(
-      supabase.from('minimum_cover_rules').select('id', HEAD).eq('org_id', orgId),
-    ),
-    readCount(
-      supabase
-        .from('staff_profiles')
-        .select('id', HEAD)
-        .eq('org_id', orgId)
-        .eq('active', true),
-    ),
-    // A staff record with no `user_id` is somebody whose hours are recorded
-    // and who cannot see them. That is the gap the sign-in step is about.
-    readCount(
-      supabase
-        .from('staff_profiles')
-        .select('id', HEAD)
-        .eq('org_id', orgId)
-        .eq('active', true)
-        .is('user_id', null),
-    ),
-    readCount(supabase.from('rotas').select('id', HEAD).eq('org_id', orgId)),
-    readCount(
-      supabase
-        .from('rotas')
-        .select('id', HEAD)
-        .eq('org_id', orgId)
-        .eq('status', 'published'),
-    ),
+    count(orgId, '/locations', 'locations'),
+    count(orgId, '/departments', 'departments'),
+    count(orgId, '/job-titles', 'job_titles'),
+    count(orgId, '/shift-types', 'shift_types'),
+    count(orgId, '/minimum-cover', 'rules'),
+    api.get<{ staff: { user_id: string | null }[] }>(orgPath(orgId, '/staff'), {
+      active: 1,
+    }),
+    api.get<{ rotas: { status: string }[] }>(orgPath(orgId, '/rotas')),
     countInvites(orgId),
   ]);
 
+  const staff = staffRows.staff.length;
+  const staffWithoutAccount = staffRows.staff.filter((s) => s.user_id === null).length;
+  const rotasAny = rotaRows.rotas.length;
+  const rotasPublished = rotaRows.rotas.filter((r) => r.status === 'published').length;
+  const minimumCoverRules = cover.length;
+
   return {
     organisation,
-    locations,
-    departments,
-    jobTitles,
-    shiftTypes,
+    locations: locations.length,
+    departments: departments.length,
+    jobTitles: jobTitles.length,
+    shiftTypes: shiftTypes.length,
     minimumCoverRules,
     staff,
     staffWithoutAccount,

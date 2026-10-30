@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, orgPath, seg } from '@/lib/api';
 import type { EmergencyContact, EmergencyContactInsert } from '@/types';
 
 /**
@@ -6,8 +6,6 @@ import type { EmergencyContact, EmergencyContactInsert } from '@/types';
  * only when someone decides it should (the retired `medical_notes` column was
  * dropped by `0164`, GAP-058).
  */
-const CONTACT_COLUMNS =
-  'id, org_id, staff_profile_id, name, relationship, phone, secondary_phone, created_at, updated_at';
 
 /**
  * `org_id` filters are defense-in-depth, not the real enforcement. RLS
@@ -19,43 +17,41 @@ export async function listEmergencyContacts(
   orgId: string,
   staffProfileId: string,
 ): Promise<EmergencyContact[]> {
-  const { data, error } = await supabase
-    .from('emergency_contacts')
-    .select(CONTACT_COLUMNS)
-    .eq('org_id', orgId)
-    .eq('staff_profile_id', staffProfileId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ emergency_contacts: EmergencyContact[] }>(
+    orgPath(orgId, `/staff/${seg(staffProfileId)}/emergency-contacts`),
+  );
+  return r.emergency_contacts.map((c) => ({
+    ...c,
+    org_id: orgId,
+    staff_profile_id: staffProfileId,
+  }));
 }
 
 export async function createEmergencyContact(
   input: EmergencyContactInsert,
 ): Promise<EmergencyContact> {
-  // Built field by field, so nothing outside the client type from an untyped
-  // caller is ever written.
-  const row: EmergencyContactInsert = {
-    org_id: input.org_id,
-    staff_profile_id: input.staff_profile_id,
-    name: input.name,
-    relationship: input.relationship ?? null,
-    phone: input.phone,
-    secondary_phone: input.secondary_phone ?? null,
-  };
-  const { data, error } = await supabase
-    .from('emergency_contacts')
-    .insert(row)
-    .select(CONTACT_COLUMNS)
-    .single();
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ id: string }>(
+    orgPath(input.org_id, `/staff/${seg(input.staff_profile_id)}/emergency-contacts`),
+    {
+      name: input.name,
+      relationship: input.relationship ?? null,
+      phone: input.phone,
+      secondary_phone: input.secondary_phone ?? null,
+    },
+  );
+  const found = (await listEmergencyContacts(input.org_id, input.staff_profile_id)).find(
+    (c) => c.id === r.id,
+  );
+  if (!found) throw new Error('Emergency contact not found');
+  return found;
 }
 
-export async function deleteEmergencyContact(orgId: string, id: string): Promise<void> {
-  const { error } = await supabase
-    .from('emergency_contacts')
-    .delete()
-    .eq('org_id', orgId)
-    .eq('id', id);
-  if (error) throw error;
+export async function deleteEmergencyContact(
+  orgId: string,
+  id: string,
+  staffProfileId: string,
+): Promise<void> {
+  await api.post(
+    orgPath(orgId, `/staff/${seg(staffProfileId)}/emergency-contacts/${seg(id)}/delete`),
+  );
 }

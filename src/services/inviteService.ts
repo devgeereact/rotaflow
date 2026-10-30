@@ -1,6 +1,5 @@
-import { supabase } from '@/lib/supabase';
+import { activeOrgPath, api, isApiCode, orgPath, seg } from '@/lib/api';
 import { appUrlFor } from '@/lib/appOrigin';
-import { reportError } from '@/lib/sentry';
 import type { Invite, MembershipRole } from '@/types';
 
 /**
@@ -25,6 +24,12 @@ export interface CreatedInvite {
   expiresAt: string;
   /** Ready-to-send URL for the invitee. */
   acceptUrl: string;
+  /**
+   * The API emails the invitation as part of creating it. These carry that first outcome, which
+   * `sendInviteEmail` reports instead of sending a second copy.
+   */
+  emailSent?: boolean;
+  emailError?: string | null;
 }
 
 export interface InvitePreview {
@@ -70,27 +75,42 @@ export async function createInvite(
   role: MembershipRole,
   assignment: InviteAssignment = {},
 ): Promise<CreatedInvite> {
-  const { data, error } = await supabase.rpc('create_invite', {
-    p_org: orgId,
-    p_email: email,
-    p_role: role,
-    // The database re-checks that both belong to `orgId` — `create_invite` is
-    // SECURITY DEFINER, so RLS is not standing behind it and a foreign key
-    // alone would accept another tenant's id.
-    p_department: assignment.departmentId ?? null,
-    p_location: assignment.locationId ?? null,
+  const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+  if (role === 'owner') {
+    // Owner invitations are the platform's to issue (organisations are by invitation only).
+    const r = await api.post<{
+      token: string;
+      email_sent?: boolean;
+      email_error?: string | null;
+    }>(`/platform/orgs/${seg(orgId)}/owner-invites`, { owner_email: email });
+    return {
+      inviteId: '',
+      token: r.token,
+      expiresAt,
+      acceptUrl: buildAcceptUrl(r.token),
+      emailSent: r.email_sent ?? false,
+      emailError:
+        r.email_error ?? (r.email_sent ? null : 'Copy the link and send it yourself.'),
+    };
+  }
+  const r = await api.post<{
+    invite: { id: string };
+    token: string;
+    email_sent: boolean;
+    email_error: string | null;
+  }>(orgPath(orgId, '/invites'), {
+    email,
+    role,
+    department_id: assignment.departmentId ?? null,
+    location_id: assignment.locationId ?? null,
   });
-
-  if (error) throw error;
-
-  const row = data?.[0];
-  if (!row) throw new Error('The invitation could not be created.');
-
   return {
-    inviteId: row.invite_id,
-    token: row.token,
-    expiresAt: row.expires_at,
-    acceptUrl: buildAcceptUrl(row.token),
+    inviteId: r.invite.id,
+    token: r.token,
+    expiresAt,
+    acceptUrl: buildAcceptUrl(r.token),
+    emailSent: r.email_sent,
+    emailError: r.email_error,
   };
 }
 
@@ -100,41 +120,39 @@ export async function createInvite(
  * Resolves to null for an invalid, expired, revoked or spent token.
  */
 export async function previewInvite(token: string): Promise<InvitePreview | null> {
-  const { data, error } = await supabase.rpc('preview_invite', { p_token: token });
-  if (error) throw error;
-
-  const row = data?.[0];
-  if (!row) return null;
-
-  return {
-    orgName: row.org_name,
-    role: row.role as MembershipRole,
-    email: row.email,
-    expiresAt: row.expires_at,
-  };
+  try {
+    const r = await api.post<{
+      org_name: string;
+      role: string;
+      email: string;
+      expires_at: string;
+    }>('/invites/preview', { token });
+    return {
+      orgName: r.org_name,
+      role: r.role as MembershipRole,
+      email: r.email,
+      expiresAt: r.expires_at,
+    };
+  } catch (error) {
+    if (isApiCode(error, 'invite_invalid', 'not_found')) return null;
+    throw error;
+  }
 }
 
 /** Redeem a token and join the org. Returns the org id joined. */
 export async function acceptInvite(token: string): Promise<string> {
-  const { data, error } = await supabase.rpc('accept_invite', { p_token: token });
-  if (error) throw error;
-  if (!data) throw new Error('The invitation could not be accepted.');
-  return data;
+  const r = await api.post<{ org_id: string }>('/invites/accept', { token });
+  return r.org_id;
 }
 
 /** Pending (unaccepted, unrevoked, unexpired) invites for an org. */
 export async function listPendingInvites(orgId: string): Promise<Invite[]> {
-  const { data, error } = await supabase
-    .from('invites')
-    .select('*')
-    .eq('org_id', orgId)
-    .is('accepted_at', null)
-    .is('revoked_at', null)
-    .gt('expires_at', new Date().toISOString())
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ invites: (Invite & { state: string })[] }>(
+    orgPath(orgId, '/invites'),
+  );
+  return r.invites
+    .filter((i) => i.state === 'pending')
+    .map(({ state: _state, ...i }) => ({ ...i, org_id: orgId }));
 }
 
 /**
@@ -142,12 +160,7 @@ export async function listPendingInvites(orgId: string): Promise<Invite[]> {
  * index treats it as no longer live so the address can be re-invited.
  */
 export async function revokeInvite(inviteId: string): Promise<void> {
-  const { error } = await supabase
-    .from('invites')
-    .update({ revoked_at: new Date().toISOString() })
-    .eq('id', inviteId);
-
-  if (error) throw error;
+  await api.post(activeOrgPath(`/invites/${seg(inviteId)}/revoke`));
 }
 
 export interface InviteEmailResult {
@@ -168,17 +181,6 @@ export interface InviteEmailResult {
  * invitation that went out and whose bookkeeping failed must still be reported
  * as sent, and the caller's own return value is what the screen shows.
  */
-async function recordSend(
-  invite: CreatedInvite,
-  result: InviteEmailResult,
-): Promise<void> {
-  const { error } = await supabase.rpc('record_invite_send', {
-    p_invite: invite.inviteId,
-    p_sent: result.sent,
-    p_error: result.reason ?? null,
-  });
-  if (error) reportError(error, { area: 'invite:recordSend' });
-}
 
 /**
  * Email the join link to the person invited.
@@ -198,33 +200,26 @@ export async function sendInviteEmail(
   orgId: string,
   invite: CreatedInvite,
 ): Promise<InviteEmailResult> {
-  // Typed at the call, matching billingCheckoutService: an untyped invoke
-  // returns `any` and destructuring it trips no-unsafe-assignment.
-  const result = await supabase.functions.invoke<{ sent?: boolean; error?: string }>(
-    'send-invite',
-    { body: { orgId, inviteId: invite.inviteId, token: invite.token } },
-  );
-
-  if (result.error) {
-    // The function returns a human-readable `error` for the cases a manager can
-    // act on — no mailbox configured, SMTP refused — and it is more useful than
-    // "FunctionsHttpError". Same unwrap as billingCheckoutService.
-    let reason: string | undefined;
-    const context = (result.error as { context?: Response }).context;
-    if (context && typeof context.json === 'function') {
-      try {
-        const body = (await context.json()) as { error?: string };
-        reason = body.error;
-      } catch {
-        reason = undefined;
-      }
-    }
-    const failure: InviteEmailResult = reason ? { sent: false, reason } : { sent: false };
-    await recordSend(invite, failure);
-    return failure;
+  // Straight after creation: report the email the API already sent with it, once.
+  if (invite.emailSent !== undefined) {
+    const result: InviteEmailResult =
+      invite.emailSent || !invite.emailError
+        ? { sent: invite.emailSent }
+        : { sent: false, reason: invite.emailError };
+    invite.emailSent = undefined;
+    return result;
   }
-
-  const outcome: InviteEmailResult = { sent: Boolean(result.data?.sent) };
-  await recordSend(invite, outcome);
-  return outcome;
+  if (!invite.inviteId)
+    return { sent: false, reason: 'Copy the link and send it yourself.' };
+  // Otherwise a resend: a fresh link is issued and emailed, so the old one stops working.
+  const r = await api.post<{
+    token: string;
+    email_sent: boolean;
+    email_error: string | null;
+  }>(orgPath(orgId, `/invites/${seg(invite.inviteId)}/resend`));
+  invite.token = r.token;
+  invite.acceptUrl = buildAcceptUrl(r.token);
+  return r.email_sent
+    ? { sent: true }
+    : { sent: false, reason: r.email_error ?? undefined };
 }

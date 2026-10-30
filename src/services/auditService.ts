@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, orgPath } from '@/lib/api';
 import { reportError } from '@/lib/sentry';
 import type { AuditLog } from '@/types';
 import type { Json } from '@/types/database.types';
@@ -49,6 +49,27 @@ export interface AuditLogEntry extends AuditLog {
   actorName: string | null;
 }
 
+interface ApiAuditRow {
+  id: number | string;
+  actor_user_id: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  metadata: Json;
+  severity: string;
+  created_at: string;
+}
+
+function toAuditLog(orgId: string, r: ApiAuditRow): AuditLog {
+  return {
+    ...r,
+    id: String(r.id),
+    org_id: orgId,
+    actor_name: null,
+    actor_email: null,
+  } as unknown as AuditLog;
+}
+
 function toEntry(row: AuditLog): AuditLogEntry {
   return { ...row, actorName: row.actor_name ?? row.actor_email ?? null };
 }
@@ -58,15 +79,20 @@ export async function listAuditLogs(
   orgId: string,
   limit = 100,
 ): Promise<AuditLogEntry[]> {
-  const { data, error } = await supabase
-    .from('audit_logs')
-    .select('*')
-    .eq('org_id', orgId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (error) throw error;
-  return (data ?? []).map(toEntry);
+  // The API pages by id, newest first, at most 100 a page. An owner sees the whole organisation's trail; anyone
+  // else sees their own actions only.
+  const rows: AuditLog[] = [];
+  let before: number | null = null;
+  while (rows.length < limit) {
+    const page: { entries: ApiAuditRow[]; next_before_id: number | null } = await api.get(
+      orgPath(orgId, '/audit'),
+      { limit: Math.min(100, limit - rows.length), before_id: before ?? undefined },
+    );
+    rows.push(...page.entries.map((e) => toAuditLog(orgId, e)));
+    if (page.next_before_id === null) break;
+    before = page.next_before_id;
+  }
+  return rows.map(toEntry);
 }
 
 /**
@@ -83,16 +109,9 @@ export async function listMyAuditLogs(
   userId: string,
   limit = 50,
 ): Promise<AuditLogEntry[]> {
-  const { data, error } = await supabase
-    .from('audit_logs')
-    .select('*')
-    .eq('org_id', orgId)
-    .eq('actor_user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (error) throw error;
-  return (data ?? []).map(toEntry);
+  return (await listAuditLogs(orgId, Math.max(limit, 100)))
+    .filter((e) => e.actor_user_id === userId)
+    .slice(0, limit);
 }
 
 /**
@@ -125,12 +144,14 @@ export async function logAuditEvent(
   entityId?: string,
   metadata?: Record<string, Json>,
 ): Promise<void> {
-  const { error } = await supabase.rpc('log_audit_event', {
-    p_org: orgId,
-    p_action: action,
-    p_entity_type: entityType ?? undefined,
-    p_entity_id: entityId ?? undefined,
-    p_metadata: metadata ?? undefined,
-  });
-  if (error) reportError(error, { area: 'audit:log' });
+  try {
+    await api.post(orgPath(orgId, '/audit'), {
+      action,
+      entity_type: entityType ?? null,
+      entity_id: entityId ?? null,
+      metadata: metadata ?? {},
+    });
+  } catch (error) {
+    reportError(error, { area: 'audit:log' });
+  }
 }

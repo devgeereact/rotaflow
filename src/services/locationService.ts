@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { activeOrgPath, api, orgPath, seg } from '@/lib/api';
 import type {
   Department,
   DepartmentInsert,
@@ -7,142 +7,166 @@ import type {
   LocationInsert,
   LocationUpdate,
   MinimumCoverRule,
-  MinimumCoverRuleUpsert,
 } from '@/types';
 
 // Locations and departments live in one service. ARCHITECTURE.md's service
 // list names only `locationService`, no separate `departmentService`.
 
-export async function listLocations(orgId: string): Promise<Location[]> {
-  const { data, error } = await supabase
-    .from('locations')
-    .select('*')
-    .eq('org_id', orgId)
-    .order('name', { ascending: true });
+type ApiLocation = Omit<Location, 'latitude' | 'longitude'> & {
+  latitude: string | number | null;
+  longitude: string | number | null;
+};
 
-  if (error) throw error;
-  return data ?? [];
+const num = (v: string | number | null): number | null =>
+  v === null || v === '' ? null : Number(v);
+
+function toLocation(orgId: string, l: ApiLocation): Location {
+  return {
+    ...l,
+    org_id: orgId,
+    latitude: num(l.latitude),
+    longitude: num(l.longitude),
+  };
+}
+
+const LOCATION_FIELDS = [
+  'name',
+  'address',
+  'latitude',
+  'longitude',
+  'timezone',
+  'geofence_radius_m',
+  'location_type',
+  'status',
+] as const;
+
+function locationBody(row: Partial<Location>): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const k of LOCATION_FIELDS) if (k in row) body[k] = row[k as keyof Location];
+  return body;
+}
+
+export async function listLocations(orgId: string): Promise<Location[]> {
+  const r = await api.get<{ locations: ApiLocation[] }>(orgPath(orgId, '/locations'));
+  return r.locations.map((l) => toLocation(orgId, l));
+}
+
+async function locationById(orgId: string, id: string): Promise<Location> {
+  const found = (await listLocations(orgId)).find((l) => l.id === id);
+  if (!found) throw new Error('Location not found');
+  return found;
 }
 
 export async function createLocation(input: LocationInsert): Promise<Location> {
-  const { data, error } = await supabase
-    .from('locations')
-    .insert(input)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ id: string }>(
+    orgPath(input.org_id, '/locations'),
+    locationBody(input),
+  );
+  return locationById(input.org_id, r.id);
 }
 
+/** The API saves the whole row, so the current values fill in whatever the patch leaves out. */
 export async function updateLocation(
   id: string,
   patch: LocationUpdate,
 ): Promise<Location> {
-  const { data, error } = await supabase
-    .from('locations')
-    .update(patch)
-    .eq('id', id)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data;
+  const orgId = patch.org_id;
+  const path = orgId ? orgPath(orgId, '/locations') : activeOrgPath('/locations');
+  const r = await api.get<{ locations: ApiLocation[] }>(path);
+  const current = r.locations.find((l) => l.id === id);
+  if (!current) throw new Error('Location not found');
+  const merged = { ...toLocation(orgId ?? '', current), ...patch };
+  await api.post(`${path}/${seg(id)}`, locationBody(merged));
+  const after = (await api.get<{ locations: ApiLocation[] }>(path)).locations.find(
+    (l) => l.id === id,
+  );
+  return toLocation(orgId ?? current.org_id ?? '', after ?? current);
 }
 
-// No deleteLocation in V1. Rotas/shifts/departments all reference locations
-// with no soft-delete column available; edit-only is the safe scope.
+/** Refused (409 location_in_use) while rotas or shifts use it: mark it inactive instead. */
+export async function deleteLocation(orgId: string, id: string): Promise<void> {
+  await api.post(orgPath(orgId, `/locations/${seg(id)}/delete`));
+}
 
 export async function listDepartments(
   orgId: string,
   locationId?: string,
 ): Promise<Department[]> {
-  let query = supabase.from('departments').select('*').eq('org_id', orgId);
-  if (locationId) query = query.eq('location_id', locationId);
-
-  const { data, error } = await query.order('name', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ departments: Omit<Department, 'org_id'>[] }>(
+    orgPath(orgId, '/departments'),
+  );
+  return r.departments
+    .filter((d) => !locationId || d.location_id === locationId)
+    .map((d) => ({ ...d, org_id: orgId }));
 }
 
 export async function createDepartment(input: DepartmentInsert): Promise<Department> {
-  const { data, error } = await supabase
-    .from('departments')
-    .insert(input)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data;
+  const r = await api.post<{ id: string }>(orgPath(input.org_id, '/departments'), {
+    name: input.name,
+    location_id: input.location_id ?? null,
+  });
+  const found = (await listDepartments(input.org_id)).find((d) => d.id === r.id);
+  if (!found) throw new Error('Department not found');
+  return found;
 }
 
 export async function updateDepartment(
   id: string,
   patch: DepartmentUpdate,
 ): Promise<Department> {
-  const { data, error } = await supabase
-    .from('departments')
-    .update(patch)
-    .eq('id', id)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data;
+  const path = patch.org_id
+    ? orgPath(patch.org_id, '/departments')
+    : activeOrgPath('/departments');
+  const r = await api.get<{ departments: Department[] }>(path);
+  const current = r.departments.find((d) => d.id === id);
+  if (!current) throw new Error('Department not found');
+  const merged = { ...current, ...patch };
+  await api.post(`${path}/${seg(id)}`, {
+    name: merged.name,
+    location_id: merged.location_id ?? null,
+  });
+  return merged;
 }
 
+/** Refused (409 department_in_use) while shifts use it. */
 export async function deleteDepartment(id: string): Promise<void> {
-  const { error } = await supabase.from('departments').delete().eq('id', id);
-  if (error) throw error;
+  await api.post(activeOrgPath(`/departments/${seg(id)}/delete`));
 }
 
-// A site's staffing minimum, one row per weekday. Read by rotaInsights.ts
-// alongside shifts; nothing on the server enforces it, per 0036's comment.
+// A site's staffing minimum, one row per weekday. Read by rotaInsights.ts alongside shifts.
+
+type ApiCoverRule = Omit<MinimumCoverRule, 'org_id'>;
+
+export async function listMinimumCoverRulesForOrg(
+  orgId: string,
+): Promise<MinimumCoverRule[]> {
+  const r = await api.get<{ rules: ApiCoverRule[] }>(orgPath(orgId, '/minimum-cover'));
+  return r.rules.map((rule) => ({ ...rule, org_id: orgId }));
+}
 
 export async function listMinimumCoverRules(
   locationId: string,
 ): Promise<MinimumCoverRule[]> {
-  const { data, error } = await supabase
-    .from('minimum_cover_rules')
-    .select('*')
-    .eq('location_id', locationId)
-    .order('weekday', { ascending: true });
-
-  if (error) throw error;
-  return data ?? [];
+  const r = await api.get<{ rules: ApiCoverRule[] }>(activeOrgPath('/minimum-cover'));
+  return r.rules
+    .filter((rule) => rule.location_id === locationId)
+    .map((rule) => ({ ...rule, org_id: '' }));
 }
 
-/** Every org's rules in one query, for the dashboard's cover chart across all sites. */
-export async function listMinimumCoverRulesForOrg(
-  orgId: string,
-): Promise<MinimumCoverRule[]> {
-  const { data, error } = await supabase
-    .from('minimum_cover_rules')
-    .select('*')
-    .eq('org_id', orgId);
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-/** Replaces a location's whole weekly pattern in one round trip. */
+/** Replaces a location's whole weekly pattern, one weekday at a time (each write is idempotent). */
 export async function setMinimumCoverRules(
   orgId: string,
   locationId: string,
   weekdayMinimums: readonly number[],
 ): Promise<MinimumCoverRule[]> {
-  const rows: MinimumCoverRuleUpsert[] = weekdayMinimums.map((minStaff, weekday) => ({
-    org_id: orgId,
-    location_id: locationId,
-    weekday,
-    min_staff: Math.max(0, Math.round(minStaff)),
-  }));
-
-  const { data, error } = await supabase
-    .from('minimum_cover_rules')
-    .upsert(rows, { onConflict: 'location_id,weekday' })
-    .select('*');
-
-  if (error) throw error;
-  return data ?? [];
+  for (const [weekday, minStaff] of weekdayMinimums.entries()) {
+    await api.post(orgPath(orgId, '/minimum-cover'), {
+      location_id: locationId,
+      weekday,
+      min_staff: Math.max(0, Math.round(minStaff)),
+    });
+  }
+  return (await listMinimumCoverRulesForOrg(orgId)).filter(
+    (r) => r.location_id === locationId,
+  );
 }

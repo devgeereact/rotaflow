@@ -45,3 +45,40 @@ check('a manager cannot change them', call($api, 'mark', 'POST', "/orgs/$org/set
 foreach ([['anything_else' => 1], ['min_rest_hours' => 99], ['breaks_are_paid' => 'yes'], ['intended_plan' => 'free'], ['role_labels' => ['owner' => 'A']], ['size' => str_repeat('x', 41)]] as $i => $bad) {
     check("a bad or unknown preference is 422 ($i)", call($api, 'olga', 'POST', "/orgs/$org/settings", $bad)[0] === 422);
 }
+
+// ---- labour cost and current pay rates (the Postgres labour_cost / current_pay_rates) -------------------------------
+$site = call($api, 'olga', 'POST', "/orgs/$org/locations", ['name' => 'Ward A'])[1]['id'];
+$ann = call($api, 'olga', 'POST', "/orgs/$org/staff", ['first_name' => 'Ann'])[1]['id'];
+$bob = call($api, 'olga', 'POST', "/orgs/$org/staff", ['first_name' => 'Bob'])[1]['id'];
+call($api, 'olga', 'POST', "/orgs/$org/staff/$ann/pay-rates", ['hourly_rate_pence' => 1200, 'effective_from' => '2029-01-01']);
+call($api, 'olga', 'POST', "/orgs/$org/staff/$ann/pay-rates", ['hourly_rate_pence' => 1500, 'effective_from' => '2029-06-06']);
+$rota = call($api, 'olga', 'POST', "/orgs/$org/rotas", ['name' => 'W', 'period_start' => '2029-06-04', 'period_end' => '2029-06-10', 'location_id' => $site])[1]['rota']['id'];
+$shift = static fn (string $who, string $day, int $break = 30): array => call($api, 'olga', 'POST', "/orgs/$org/shifts", ['rota_id' => $rota, 'location_id' => $site, 'staff_profile_id' => $who, 'starts_at' => "{$day}T09:00:00Z", 'ends_at' => "{$day}T17:00:00Z", 'break_minutes' => $break]);
+$shift($ann, '2029-06-05');
+$shift($ann, '2029-06-06');
+$shift($bob, '2029-06-07');
+check('a draft rota costs nothing yet', call($api, 'olga', 'GET', "/orgs/$org/labour-cost?from=2029-06-01&to=2029-06-30")[1]['rows'] === []);
+call($api, 'olga', 'POST', "/orgs/$org/rotas/$rota/publish");
+[$s, $r] = call($api, 'mark', 'GET', "/orgs/$org/labour-cost?from=2029-06-01&to=2029-06-30");
+// Ann: 450 min at 1200 (6th not yet) = 9000, 450 min at 1500 = 11250; Bob has no rate.
+check('cost uses the rate in force on the day of each shift and names the unrated', $s === 200 && count($r['rows']) === 1 && $r['rows'][0]['cost_pence'] === 20250 && $r['rows'][0]['scheduled_minutes'] === 1350 && $r['rows'][0]['unrated_staff'] === 1 && $r['rows'][0]['location_name'] === 'Ward A', json_encode($r));
+check('paid breaks count the break minutes', call($api, 'olga', 'GET', "/orgs/$org/labour-cost?from=2029-06-01&to=2029-06-30&paid_breaks=1")[1]['rows'][0]['scheduled_minutes'] === 1440);
+call($api, 'sam', 'GET', '/me');
+$pdo->prepare("INSERT INTO memberships (id, org_id, user_id, role, status) SELECT ?, ?, id, 'staff', 'active' FROM users WHERE email = 'sam@example.test'")->execute([Db::uuid(), $org]);
+check('staff cannot see labour cost or rates', call($api, 'sam', 'GET', "/orgs/$org/labour-cost?from=2029-06-01&to=2029-06-30")[0] === 403 && call($api, 'sam', 'GET', "/orgs/$org/pay-rates/current")[0] === 403);
+check('a stranger gets 404', call($api, 'zed', 'GET', "/orgs/$org/labour-cost?from=2029-06-01&to=2029-06-30")[0] === 404 && call($api, 'zed', 'GET', "/orgs/$org/pay-rates/current")[0] === 404);
+foreach (['?from=2029-06-30&to=2029-06-01', '?from=2029-01-01&to=2031-01-01', '?from=bad&to=2029-06-01', ''] as $i => $qs) {
+    check("a bad period is 422 ($i)", call($api, 'olga', 'GET', "/orgs/$org/labour-cost$qs")[0] === 422);
+}
+call($api, 'olga', 'POST', "/orgs/$org/staff/$bob/pay-rates", ['hourly_rate_pence' => 1000, 'effective_from' => '2020-01-01']);
+call($api, 'olga', 'POST', "/orgs/$org/staff/$bob/pay-rates", ['hourly_rate_pence' => 1100, 'effective_from' => '2021-01-01']);
+[, $r] = call($api, 'mark', 'GET', "/orgs/$org/pay-rates/current");
+check('current rates list the latest rate in force today, and none from the future', count($r['rates']) === 1 && $r['rates'][0]['staff_profile_id'] === $bob && $r['rates'][0]['hourly_rate_pence'] === 1100, json_encode($r));
+
+// ---- actions the app records about itself (the Postgres log_audit_event) ---------------------------------------------
+[$s] = call($api, 'sam', 'POST', "/orgs/$org/audit", ['action' => 'report.exported', 'metadata' => ['report' => 'hours']]);
+$row = $pdo->query("SELECT actor_user_id, action, visibility FROM audit_logs WHERE action = 'report.exported'")->fetch();
+check('a member records an export they made, attributed to them', $s === 201 && $row !== false && $row['visibility'] === 'org' && $row['actor_user_id'] === $pdo->query("SELECT id FROM users WHERE email = 'sam@example.test'")->fetchColumn());
+check('an action outside the list is refused', call($api, 'sam', 'POST', "/orgs/$org/audit", ['action' => 'org.deleted'])[0] === 422);
+check('oversized metadata is refused', call($api, 'sam', 'POST', "/orgs/$org/audit", ['action' => 'report.exported', 'metadata' => ['x' => str_repeat('a', 2100)]])[0] === 422);
+check('a stranger cannot write to another organisation\'s trail', call($api, 'zed', 'POST', "/orgs/$org/audit", ['action' => 'report.exported'])[0] === 404);

@@ -14,7 +14,7 @@ foreach (['mark' => 'manager', 'sam' => 'staff'] as $name => $role) {
 
 // ---- personal settings -------------------------------------------------------------------------------------
 [, $r] = call($api, 'sam', 'GET', '/me/settings');
-check('settings have defaults before anything is saved', $r['settings'] === ['theme' => 'dark', 'time_format' => '24h', 'week_start' => 'monday', 'digest_frequency' => 'immediate'], json_encode($r));
+check('settings have defaults before anything is saved', $r['settings'] === ['theme' => 'dark', 'time_format' => '24h', 'week_start' => 'monday', 'digest_frequency' => 'immediate', 'notifications_enabled' => true], json_encode($r));
 [$s, $r] = call($api, 'sam', 'POST', '/me/settings', ['theme' => 'light', 'week_start' => 'sunday']);
 check('a person saves some of them and the rest keep their defaults', $s === 200 && $r['settings']['theme'] === 'light' && $r['settings']['week_start'] === 'sunday' && $r['settings']['time_format'] === '24h', json_encode($r));
 call($api, 'sam', 'POST', '/me/settings', ['time_format' => '12h']);
@@ -24,6 +24,15 @@ foreach ([['theme' => 'neon'], ['time_format' => '36h'], ['week_start' => 'frida
     check("an unknown setting value is 422 ($i)", call($api, 'sam', 'POST', '/me/settings', $bad)[0] === 422);
 }
 check('settings need a sign-in', call($api, '', 'GET', '/me/settings')[0] === 401);
+[$s, $r] = call($api, 'sam', 'POST', '/me/settings', ['notifications_enabled' => false]);
+check('a person can switch their notifications off', $s === 200 && $r['settings']['notifications_enabled'] === false && $r['settings']['theme'] === 'light', json_encode($r));
+check('notifications_enabled must be a boolean', call($api, 'sam', 'POST', '/me/settings', ['notifications_enabled' => 'no'])[0] === 422);
+
+// ---- display name ----------------------------------------------------------------------------------------------
+[$s, $r] = call($api, 'sam', 'POST', '/me/profile', ['full_name' => '  Sam Example ']);
+check('a person sets their own display name', $s === 200 && call($api, 'sam', 'GET', '/me')[1]['user']['full_name'] === 'Sam Example', json_encode($r));
+check('a display name is at most 120 characters', call($api, 'sam', 'POST', '/me/profile', ['full_name' => str_repeat('x', 121)])[0] === 422);
+check('the profile needs a sign-in', call($api, '', 'POST', '/me/profile', ['full_name' => 'X'])[0] === 401);
 
 // ---- onboarding ---------------------------------------------------------------------------------------------
 check('a new organisation has not finished setup', $pdo->query("SELECT onboarding_completed_at FROM organisations WHERE id = '$org'")->fetchColumn() === null);

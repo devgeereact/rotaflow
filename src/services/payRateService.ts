@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api, orgPath, seg } from '@/lib/api';
 
 /**
  * Hourly rates, and what a rostered period costs (CAP-086, `0104`).
@@ -42,20 +42,20 @@ export async function listPayRates(
   orgId: string,
   staffProfileId: string,
 ): Promise<PayRate[]> {
-  const { data, error } = await supabase
-    .from('staff_pay_rates')
-    .select('id, staff_profile_id, hourly_rate_pence, effective_from, note')
-    .eq('org_id', orgId)
-    .eq('staff_profile_id', staffProfileId)
-    .order('effective_from', { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []).map((row) => ({
+  const r = await api.get<{
+    pay_rates: {
+      id: string;
+      hourly_rate_pence: number | string;
+      effective_from: string;
+    }[];
+  }>(orgPath(orgId, `/staff/${seg(staffProfileId)}/pay-rates`));
+  return r.pay_rates.map((row) => ({
     id: row.id,
-    staffProfileId: row.staff_profile_id,
-    hourlyRatePence: row.hourly_rate_pence,
+    staffProfileId,
+    hourlyRatePence: Number(row.hourly_rate_pence),
     effectiveFrom: row.effective_from,
-    note: row.note,
+    // The API keeps no note on a rate; the history itself (dates and amounts) is the record.
+    note: null,
   }));
 }
 
@@ -74,18 +74,11 @@ export async function setPayRate(input: {
   note?: string | null;
   createdBy: string;
 }): Promise<void> {
-  const { error } = await supabase.from('staff_pay_rates').upsert(
-    {
-      org_id: input.orgId,
-      staff_profile_id: input.staffProfileId,
-      hourly_rate_pence: input.hourlyRatePence,
-      effective_from: input.effectiveFrom,
-      note: input.note ?? null,
-      created_by: input.createdBy,
-    },
-    { onConflict: 'staff_profile_id,effective_from' },
-  );
-  if (error) throw error;
+  // Rates are a history: a second rate on the same start date is refused (409 rate_exists), not overwritten.
+  await api.post(orgPath(input.orgId, `/staff/${seg(input.staffProfileId)}/pay-rates`), {
+    hourly_rate_pence: input.hourlyRatePence,
+    effective_from: input.effectiveFrom,
+  });
 }
 
 /**
@@ -102,15 +95,16 @@ export async function getLabourCost(
   to: string,
   paidBreaks: boolean,
 ): Promise<LabourCostRow[]> {
-  const { data, error } = await supabase.rpc('labour_cost', {
-    p_org: orgId,
-    p_from: from,
-    p_to: to,
-    p_paid_breaks: paidBreaks,
-  });
-  if (error) throw error;
-
-  return (data ?? []).map((row) => ({
+  const r = await api.get<{
+    rows: {
+      location_id: string | null;
+      location_name: string | null;
+      scheduled_minutes: number;
+      cost_pence: number;
+      unrated_staff: number;
+    }[];
+  }>(orgPath(orgId, '/labour-cost'), { from, to, paid_breaks: paidBreaks ? 1 : 0 });
+  return r.rows.map((row) => ({
     locationId: row.location_id,
     locationName: row.location_name,
     scheduledMinutes: Number(row.scheduled_minutes),
@@ -121,9 +115,8 @@ export async function getLabourCost(
 
 /** Today's rate per person: managers see everyone, everybody else themselves. */
 export async function getCurrentPayRates(orgId: string): Promise<Map<string, number>> {
-  const { data, error } = await supabase.rpc('current_pay_rates', { p_org: orgId });
-  if (error) throw error;
-  return new Map(
-    (data ?? []).map((row) => [row.staff_profile_id, row.hourly_rate_pence]),
-  );
+  const r = await api.get<{
+    rates: { staff_profile_id: string; hourly_rate_pence: number }[];
+  }>(orgPath(orgId, '/pay-rates/current'));
+  return new Map(r.rates.map((row) => [row.staff_profile_id, row.hourly_rate_pence]));
 }

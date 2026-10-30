@@ -15,16 +15,28 @@ final class Account implements Module
         return [
             ['GET', '/me/settings', $this->getSettings(...)],
             ['POST', '/me/settings', $this->saveSettings(...)],
+            ['POST', '/me/profile', $this->saveProfile(...)],
             ['POST', '/orgs/{o}/onboarding/complete', $this->completeOnboarding(...)],
             ['GET', '/orgs/{o}/audit', $this->audit(...)],
+            ['POST', '/orgs/{o}/audit', $this->record(...)],
         ];
     }
 
     private function getSettings(array $user): array
     {
-        $q = $this->ctx->pdo->prepare('SELECT theme, time_format, week_start, digest_frequency FROM app_settings WHERE user_id = ?');
+        $q = $this->ctx->pdo->prepare('SELECT theme, time_format, week_start, digest_frequency, notifications_enabled FROM app_settings WHERE user_id = ?');
         $q->execute([$user['id']]);
-        return [200, ['settings' => $q->fetch() ?: ['theme' => 'dark', 'time_format' => '24h', 'week_start' => 'monday', 'digest_frequency' => 'immediate']]];
+        $r = $q->fetch() ?: ['theme' => 'dark', 'time_format' => '24h', 'week_start' => 'monday', 'digest_frequency' => 'immediate', 'notifications_enabled' => 1];
+        $r['notifications_enabled'] = (bool) $r['notifications_enabled'];
+        return [200, ['settings' => $r]];
+    }
+
+    /** The person's display name. Their email address is Clerk's (it is the sign-in), so it is not editable here. */
+    private function saveProfile(array $user, array $in): array
+    {
+        $name = Input::optStr($in, 'full_name', 120);
+        $this->ctx->pdo->prepare('UPDATE users SET full_name = ? WHERE id = ?')->execute([$name, $user['id']]);
+        return [200, ['user' => ['id' => $user['id'], 'full_name' => $name]]];
     }
 
     private function saveSettings(array $user, array $in): array
@@ -38,6 +50,12 @@ final class Account implements Module
                 }
                 $set[$k] = $in[$k];
             }
+        }
+        if (array_key_exists('notifications_enabled', $in)) {
+            if (!is_bool($in['notifications_enabled'])) {
+                throw HttpError::invalid('notifications_enabled must be true or false');
+            }
+            $set['notifications_enabled'] = $in['notifications_enabled'] ? 1 : 0;
         }
         if ($set === []) {
             return $this->getSettings($user);
@@ -84,4 +102,31 @@ final class Account implements Module
         }, $q->fetchAll());
         return [200, ['entries' => $rows, 'next_before_id' => count($rows) === $limit ? (int) end($rows)['id'] : null]];
     }
+
+    /** What the browser may record about itself: exports and reviews it performed (the Postgres log_audit_event). */
+    private const CLIENT_ACTIONS = ['gdpr.export', 'report.exported', 'timesheet.exported', 'staff.exported', 'timesheet.amended', 'leave.reviewed'];
+
+    /** Any member records an action they took, attributed to them. Only the listed actions, small metadata, rate limited. */
+    private function record(array $user, array $in, string $ip, string $o): array
+    {
+        $pdo = $this->ctx->pdo;
+        Scope::membership($pdo, $user['id'], $o);
+        $action = Input::str($in, 'action');
+        if (!in_array($action, self::CLIENT_ACTIONS, true)) {
+            throw HttpError::invalid('That action cannot be recorded from the app');
+        }
+        $type = Input::optStr($in, 'entity_type', 40) ?? 'organisations';
+        $id = Input::optStr($in, 'entity_id', 36);
+        if ($id !== null && preg_match('/^[0-9a-f-]{36}$/', $id) !== 1) {
+            throw HttpError::invalid('entity_id must be an id');
+        }
+        $meta = $in['metadata'] ?? [];
+        if (!is_array($meta) || strlen((string) json_encode($meta)) > 2000) {
+            throw HttpError::invalid('metadata must be an object of at most 2000 bytes');
+        }
+        $this->ctx->limits->hit('client-audit', $user['id'], 120, 3600);
+        \RotaFlow\Audit::log($pdo, $o, $user['id'], $action, $type, $id, $meta, 'info', 'org', $ip);
+        return [201, ['ok' => true]];
+    }
+
 }

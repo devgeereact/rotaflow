@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabase';
+import { activeOrgPath, api, orgPath, seg } from '@/lib/api';
+import { listOrgMembers } from '@/services/orgService';
 
 /**
  * Temporary managerial cover (CAP-090, `0106`).
@@ -25,22 +26,29 @@ export interface Delegation {
 
 /** Every delegation in the organisation, newest first. */
 export async function listDelegations(orgId: string): Promise<Delegation[]> {
-  const { data, error } = await supabase
-    .from('role_delegations')
-    .select('id, from_user_id, to_user_id, starts_at, ends_at, note, revoked_at')
-    .eq('org_id', orgId)
-    .order('starts_at', { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    fromUserId: row.from_user_id,
-    toUserId: row.to_user_id,
-    startsAt: row.starts_at,
-    endsAt: row.ends_at,
-    note: row.note,
-    revokedAt: row.revoked_at,
-  }));
+  // The API lists live and future cover only; ended and revoked cover is in the audit trail.
+  const r = await api.get<{
+    delegations: {
+      id: string;
+      from_user_id: string;
+      to_user_id: string;
+      starts_at: string;
+      ends_at: string;
+      note: string | null;
+      revoked_at: string | null;
+    }[];
+  }>(orgPath(orgId, '/delegations'));
+  return r.delegations
+    .map((row) => ({
+      id: row.id,
+      fromUserId: row.from_user_id,
+      toUserId: row.to_user_id,
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
+      note: row.note,
+      revokedAt: row.revoked_at,
+    }))
+    .sort((a, b) => b.startsAt.localeCompare(a.startsAt));
 }
 
 /**
@@ -57,20 +65,21 @@ export async function delegateRole(
   until: string,
   note?: string,
 ): Promise<string> {
-  const { data, error } = await supabase.rpc('delegate_role', {
-    p_org: orgId,
-    p_to: toUserId,
-    p_until: until,
-    p_note: note ?? null,
+  const member = (await listOrgMembers(orgId)).find(
+    (m) => m.user_id === toUserId && m.status === 'active',
+  );
+  if (!member) throw new Error('That person is not in this organisation.');
+  const r = await api.post<{ id: string }>(orgPath(orgId, '/delegations'), {
+    membership_id: member.id,
+    ends_at: until,
+    note: note ?? null,
   });
-  if (error) throw error;
-  return data;
+  return r.id;
 }
 
 /** End cover early. The person who arranged it, or any real manager. */
 export async function revokeDelegation(id: string): Promise<void> {
-  const { error } = await supabase.rpc('revoke_delegation', { p_id: id });
-  if (error) throw error;
+  await api.post(activeOrgPath(`/delegations/${seg(id)}/revoke`));
 }
 
 /** Live right now: started, not ended, not revoked. */

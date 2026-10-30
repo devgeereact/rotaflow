@@ -4,6 +4,7 @@ import { createContext, useCallback, useMemo, useState, type ReactNode } from 'r
 import { useAuth } from '@/hooks/useAuth';
 import { createOrganisation } from '@/services/orgService';
 import { ACTIVE_ORG_STORAGE_KEY } from '@/lib/session';
+import { setActiveOrgId as setApiActiveOrg } from '@/lib/api';
 import type { MembershipRole, PlatformRole } from '@/types';
 
 export interface OrgMembershipSummary {
@@ -107,6 +108,9 @@ export function OrgProvider({ children }: { children: ReactNode }): JSX.Element 
       refresh,
     };
   }, [me, activeOrgId, switchOrg, authLoading, refreshing, meFailed, createOrg, refresh]);
+
+  // Services whose callers pass only a row id address the active organisation (lib/api.ts activeOrgPath).
+  setApiActiveOrg(value.orgId);
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
 }
