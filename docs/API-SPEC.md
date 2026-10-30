@@ -564,3 +564,13 @@ Placeholders: `{a}` platform announcement, `{i}` invoice.
 | `GET /orgs/{o}/invoices/{i}/credits` | owner | The credits on the organisation's own invoice |
 | `GET /platform/audit[?scope&actor&severity&q&from&to&limit&offset]` | owner, admin, support | The trail across organisations: `scope=platform` or an organisation id; severity is a comma list |
 
+### Slice S8c-2: photos and templates
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `POST /orgs/{o}/staff/{s}/photo` `{data: base64}` | the person, owner, manager | JPEG, PNG or WebP up to 2 MB, judged by its bytes (this route accepts a body up to 3 MiB). 413 `photo_too_large`, 415 `photo_type` |
+| `POST /orgs/{o}/staff/{s}/photo/delete` | the person, owner, manager | Clears it; the file is removed by cron |
+| `GET /orgs/{o}/staff/{s}/photo-link` | any member | `{url, expires_at}` good for an hour, or `{url: null}` |
+| `GET /api/files?b&p&e&s` | public, signed | The picture itself; 404 for any bad, expired or stale link |
+| `GET /platform/notification-templates`, `POST .../` `{key, subject, body, org_id?}`, `POST .../delete` `{key, org_id?}` | read: owner, admin, support; write: owner, admin | Email wording, platform-wide or for one organisation (which wins). Placeholders: `org_name`, `staff_name`, `title`, `body`, `body_line`, `app_url` |
+

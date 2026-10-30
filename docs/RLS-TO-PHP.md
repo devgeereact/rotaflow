@@ -286,3 +286,13 @@ Gating is three independent checks, all failing closed, all before any outside c
 | audit_logs read (`audit_logs_select`) | Operational staff read all; a tenant owner reads their organisation's non-platform-only entries; finance reads none | `PlatformAudit::search` for staff (filters: scope, actor, severity, search, from, to; newest first with an id tie-break); organisation routes for owners | 200 | DONE. The audit table keeps no snapshot of the actor's email or name (a deleted person is `null`, not retained personal data) |
 | `platform_user_auth_facts`, `revoke_my_other_sessions`, `my_sessions` | Read Supabase's own auth tables | **Not carried over.** Clerk owns verification, sessions, MFA and bans | n/a | DONE (removed) |
 
+## S8c-2: staff photos in the private store, and notification templates
+
+| Table or function | Postgres rule (final) | PHP check | Test | Status |
+| ----------------- | --------------------- | --------- | ---- | ------ |
+| `staff-photos` bucket and its `storage.objects` policies | Private; 2 MiB; JPEG, PNG, WebP; the person or an owner or manager writes; any member reads; signed URL for an hour | `Photos::upload` (the person, or owner/manager; judged by the bytes, not the name; `requireWritable`), `remove`, `link` (any member), `serve` (public route, authorised by an HMAC signature over bucket, path and expiry) | 210 incl. 6 mutations | DONE. **Tightened:** a link also dies the moment the picture is replaced, removed or erased, not only at expiry |
+| `staff_profiles.photo_path` replace or clear queues the old object | Trigger | Explicit `storage_deletions` insert in the same transaction | 210 | DONE |
+| `notification_templates` write | Platform admins only (no write path existed in the app) | `Templates::save`, `delete` for owner and admin; support reads; only the placeholders the Dispatcher fills are accepted; a subject is one line | 210 incl. that the Dispatcher uses what is saved | DONE |
+
+Documents (`staff-documents`) use the same store and arrive with the Compliance module (S10), together with the document-expiry alert; that is the one S8 item deliberately left for S10, because it needs the `documents` table that module creates.
+
