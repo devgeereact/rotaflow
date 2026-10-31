@@ -36,8 +36,11 @@ export function SupportAccessBanner(): JSX.Element | null {
   const [sessions, setSessions] = useState<SupportAccessSession[]>([]);
   const [now, setNow] = useState(() => new Date());
 
+  // The API lists an organisation's support sessions to its owners and managers only (403 for staff, docs/API-SPEC.md),
+  // so nobody else asks: a refused request every minute on every page is noise, not a banner.
+  const canRead = role === 'owner' || role === 'manager';
   const load = useCallback(async (): Promise<void> => {
-    if (!orgId) {
+    if (!orgId || !canRead) {
       setSessions([]);
       return;
     }
@@ -49,7 +52,7 @@ export function SupportAccessBanner(): JSX.Element | null {
       // console remains the authoritative record either way.
       setSessions([]);
     }
-  }, [orgId]);
+  }, [orgId, canRead]);
 
   useEffect(() => {
     void load();
