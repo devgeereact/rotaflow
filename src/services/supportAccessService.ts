@@ -19,16 +19,18 @@ import type { SupportAccessScope, SupportAccessSession } from '@/lib/supportAcce
 interface SessionRow {
   id: string;
   org_id: string;
-  org_name: string | null;
-  admin_user_id: string;
-  admin_email: string | null;
+  org_name?: string | null;
+  /** Absent for staff, who are sent the live sessions with only what the banner shows. */
+  admin_user_id?: string;
+  admin_email?: string | null;
+  admin_name?: string | null;
   reason: string;
   case_ref: string;
   scope: string;
   granted_at: string;
   expires_at: string;
-  revoked_at: string | null;
-  revoke_reason: string | null;
+  revoked_at?: string | null;
+  revoke_reason?: string | null;
 }
 
 function toSession(row: SessionRow): SupportAccessSession {
@@ -36,15 +38,15 @@ function toSession(row: SessionRow): SupportAccessSession {
     id: row.id,
     orgId: row.org_id,
     orgName: row.org_name ?? 'Unknown organisation',
-    adminUserId: row.admin_user_id,
-    adminName: row.admin_email ?? 'Platform administrator',
+    adminUserId: row.admin_user_id ?? '',
+    adminName: row.admin_name ?? row.admin_email ?? 'Platform administrator',
     reason: row.reason,
     caseRef: row.case_ref,
     scope: row.scope === 'read_write' ? 'read_write' : 'read',
     grantedAt: row.granted_at,
     expiresAt: row.expires_at,
-    revokedAt: row.revoked_at,
-    revokeReason: row.revoke_reason,
+    revokedAt: row.revoked_at ?? null,
+    revokeReason: row.revoke_reason ?? null,
   };
 }
 

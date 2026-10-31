@@ -4,9 +4,8 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-// Local-live walk (31 Oct 2026): the banner asked `GET support-sessions` for every member on every page, every minute, and the
-// API answers that list to owners and managers only (403 for staff, by the S8a decision). The banner must ask only for the
-// roles that may read it.
+// Owner decision (31 Oct 2026), reversing the local-live walk's interim fix: every member sees that RotaFlow support is inside
+// their organisation, as on Supabase. The API answers staff with the live sessions only (suite 150); only an owner may end one.
 let role: 'owner' | 'manager' | 'staff' = 'staff';
 const listActiveSessionsForOrg = vi.fn(() =>
   Promise.resolve([
@@ -42,17 +41,25 @@ afterEach(() => {
 });
 
 describe('SupportAccessBanner', () => {
-  it('never asks for the sessions as staff', async () => {
+  it.each(['owner', 'manager', 'staff'] as const)(
+    'shows a live session to the %s',
+    async (r) => {
+      role = r;
+      render(<SupportAccessBanner />);
+      expect(await screen.findByRole('status')).toBeTruthy();
+      expect(screen.getByText(/Sue Support/)).toBeTruthy();
+      expect(listActiveSessionsForOrg).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('offers to end the session to the owner only', async () => {
     role = 'staff';
     render(<SupportAccessBanner />);
-    await new Promise((r) => setTimeout(r, 20));
-    expect(listActiveSessionsForOrg).not.toHaveBeenCalled();
-  });
-
-  it.each(['owner', 'manager'] as const)('shows a live session to the %s', async (r) => {
-    role = r;
+    await screen.findByRole('status');
+    expect(screen.queryByRole('button', { name: 'End this session' })).toBeNull();
+    cleanup();
+    role = 'owner';
     render(<SupportAccessBanner />);
-    expect(await screen.findByRole('status')).toBeTruthy();
-    expect(listActiveSessionsForOrg).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole('button', { name: 'End this session' })).toBeTruthy();
   });
 });

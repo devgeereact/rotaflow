@@ -500,11 +500,22 @@ final class Console implements Module
         return [200, ['support_access_allowed' => $in['allowed']]];
     }
 
-    /** Who has been, or is, inside this organisation: owners and managers. */
+    /** Who has been, or is, inside this organisation: owners and managers see the history; staff see the live sessions. */
     private function orgSessions(array $user, array $in, string $ip, string $o): array
     {
         $m = Scope::membership($this->ctx->pdo, $user['id'], $o);
-        Scope::require($m, Scope::MANAGERS);
+        if (!in_array($m['effective_role'], Scope::MANAGERS, true)) {
+            // Every member is told that RotaFlow support is inside their organisation, as on Supabase (owner decision,
+            // 31 Oct 2026): staff get the live sessions only, with what the banner shows (the agent's name, else their
+            // address, as the old banner did) and no history, no agent id, no revoke reason.
+            $q = $this->ctx->pdo->prepare(
+                "SELECT s.id, s.org_id, COALESCE(NULLIF(u.full_name, ''), u.email) AS admin_name, s.case_ref, s.reason, s.scope, s.granted_at, s.expires_at
+                   FROM support_access_sessions s JOIN users u ON u.id = s.admin_user_id
+                  WHERE s.org_id = ? AND s.revoked_at IS NULL AND s.expires_at > UTC_TIMESTAMP() ORDER BY s.granted_at DESC LIMIT 10"
+            );
+            $q->execute([$o]);
+            return [200, ['sessions' => $q->fetchAll()]];
+        }
         return [200, ['support_access_allowed' => (bool) $this->ctx->pdo->query("SELECT support_access_allowed FROM organisations WHERE id = '$o'")->fetchColumn(), 'sessions' => $this->sessionRows('s.org_id = ?', [$o], 50)]];
     }
 
@@ -544,7 +555,7 @@ final class Console implements Module
     private function sessionRows(string $where, array $args, int $limit): array
     {
         $q = $this->ctx->pdo->prepare(
-            "SELECT s.id, s.org_id, o.name AS org_name, s.admin_user_id, u.email AS admin_email, s.case_ref, s.reason, s.scope, s.granted_at, s.expires_at, s.revoked_at, s.revoke_reason,
+            "SELECT s.id, s.org_id, o.name AS org_name, s.admin_user_id, u.email AS admin_email, COALESCE(NULLIF(u.full_name, ''), u.email) AS admin_name, s.case_ref, s.reason, s.scope, s.granted_at, s.expires_at, s.revoked_at, s.revoke_reason,
                     CASE WHEN s.revoked_at IS NOT NULL THEN 'revoked' WHEN s.expires_at <= UTC_TIMESTAMP() THEN 'expired' ELSE 'active' END AS status
                FROM support_access_sessions s JOIN organisations o ON o.id = s.org_id JOIN users u ON u.id = s.admin_user_id
               WHERE $where ORDER BY s.granted_at DESC LIMIT $limit"

@@ -511,7 +511,7 @@ Placeholders: `{u}` user, `{s}` support session, `{c}` support case, `{i}` incid
 | `POST /platform/orgs/{o}/support-sessions` `{reason, case_ref, scope, minutes}` | owner, admin, support | Needs the organisation's consent; 409 `session_open` if one is open |
 | `GET /platform/support-sessions`, `POST /platform/support-sessions/{s}/revoke` | owner, admin, support | List; end one (own, or any if owner or admin) |
 | `POST /orgs/{o}/support-access` `{allowed}` | owner (a real owner) | The customer's consent. Turning it off ends every open session |
-| `GET /orgs/{o}/support-sessions`, `POST .../{s}/revoke` | owner, manager read; owner end | Who has been inside, why, and for how long |
+| `GET /orgs/{o}/support-sessions`, `POST .../{s}/revoke` | owner, manager: the history and `support_access_allowed`; staff: the live sessions only (`id, org_id, admin_name, case_ref, reason, scope, granted_at, expires_at`, for the banner, as on Supabase); owner end | Who has been inside, why, and for how long |
 | `POST /support/cases` `{subject, body, category, priority?, org_id?, requester_email?}` | signed in | `requester_email` is honoured for staff only. Returns `CASE-4120`-style `reference` |
 | `GET /support/cases`, `GET /support/cases/{c}` | the requester; an owner of the case's organisation; staff (who also see internal notes and the assignee) | Messages and the SLA state (`on_track|due_soon|met|breached`, minutes remaining) |
 | `POST /support/cases/{c}/reply` `{body, internal?}` | as above; `internal` is staff only | The first public staff reply stamps the response and moves open to pending; the requester is notified |

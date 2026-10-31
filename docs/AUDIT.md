@@ -898,3 +898,19 @@ cross-origin. No change made to `.htaccess`.
 0 skipped** in 6.1 minutes (actions 7, csp 4, flags 6, screens 254 = 37 screens x 3 roles + 16 console screens, each
 with the flags off and on). `pnpm run check` exit 0 on the final tree (PHP 2179 assertions, 0 failed). Each fix has a
 test that failed before it (named in the table) except the console Settings page, whose fix removes the calls.
+
+## 2026-10-31: Walk follow-ups (owner decisions), on branch `cutover/data-move`
+
+Two OPEN decisions from the local-live walk above, decided by the owner on 31 October 2026 (relayed by the coordinator), each
+its own commit.
+
+**1. Staff see the support banner again, as on Supabase.** `GET /orgs/{o}/support-sessions` answers staff (any member below
+manager) with the live sessions only: `id, org_id, admin_name, case_ref, reason, scope, granted_at, expires_at`, where
+`admin_name` is the agent's name, else their address, exactly what the old banner showed. No history, no agent id or address
+field, no revoke reason, no consent switch; owners and managers get the full history as before (now with `admin_name` too,
+so the banner names the agent rather than showing an address). The banner asks for every role again; only an owner sees
+"End this session". Evidence: suite `150` (+4 checks: staff see the live session, only the banner's fields, an ended
+session disappears for staff while managers keep the history, another organisation's member still gets 404); vitest
+`SupportAccessBanner.test.tsx` (owner, manager and staff each see it; the end button for the owner only). Mutation checks:
+dropping the live-only filter fails "an ended session disappears"; adding `admin_user_id`/`admin_email` to the staff
+shape fails "only what the banner shows".

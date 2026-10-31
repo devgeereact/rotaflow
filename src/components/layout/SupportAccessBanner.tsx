@@ -36,11 +36,10 @@ export function SupportAccessBanner(): JSX.Element | null {
   const [sessions, setSessions] = useState<SupportAccessSession[]>([]);
   const [now, setNow] = useState(() => new Date());
 
-  // The API lists an organisation's support sessions to its owners and managers only (403 for staff, docs/API-SPEC.md),
-  // so nobody else asks: a refused request every minute on every page is noise, not a banner.
-  const canRead = role === 'owner' || role === 'manager';
+  // Every member asks, as on Supabase (owner decision, 31 Oct 2026): staff are sent the live sessions only, with what
+  // this banner shows (docs/API-SPEC.md); owners and managers also get the history the Settings page uses.
   const load = useCallback(async (): Promise<void> => {
-    if (!orgId || !canRead) {
+    if (!orgId) {
       setSessions([]);
       return;
     }
@@ -52,7 +51,7 @@ export function SupportAccessBanner(): JSX.Element | null {
       // console remains the authoritative record either way.
       setSessions([]);
     }
-  }, [orgId, canRead]);
+  }, [orgId]);
 
   useEffect(() => {
     void load();

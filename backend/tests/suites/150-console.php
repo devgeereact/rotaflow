@@ -94,7 +94,10 @@ $sess = $r['id'] ?? '';
 check('support opens a read session', $s === 201 && $r['scope'] === 'read', json_encode($r));
 check('only one open session per person per organisation', $ask('sue')[1]['error']['code'] === 'session_open');
 check('the organisation\'s own people can see who is inside, and the reason', ($l = call($api, 'mark', 'GET', "/orgs/$org/support-sessions")[1]) && $l['sessions'][0]['admin_email'] === 'sue@example.test' && $l['sessions'][0]['status'] === 'active' && str_contains($l['sessions'][0]['reason'], 'missed clock-in') && $l['support_access_allowed'] === true);
-check('staff members cannot see that list', (function () use ($api, $pdo, $org): bool { call($api, 'sam', 'GET', '/me'); $pdo->prepare("INSERT INTO memberships (id, org_id, user_id, role, status) SELECT ?, ?, id, 'staff', 'active' FROM users WHERE email = 'sam@example.test'")->execute([Db::uuid(), $org]); return call($api, 'sam', 'GET', "/orgs/$org/support-sessions")[0] === 403; })());
+$staffView = (function () use ($api, $pdo, $org): array { call($api, 'sam', 'GET', '/me'); $pdo->prepare("INSERT INTO memberships (id, org_id, user_id, role, status) SELECT ?, ?, id, 'staff', 'active' FROM users WHERE email = 'sam@example.test'")->execute([Db::uuid(), $org]); return call($api, 'sam', 'GET', "/orgs/$org/support-sessions"); })();
+check('staff members see that support is inside, as on Supabase (owner decision)', $staffView[0] === 200 && count($staffView[1]['sessions']) === 1 && $staffView[1]['sessions'][0]['case_ref'] === 'CASE-1001' && str_contains($staffView[1]['sessions'][0]['reason'], 'missed clock-in') && $staffView[1]['sessions'][0]['admin_name'] !== '', json_encode($staffView));
+check('staff get only what the banner shows: no agent id, no history, no consent switch', !array_key_exists('admin_user_id', $staffView[1]['sessions'][0]) && !array_key_exists('revoke_reason', $staffView[1]['sessions'][0]) && !array_key_exists('admin_email', $staffView[1]['sessions'][0]) && !array_key_exists('support_access_allowed', $staffView[1]));
+check('staff of another organisation still get 404', call($api, 'zed', 'GET', "/orgs/$org/support-sessions")[0] === 404);
 $siteId = call($api, 'olga', 'GET', "/orgs/$org/locations")[1]['locations'][0]['id'];
 
 // With a live session the person reads as a manager would, and cannot write.
@@ -123,6 +126,7 @@ unset($wrote);
 // Read-write: acts as a manager, still never an owner.
 check('a platform admin may revoke a colleague\'s session; the holder may revoke their own', call($api, 'adam', 'POST', "/platform/support-sessions/$sess/revoke", ['reason' => 'done'])[0] === 200 && call($api, 'sue', 'GET', "/orgs/$org/locations")[0] === 404);
 check('revoking again is harmless', call($api, 'sue', 'POST', "/platform/support-sessions/$sess/revoke")[1]['already_ended'] === true);
+check('an ended session disappears from the staff view, while managers keep the history', call($api, 'sam', 'GET', "/orgs/$org/support-sessions")[1]['sessions'] === [] && count(call($api, 'mark', 'GET', "/orgs/$org/support-sessions")[1]['sessions']) >= 1);
 [$s, $r] = $ask('sue', ['scope' => 'read_write']);
 check('a read_write session may write like a manager', $s === 201 && call($api, 'sue', 'POST', "/orgs/$org/locations", ['name' => 'Fixed by support'])[0] === 201 && call($api, 'sue', 'POST', "/orgs/$org/support-access", ['allowed' => false])[0] === 403);
 $rw = $r['id'];
