@@ -200,7 +200,7 @@ $meta = count($metas) === 1 ? $metas[0] : $metas;
 check('mark: audited once, with dates and counts only (no names, no staff ids)', $audits() === $a0 + 1 && $meta === ['period_start' => '2026-10-19', 'period_end' => '2026-10-25', 'rows' => 3, 'marked' => 2, 'already_exported' => 1], json_encode($meta));
 [$s, $r] = call($api, 'mark', 'POST', "$TS/export", $wk);
 check('mark: idempotent: again marks nothing, every row says exported, the counts say so', $s === 200 && array_column(array_slice($csvRows((string) $r['__raw']['body']), 1), 7) === ['exported', 'exported', 'exported'] && ($r['__raw']['headers'] ?? null) === ['X-RotaFlow-Marked-Exported' => '0', 'X-RotaFlow-Already-Exported' => '3'] && $audits() === $a0 + 2);
-check('mark: an exported period stays locked against a new submission', call($api, 'sam', 'POST', "$TS/submit", ['period_start' => '2026-10-19', 'period_end' => '2026-10-25', 'total_minutes' => 1])[1]['error']['code'] === 'timesheet_locked');
+check('mark: an exported period stays locked against a new submission (409 already_exported with the flag on)', call($api, 'sam', 'POST', "$TS/submit", ['period_start' => '2026-10-19', 'period_end' => '2026-10-25', 'total_minutes' => 1])[1]['error']['code'] === 'already_exported');
 check('mark: the owner may too; the GET afterwards shows them exported', call($api, 'olga', 'POST', "$TS/export", ['period_start' => '2026-10-26', 'period_end' => '2026-11-01'])[1]['__raw']['headers']['X-RotaFlow-Marked-Exported'] === '1' && $status($staff['sam'], '2026-10-26') === 'exported' && str_contains((string) call($api, 'mark', 'GET', "$TS/export?period_start=2026-10-26&period_end=2026-11-01")[1]['__raw']['body'], ',exported,'));
 check('mark: an empty range marks nothing and is just the header', call($api, 'mark', 'POST', "$TS/export", ['period_start' => '2027-01-04', 'period_end' => '2027-01-10'])[1]['__raw']['headers'] === ['X-RotaFlow-Marked-Exported' => '0', 'X-RotaFlow-Already-Exported' => '0']);
 
@@ -246,6 +246,49 @@ $lock->rollBack();
 $r = $collect($h);
 check('concurrency: the marking export waits on the organisation lock before it locks the period, then marks it', $waiting && $rowFree && $stillApproved && $r[0] === 200 && ($r[1]['__raw']['headers']['X-RotaFlow-Marked-Exported'] ?? '') === '1' && $status($staff['sam'], '2026-11-16') === 'exported', json_encode([$waiting, $rowFree, $stillApproved, $r[0], $r[1]['__raw']['headers'] ?? $r[1]]));
 
+// ---- an exported period is final until an owner reopens it (owner decision, 31 Oct 2026) -----------------------------------------------------------
+$EXP = 'This period has been exported to payroll. Ask an owner to reopen it if it must change.';
+$fig = static fn (string $who, string $from): string => (string) $GLOBALS['pdo']->query("SELECT CONCAT(status, '/', total_minutes, '/', version) FROM timesheets WHERE org_id = '{$GLOBALS['org']}' AND staff_profile_id = '$who' AND period_start = '$from'")->fetchColumn();
+$samWeek = (string) $pdo->query("SELECT id FROM timesheets WHERE staff_profile_id = '{$staff['sam']}' AND period_start = '2026-10-19'")->fetchColumn();
+[$s, $r] = call($api, 'mark', 'POST', "$TS/approve", $wk + ['approvals' => [['staff_profile_id' => $staff['sam'], 'total_minutes' => 9999]]]);
+check('final: approving an exported period again is 409 already_exported with the plain sentence; nothing changes', $s === 409 && $r['error']['code'] === 'already_exported' && $r['error']['message'] === $EXP && $fig($staff['sam'], '2026-10-19') === 'exported/2430/1', json_encode($r));
+[$s, $r] = call($api, 'olga', 'POST', "$TS/approve", $wk + ['approvals' => [['staff_profile_id' => $staff['mark'], 'total_minutes' => 600], ['staff_profile_id' => $staff['sam'], 'total_minutes' => 1]]]);
+check('final: a batch with one exported period is refused whole (the submitted one beside it is not approved either), even for the owner', $s === 409 && $r['error']['code'] === 'already_exported' && $fig($staff['mark'], '2026-10-19') === 'submitted/555/0', json_encode($r));
+check('final: approving a period that is not exported still works', call($api, 'mark', 'POST', "$TS/approve", ['period_start' => '2026-11-30', 'period_end' => '2026-12-06', 'approvals' => [['staff_profile_id' => $staff['sam'], 'total_minutes' => 30]]])[0] === 200 && $fig($staff['sam'], '2026-11-30') === 'approved/30/1');
+[$s, $r] = call($api, 'mark', 'POST', "$TS/$samWeek/reopen");
+check('final: a manager cannot reopen an exported period (409 already_exported, it stays exported)', $s === 409 && $r['error']['code'] === 'already_exported' && $fig($staff['sam'], '2026-10-19') === 'exported/2430/1', json_encode($r));
+check('final: staff 403 and a stranger 404 on reopen', call($api, 'sam', 'POST', "$TS/$samWeek/reopen", ['reason' => 'Please change it'])[0] === 403 && call($api, 'zed', 'POST', "$TS/$samWeek/reopen", ['reason' => 'Please change it'])[0] === 404);
+check('final: the owner must give a reason of 3 to 500 characters (none, 2, 501: 422, nothing changes)', call($api, 'olga', 'POST', "$TS/$samWeek/reopen")[0] === 422 && call($api, 'olga', 'POST', "$TS/$samWeek/reopen", ['reason' => ' ab '])[0] === 422 && call($api, 'olga', 'POST', "$TS/$samWeek/reopen", ['reason' => str_repeat('x', 501)])[0] === 422 && $fig($staff['sam'], '2026-10-19') === 'exported/2430/1' && (int) $pdo->query('SELECT COUNT(*) FROM timesheet_reopenings')->fetchColumn() === 0);
+// A clock correction inside an exported period does not change its status or figure; it only raises the recalculation flag, as before.
+$patIn = (string) $pdo->query("SELECT id FROM clock_events WHERE staff_profile_id = '{$staff['pat']}' AND event_at = '2026-10-20 09:20:00.000'")->fetchColumn();
+$pdo->exec("UPDATE timesheets SET recalculation_required_at = NULL WHERE staff_profile_id = '{$staff['pat']}' AND period_start = '2026-10-19'");
+check('final: a clock correction in an exported period keeps it exported with its figure, and flags recalculation', call($api, 'mark', 'POST', "/orgs/$org/clock-events/$patIn/correct", ['reason' => 'Arrived at 09:15', 'event_at' => '2026-10-20T09:15:00Z'])[0] === 200 && $fig($staff['pat'], '2026-10-19') === 'exported/61/1' && $pdo->query("SELECT recalculation_required_at IS NOT NULL FROM timesheets WHERE staff_profile_id = '{$staff['pat']}' AND period_start = '2026-10-19'")->fetchColumn() == 1);
+$ra0 = (int) $pdo->query("SELECT COUNT(*) FROM audit_logs WHERE org_id = '$org' AND action = 'timesheet.export_reopened'")->fetchColumn();
+[$s, $r] = call($api, 'olga', 'POST', "$TS/$samWeek/reopen", ['reason' => 'Sam Smith worked an extra Sunday shift we missed']);
+check('reopen: the owner moves it exported -> approved, version + 1, the approval kept', $s === 200 && $r['timesheet']['status'] === 'approved' && $r['timesheet']['version'] === 2 && $r['timesheet']['total_minutes'] === 2430 && $r['timesheet']['approved_by'] !== null, json_encode($r));
+$reo = $pdo->query("SELECT reason, from_status, to_status, version_after, timesheet_id FROM timesheet_reopenings")->fetchAll();
+check('reopen: the reason is kept with the period (timesheet_reopenings), once', count($reo) === 1 && $reo[0]['reason'] === 'Sam Smith worked an extra Sunday shift we missed' && $reo[0]['from_status'] === 'exported' && $reo[0]['to_status'] === 'approved' && (int) $reo[0]['version_after'] === 2 && $reo[0]['timesheet_id'] === $samWeek, json_encode($reo));
+$rm = json_decode((string) $pdo->query("SELECT metadata FROM audit_logs WHERE org_id = '$org' AND action = 'timesheet.export_reopened'")->fetchColumn(), true);
+check('reopen: audited once without personal data (dates, from, to, version; not the reason, no names)', (int) $pdo->query("SELECT COUNT(*) FROM audit_logs WHERE org_id = '$org' AND action = 'timesheet.export_reopened'")->fetchColumn() === $ra0 + 1 && $rm === ['period_start' => '2026-10-19', 'period_end' => '2026-10-25', 'from' => 'exported', 'to' => 'approved', 'version' => 2], json_encode($rm));
+check('reopen: the corrected figure is then approved (version 3) and the next marking export sends it under the new version', call($api, 'mark', 'POST', "$TS/approve", $wk + ['approvals' => [['staff_profile_id' => $staff['sam'], 'total_minutes' => 2490]]])[0] === 200 && $fig($staff['sam'], '2026-10-19') === 'approved/2490/3' && call($api, 'mark', 'POST', "$TS/export", $wk)[1]['__raw']['headers']['X-RotaFlow-Marked-Exported'] === '1' && $fig($staff['sam'], '2026-10-19') === 'exported/2490/3');
+// With the flag on, approval takes the organisation lock first (as the marking export does), so the two are ordered.
+$lock = Db::connect($dbConf);
+$lock->beginTransaction();
+// A shared lock: a plain insert's foreign-key check can share it; only the organisation lock (FOR UPDATE) has to wait.
+$lock->prepare('SELECT id FROM organisations WHERE id = ? LOCK IN SHARE MODE')->execute([$org]);
+$h = $spawn('mark', 'POST', "$TS/approve", microtime(true), ['period_start' => '2026-12-07', 'period_end' => '2026-12-13', 'approvals' => [['staff_profile_id' => $staff['sam'], 'total_minutes' => 45]]]);
+usleep(2500000);
+$waiting = proc_get_status($h[0])['running'];
+$lock->rollBack();
+$r = $collect($h);
+check('lock: with the flag on, an approval waits on the organisation lock, then goes through', $waiting && $r[0] === 200 && $fig($staff['sam'], '2026-12-07') === 'approved/45/1', json_encode([$waiting, $r[0]]));
+// An approval and a marking export of the same period at the same instant: whichever is first, the period ends exported with the figure
+// the file carried, never approved again after it was sent.
+$t0 = microtime(true) + 1.5;
+$res = array_map($collect, [$spawn('mark', 'POST', "$TS/approve", $t0, ['period_start' => '2026-12-07', 'period_end' => '2026-12-13', 'approvals' => [['staff_profile_id' => $staff['sam'], 'total_minutes' => 50]]]), $spawn('olga', 'POST', "$TS/export", $t0, ['period_start' => '2026-12-07', 'period_end' => '2026-12-13'])]);
+$sent = $csvRows((string) ($res[1][1]['__raw']['body'] ?? ''))[1][5] ?? null;
+check('race: approval and export at once end exported with the exported figure (approval 200 before, or 409 already_exported after)', $res[1][0] === 200 && in_array($res[0][0], [200, 409], true) && ($res[0][0] === 200 || ($res[0][1]['error']['code'] ?? '') === 'already_exported') && $fig($staff['sam'], '2026-12-07') === "exported/$sent/" . ($res[0][0] === 200 ? '2' : '1') && $sent === ($res[0][0] === 200 ? '50' : '45'), json_encode([$res[0][0], $res[0][1]['error'] ?? null, $sent, $fig($staff['sam'], '2026-12-07')]));
+
 $uid = static fn (string $n): string => (string) $GLOBALS['pdo']->query("SELECT id FROM users WHERE email = '$n@example.test'")->fetchColumn();
 call($api, 'sue', 'GET', '/me');
 $pdo->prepare("INSERT INTO platform_admins (user_id, role) VALUES (?, 'platform_support')")->execute([$uid('sue')]);
@@ -254,6 +297,23 @@ $pdo->prepare("INSERT INTO support_access_sessions (id, org_id, admin_user_id, r
 check('support: a live support session reads timesheets but cannot export payroll (403)', call($api, 'sue', 'GET', $TS . $week)[0] === 200 && call($api, 'sue', 'GET', "$TS/export$week")[0] === 403);
 call($api, 'mark', 'POST', "$TS/approve", ['period_start' => '2026-11-23', 'period_end' => '2026-11-29', 'approvals' => [['staff_profile_id' => $staff['sam'], 'total_minutes' => 60]]]);
 check('support: nor mark payroll exported (403 forbidden, nothing marked)', call($api, 'sue', 'POST', "$TS/export", ['period_start' => '2026-11-23', 'period_end' => '2026-11-29'])[1]['error']['code'] === 'forbidden' && $status($staff['sam'], '2026-11-23') === 'approved');
+check('support: nor reopen an exported period (403 forbidden, it stays exported)', call($api, 'sue', 'POST', "$TS/$samWeek/reopen", ['reason' => 'Asked to by the customer'])[1]['error']['code'] === 'forbidden' && str_starts_with($fig($staff['sam'], '2026-10-19'), 'exported/'));
 $flag(false);
 check('off again: the export is refused and the list loses its lines', call($api, 'mark', 'GET', "$TS/export$week")[1]['error']['code'] === 'feature_off' && array_keys(call($api, 'mark', 'GET', $TS . $week)[1]) === ['timesheets']);
 check('off again: the marking export is refused and marks nothing', call($api, 'mark', 'POST', "$TS/export", ['period_start' => '2026-11-23', 'period_end' => '2026-11-29'])[1]['error']['code'] === 'feature_off' && $status($staff['sam'], '2026-11-23') === 'approved');
+
+// ---- with the flag off, an exported period is handled exactly as before (S5): nothing new refuses it --------------------------------------------
+check('off: approving an exported period puts it back to approved with version + 1, as before (no already_exported)', call($api, 'mark', 'POST', "$TS/approve", ['period_start' => '2026-11-09', 'period_end' => '2026-11-15', 'approvals' => [['staff_profile_id' => $staff['pat'], 'total_minutes' => 250]]])[0] === 200 && $fig($staff['pat'], '2026-11-09') === 'approved/250/2');
+check('off: submitting over an exported period is timesheet_locked, as before', call($api, 'sam', 'POST', "$TS/submit", ['period_start' => '2026-10-26', 'period_end' => '2026-11-01', 'total_minutes' => 1])[1]['error']['code'] === 'timesheet_locked');
+$evilWeek = (string) $pdo->query("SELECT id FROM timesheets WHERE staff_profile_id = '$evil' AND period_start = '2026-10-19'")->fetchColumn();
+[$s, $r] = call($api, 'mark', 'POST', "$TS/$evilWeek/reopen");
+check('off: a manager reopens an exported period to open, without a reason, as before', $s === 200 && $r['timesheet']['status'] === 'open' && (int) $pdo->query('SELECT COUNT(*) FROM timesheet_reopenings')->fetchColumn() === 1, json_encode($r));
+$lock = Db::connect($dbConf);
+$lock->beginTransaction();
+$lock->prepare('SELECT id FROM organisations WHERE id = ? LOCK IN SHARE MODE')->execute([$org]);
+$h = $spawn('mark', 'POST', "$TS/approve", microtime(true), ['period_start' => '2026-12-14', 'period_end' => '2026-12-20', 'approvals' => [['staff_profile_id' => $staff['sam'], 'total_minutes' => 15]]]);
+$t1 = microtime(true);
+$r = $collect($h);
+$took = microtime(true) - $t1;
+$lock->rollBack();
+check('off: approval does not take the organisation lock (it answers while another connection holds a shared lock on it), as before', $r[0] === 200 && $took < 2.0, json_encode([$r[0], $took]));

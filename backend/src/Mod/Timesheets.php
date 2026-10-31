@@ -299,6 +299,9 @@ final class Timesheets implements Module
             $q = $pdo->prepare('SELECT id, status FROM timesheets WHERE org_id = ? AND staff_profile_id = ? AND period_start = ? AND period_end = ? FOR UPDATE');
             $q->execute([$o, $own, $from, $to]);
             $cur = $q->fetch();
+            if ($cur !== false && $cur['status'] === 'exported' && self::on($pdo, $o)) {
+                throw self::alreadyExported();
+            }
             if ($cur !== false && in_array($cur['status'], ['approved', 'exported'], true)) {
                 throw HttpError::conflict('timesheet_locked', 'That period has already been approved');
             }
@@ -331,8 +334,23 @@ final class Timesheets implements Module
             throw HttpError::invalid('approvals must be a list of 1 to ' . self::MAX_BATCH . ' entries');
         }
         $ids = [];
+        $tools = self::on($pdo, $o);
         $pdo->beginTransaction();
         try {
+            if ($tools) {
+                // Owner decision (31 Oct 2026): a period exported to payroll is not approved again (that would put it back to approved
+                // with a new figure and send it to payroll a second time). The organisation lock first, as the marking export takes it,
+                // so an approval and an export of the same period are ordered, never interleaved. Off, approval is exactly as before.
+                Cover::lockOrg($pdo, $o);
+                $people = array_values(array_filter(array_map(static fn (mixed $r): ?string => is_array($r) && is_string($r['staff_profile_id'] ?? null) ? $r['staff_profile_id'] : null, $rows)));
+                if ($people !== []) {
+                    $ex = $pdo->prepare("SELECT 1 FROM timesheets WHERE org_id = ? AND period_start = ? AND period_end = ? AND status = 'exported' AND staff_profile_id IN (" . implode(',', array_fill(0, count($people), '?')) . ') LIMIT 1 FOR UPDATE');
+                    $ex->execute([$o, $from, $to, ...$people]);
+                    if ($ex->fetchColumn() !== false) {
+                        throw self::alreadyExported();
+                    }
+                }
+            }
             $ok = $pdo->prepare('SELECT 1 FROM staff_profiles WHERE id = ? AND org_id = ?');
             $ins = $pdo->prepare(
                 "INSERT INTO timesheets (id, org_id, staff_profile_id, period_start, period_end, total_minutes, status, approved_by, approved_at, version)
@@ -369,10 +387,60 @@ final class Timesheets implements Module
         $m = Scope::membership($pdo, $user['id'], $o);
         Scope::require($m, Scope::MANAGERS);
         Scope::requireWritable($m);
-        $this->one($o, $t);
+        $cur = $this->one($o, $t);
+        if ($cur['status'] === 'exported' && self::on($pdo, $o)) {
+            return $this->reopenExported($m, $user, $in, $ip, $o, $t);
+        }
         $pdo->prepare("UPDATE timesheets SET status = 'open' WHERE id = ? AND org_id = ?")->execute([$t, $o]);
         Audit::log($pdo, $o, $user['id'], 'timesheet.reopened', 'timesheets', $t, [], 'warning', 'org', $ip);
         return [200, ['timesheet' => $this->present($this->one($o, $t))]];
+    }
+
+    /**
+     * Owner decision (31 Oct 2026), flag on: the deliberate path for a genuine correction to a period already exported to payroll. Owner
+     * only (a manager gets 409 already_exported, which tells them to ask an owner), never a support session, a reason of 3 to 500
+     * characters (kept in timesheet_reopenings, not in the audit log). exported -> approved with version + 1, so the corrected figure can be
+     * approved again and the next export carries it under a new version. One transaction, the organisation lock first (as export and
+     * approval), then the period, re-read: two owners reopening at once reopen once.
+     */
+    private function reopenExported(array $m, array $user, array $in, string $ip, string $o, string $t): array
+    {
+        $pdo = $this->ctx->pdo;
+        if (($m['support'] ?? null) !== null) {
+            throw HttpError::forbidden('Platform support cannot reopen payroll');
+        }
+        if ($m['effective_role'] !== 'owner') {
+            throw self::alreadyExported();
+        }
+        $reason = trim(is_string($in['reason'] ?? null) ? $in['reason'] : '');
+        if (\RotaFlow\Str::len($reason) < 3 || \RotaFlow\Str::len($reason) > 500) {
+            throw HttpError::invalid('Say why this exported period must change (3 to 500 characters)');
+        }
+        $pdo->beginTransaction();
+        try {
+            Cover::lockOrg($pdo, $o);
+            $q = $pdo->prepare('SELECT status, version, period_start, period_end FROM timesheets WHERE id = ? AND org_id = ? FOR UPDATE');
+            $q->execute([$t, $o]);
+            $row = $q->fetch() ?: throw HttpError::notFound();
+            if ($row['status'] !== 'exported') {
+                throw HttpError::conflict('not_exported', 'That period is no longer exported; it has already been reopened');
+            }
+            $version = (int) $row['version'] + 1;
+            $pdo->prepare("UPDATE timesheets SET status = 'approved', version = ? WHERE id = ? AND org_id = ? AND status = 'exported'")->execute([$version, $t, $o]);
+            $pdo->prepare("INSERT INTO timesheet_reopenings (id, org_id, timesheet_id, actor_user_id, reason, from_status, to_status, version_after) VALUES (?, ?, ?, ?, ?, 'exported', 'approved', ?)")
+                ->execute([Db::uuid(), $o, $t, $user['id'], $reason, $version]);
+            Audit::log($pdo, $o, $user['id'], 'timesheet.export_reopened', 'timesheets', $t, ['period_start' => (string) $row['period_start'], 'period_end' => (string) $row['period_end'], 'from' => 'exported', 'to' => 'approved', 'version' => $version], 'warning', 'org', $ip);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+        return [200, ['timesheet' => $this->present($this->one($o, $t))]];
+    }
+
+    private static function alreadyExported(): HttpError
+    {
+        return HttpError::conflict('already_exported', 'This period has been exported to payroll. Ask an owner to reopen it if it must change.');
     }
 
     // ---- helpers ---------------------------------------------------------------------------------------

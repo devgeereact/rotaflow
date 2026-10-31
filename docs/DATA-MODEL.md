@@ -609,7 +609,14 @@ period, as in S5.
   or not a whole number. Late, early finish and overtime are flagged only beyond it. Written by Settings, Policies.
   `breaks_are_paid` (already there) decides whether the scheduled break is deducted from both sides.
 - **Flag**: `feature_flags.timesheet_tools` is seeded **off**.
-- **Statuses**: the export reads `approved` and `exported` periods and changes neither; nothing sets `exported` yet.
+- **Statuses**: `GET timesheets/export` reads `approved` and `exported` periods and changes neither. Since the S13
+  follow-ups (owner decision 31 Oct 2026), `POST timesheets/export` moves the included `approved` periods to
+  `exported`, and with the flag on an `exported` period is final: approval and submission refuse it (409
+  `already_exported`) until an owner reopens it (`exported` -> `approved`, `version` + 1, with a reason).
+- **`timesheet_reopenings`** (`backend/migrations/020-timesheet-reopenings.sql`, additive): one row per owner reopening
+  of an exported period: `timesheet_id` (cascade with the period), `actor_user_id`, `reason` (3 to 500 characters,
+  kept here rather than in the audit log), `from_status`, `to_status`, `version_after`, `created_at`. Deleting the
+  period or the organisation cascades. Not in the organisation export yet (the PHP export is not built).
 - **Not copied from SiteRelay**: `ts_approvals` and `ts_events` (its per-line approve, adjust and unlock model):
   RotaFlow's period approvals, clock corrections (`clock_event_corrections`) and the recalculation flag cover it.
 

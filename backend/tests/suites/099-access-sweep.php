@@ -94,6 +94,15 @@ check("support: every cover, documents, compliance and payroll-export route refu
 $pdo->exec("UPDATE feature_flags SET enabled = 0, rollout = 0 WHERE flag_key = 'cover_tools'");
 check('support: cover refuses the session with the flag off too (403 forbidden, not feature_off)', call($api, 'sue', 'GET', "/orgs/$org/cover/overview")[1]['error']['code'] === 'forbidden');
 
+// An exported period (S13 follow-up, owner decision 31 Oct 2026): a support session can neither reopen it nor approve it again; a stranger
+// and a no-organisation user get 404; nothing about it changes.
+$sweepStaff = (string) $pdo->query("SELECT s.id FROM staff_profiles s JOIN users u ON u.id = s.user_id WHERE s.org_id = '$org' AND u.email = 'olga@example.test'")->fetchColumn();
+$sweepSheet = Db::uuid();
+$pdo->prepare("INSERT INTO timesheets (id, org_id, staff_profile_id, period_start, period_end, total_minutes, status, version) VALUES (?, ?, ?, '2026-10-19', '2026-10-25', 600, 'exported', 1)")->execute([$sweepSheet, $org, $sweepStaff]);
+$sheet = static fn (): string => (string) $GLOBALS['pdo']->query("SELECT CONCAT(status, '/', total_minutes, '/', version) FROM timesheets WHERE id = '$sweepSheet'")->fetchColumn();
+check('exported: a support session cannot reopen it (403 forbidden) or approve it again (409 already_exported)', call($api, 'sue', 'POST', "/orgs/$org/timesheets/$sweepSheet/reopen", ['reason' => 'The customer asked us to'])[1]['error']['code'] === 'forbidden' && call($api, 'sue', 'POST', "/orgs/$org/timesheets/approve", ['period_start' => '2026-10-19', 'period_end' => '2026-10-25', 'approvals' => [['staff_profile_id' => $sweepStaff, 'total_minutes' => 1]]])[1]['error']['code'] === 'already_exported' && $sheet() === 'exported/600/1');
+check('exported: a stranger and a no-organisation user get 404 on its reopen; nobody 401', call($api, 'zed', 'POST', "/orgs/$org/timesheets/$sweepSheet/reopen", ['reason' => 'Let me in please'])[0] === 404 && call($api, 'nobody1', 'POST', "/orgs/$org/timesheets/$sweepSheet/reopen", ['reason' => 'Let me in please'])[0] === 404 && call($api, '', 'POST', "/orgs/$org/timesheets/$sweepSheet/reopen")[0] === 401 && $sheet() === 'exported/600/1');
+
 // The open-shifts list's own eligibility (owner decision, 31 Oct 2026): it is about the caller only. A stranger and a no-organisation user
 // were refused above with no `open_shifts`; a live support session (no staff record here) sees the board but no eligibility (null on every
 // row), and a member with a staff record sees exactly one person's reasons: their own.

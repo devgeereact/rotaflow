@@ -450,14 +450,14 @@ owner's, per `docs/RESTRUCTURE-PLAN.md` ("R2 gate").
 | S12 Cover | `cover_tools` | `017-cover.sql`: `cover_absences`, `cover_requests`, `cover_applications`; `shift_swaps.shift_fingerprint`, `void_reason` | 14 cover routes; swaps changed with the flag on; the open-shift claim's eligibility check **always** on (owner decision) | 245, 250 |
 | S12d Two-way swaps | `two_way_swaps` (needs `cover_tools` too) | `019-two-way-swaps.sql`: `shift_swaps.take_shift_id`, `take_fingerprint`, index, FK | `swaps/options`; `POST swaps` gains `take_shift_id`; decide moves both shifts | 245, 265 |
 | S13 Timesheets | `timesheet_tools` | `018-timesheets.sql`: the flag only (tolerance is a settings key) | `GET timesheets/export` (read-only) and `POST timesheets/export` (marks exported); the list gains `lines` with the flag on | 255, 260 |
-| Follow-ups (31 Oct) | none new | none | `GET open-shifts` gains `my_eligibility` (always) | 099, 255, 260, 270 |
+| Follow-ups (31 Oct) | none new | `020-timesheet-reopenings.sql`: `timesheet_reopenings` | `GET open-shifts` gains `my_eligibility` (always); with `timesheet_tools` on an exported period is final (approve and submit 409 `already_exported`), owner reopen with a reason | 099, 255, 260, 270 |
 
-Migrations 015 to 019 are all additive (019 sits after S13's 018 because S12d was decided after S13). One behaviour
-is not behind a flag, by the owner's decision: the instant open-shift claim refuses a person who is not eligible
-(approved leave, declared unavailability, a missing required document, the absentee, a clash) whatever `cover_tools`
-says, and platform support sessions are refused on every cover route. Following from it (owner decision, 31 Oct
-2026), the open-shifts list carries the caller's own eligibility (`my_eligibility`) whatever `cover_tools` says, and
-the card shows the reasons with Take it disabled.
+Migrations 015 to 020 are all additive (019 sits after S13's 018 because S12d was decided after S13; 020 adds
+`timesheet_reopenings` for the S13 follow-up "1b"). One behaviour is not behind a flag, by the owner's decision: the
+instant open-shift claim refuses a person who is not eligible (approved leave, declared unavailability, a missing
+required document, the absentee, a clash) whatever `cover_tools` says, and platform support sessions are refused on
+every cover route. Following from it (owner decision, 31 Oct 2026), the open-shifts list carries the caller's own
+eligibility (`my_eligibility`) whatever `cover_tools` says, and the card shows the reasons with Take it disabled.
 
 No new cron line and no new private config in any R2 slice: S10's reminders and S12's sweep run in the existing
 `bin/cron.php`.
@@ -479,8 +479,9 @@ No new cron line and no new private config in any R2 slice: S10's reminders and 
   "S13 follow-ups" below): exporting marks the approved periods `exported` (`POST timesheets/export`; the GET stays a
   read-only preview); the row status "Late" follows the tolerance (default 10) only while `timesheet_tools` is on,
   the old 5 minutes while it is off; the file downloads as an attachment named
-  `rotaflow-timesheets-<org-slug>-<start>-<end>.csv`.
-- All: migrations 015 to 019 rehearsed against the live MariaDB 11.4 structure at cutover prep (only the local 13.0.2
+  `rotaflow-timesheets-<org-slug>-<start>-<end>.csv`; with the flag on an exported period cannot be approved or
+  submitted again until an owner reopens it with a reason ("1b").
+- All: migrations 015 to 020 rehearsed against the live MariaDB 11.4 structure at cutover prep (only the local 13.0.2
   test database has run them).
 
 **What the local-live walk-through must cover** (the branch against the live API on `https://local.rotaflow.space`,
@@ -497,12 +498,14 @@ platform admin with a support session)
   `cover_tools` off, a person on leave sees the reason on the open-shift card with Take it disabled, before any click.
 - S12d: offer a shift asking for one in return, the colleague accepts, a manager approves and both rota cells change;
   move one of the two shifts and see the swap cancelled; turn the flag off with one waiting and approve it.
-- S13: chips on a week with late, early and over lines, the tolerance changed in Policies (the row status "Late"
-  moves with it; with the flag off it is the old 5 minutes), the payroll CSV opened in the real spreadsheet and payroll
+- S13: chips on a week with late, early and over lines, the tolerance changed in Policies (the row status "Late" moves
+  with it; with the flag off it is the old 5 minutes), the payroll CSV opened in the real spreadsheet and payroll
   importer (check the BOM, names with accents, a name starting with `=`), a period corrected after approval showing
-  "Recalculation required"; export twice and read the two messages (marked, then none new), the second file's Status
-  column saying `exported`; `curl -OJ` with a bearer token against `GET timesheets/export` saving the file under its
-  `rotaflow-timesheets-...csv` name, and the in-app download keeping that name in Safari, Chrome and Firefox.
+  "Recalculation required"; approve an exported week (refused with the sentence), reopen it as a manager (refused) and
+  as the owner with a reason, approve the corrected figure and export again; export twice and read the two messages
+  (marked, then none new), the second file's Status column saying `exported`; `curl -OJ` with a bearer token against
+  `GET timesheets/export` saving the file under its `rotaflow-timesheets-...csv` name, and the in-app download keeping
+  that name in Safari, Chrome and Firefox.
 - Platform support session: the documents, cover and payroll export refusals.
 - Shapes: any screen whose request or response does not match the PHP handler (matched by reading, never in a browser).
 
@@ -617,7 +620,7 @@ The owner said yes to five follow-ups on 31 October 2026 (relayed by the coordin
   still flagged by a clock correction (`Clock` already covered `exported`). `POST timesheets/approve` on an exported
   period still puts it back to `approved` with `version + 1` (the S5 behaviour, through the API only; the page no
   longer offers it), so the next export includes it again with the new version. Whether approve should refuse
-  exported periods is left for the owner.
+  exported periods is left for the owner. (Closed the same day, "1b" below: with the flag on it refuses them.)
 
 **2. The row status "Late" follows the tolerance, only with `timesheet_tools` on.**
 
@@ -714,3 +717,45 @@ character rule; extra headers pass only as `X-RotaFlow-*` with plain ASCII value
   read per local date; not timed). Shifts whose site is in another timezone than the organisation: the same zone rule
   as the claim (the site's zone, else the organisation's), checked only for London.
 - The local MariaDB 13.0.2 only; MariaDB 11.4 (live) did not run these suites. Playwright.
+
+**1b. Closing the gap: with `timesheet_tools` on, an exported period is final until an owner reopens it** (coordinator
+follow-up, the same day; the owner's reason for item 1 was "stop payroll being paid twice").
+
+- Every route that could change an exported period's status or figures was checked. `POST timesheets/approve` and
+  `POST timesheets/submit` now refuse it with **409 `already_exported`**, "This period has been exported to payroll. Ask
+  an owner to reopen it if it must change." (a batch with one exported period is refused whole). Approval takes the
+  organisation lock first while the flag is on, as the marking export does, so the two are ordered. `POST
+  timesheets/{t}/reopen` on an exported period is owner only (a manager gets the same 409; a support session 403).
+  A clock correction (`clock-events/{e}/correct`) does not recompute a period: it only sets
+  `recalculation_required_at`, as before, and leaves the status and figure alone (tested). Clock-event deletion does
+  not touch timesheets; retention deletes whole old periods (not a change of figure).
+- The deliberate path (choice: **the existing reopen route**, not a second one, since `POST timesheets/{t}/reopen`
+  already exists for managers): on an exported period, with the flag on, it needs `{reason}` (3 to 500 characters)
+  and moves it `exported` -> `approved` with `version` + 1, the approval kept, in one transaction with the
+  organisation lock first; 409 `not_exported` if someone reopened it meanwhile. The reason is kept in the new table
+  `timesheet_reopenings` (migration 020, additive) and not in the audit log; the audit row
+  `timesheet.export_reopened` carries `{period_start, period_end, from, to, version}` only. The corrected figure is
+  then approved again (version + 1) and the next marking export sends it under the new version. On any other status,
+  and with the flag off, the route is unchanged.
+- With the flag off nothing changes (proved in `260`): approving an exported period puts it back to `approved` with
+  `version` + 1; submitting over it answers `timesheet_locked`; a manager reopens it to `open` without a reason; and
+  approval does not take the organisation lock (it answers while another connection holds a shared lock on the row,
+  which a flag-on approval waits for).
+- Evidence: PHP 2169 assertions, 0 failed (`260` 80 -> 98, `099` 13 -> 15, `115` unchanged). `260` adds: approve
+  again 409 with the exact sentence and nothing changed; a mixed batch refused whole even for the owner; a
+  non-exported period still approved; manager reopen 409; staff 403, stranger 404; reasons missing, 2 or 501
+  characters 422 with nothing written; a clock correction leaving the period exported with its figure and the
+  recalculation flag set; the owner's reopen (approved, version 2, approval kept), its reason row, its audit metadata
+  exactly; the corrected figure approved (version 3) and exported again; a flag-on approval waiting on the
+  organisation lock; an approval and a marking export at the same instant (either order, the period ends exported
+  with the figure the file carried); a support session refused; the four flag-off cases. `099`: a support session
+  cannot reopen (403) or re-approve (409) an exported period; stranger and no-organisation user 404, nobody 401.
+- Mutation checks (12, each made a suite fail, then reverted): the approve refusal removed; the refusal not tied to
+  the flag; the approval's organisation lock removed; the submit refusal not tied to the flag; the reopen's exported
+  path not tied to the flag; that path removed (managers reopen to open); the owner check removed; the support
+  refusal removed (099); the reason not required; the version not bumped; reopen to `open`; the reason put in the
+  audit.
+- NOT TESTED: an owner reopen screen (there is none: the API takes it; `reopenTimesheet` in the browser service has
+  no caller); two owners reopening the same period at the same instant (the organisation lock and the re-read make
+  the second answer 409 `not_exported`, or, if it reads after the first committed, the old reopen to `open`; not
+  raced); migration 020 on MariaDB 11.4.
