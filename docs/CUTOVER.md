@@ -59,7 +59,7 @@ cd ~/Developer/Projects/rotaflow
 scp cpanel:rotaflow-private/config/config.php ~/rotaflow-cutover/private/config/config.php && chmod 600 ~/rotaflow-cutover/private/config/config.php
 grep -c "host=localhost" ~/rotaflow-cutover/private/config/config.php     # expect 1
 sed -i '' 's#mysql:host=localhost;#mysql:host=127.0.0.1;port=13306;#' ~/rotaflow-cutover/private/config/config.php
-ssh -f -N -L 13306:localhost:3306 cpanel                                   # tunnel to the cPanel MariaDB
+ssh -f -N -o ExitOnForwardFailure=yes -L 13306:127.0.0.1:3306 cpanel                                   # tunnel to the cPanel MariaDB
 ROTAFLOW_PRIVATE_ROOT=~/rotaflow-cutover/private php backend/bin/datamove.php plan \
   --source-uri-file=$HOME/rotaflow-cutover/secrets/supabase-db-uri
 ```
