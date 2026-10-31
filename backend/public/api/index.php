@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 // Public entrypoint. All other application code and configuration live in the private root.
+// A PHP notice printed before the JSON would make every response unreadable: diagnostics go to the log, never the body.
+ini_set('display_errors', '0');
 // Local dev: src/ sits beside public/. On the host: the app is uploaded to <private root>/app/src.
 $autoload = is_file(__DIR__ . '/../../src/Autoload.php')
     ? __DIR__ . '/../../src/Autoload.php'

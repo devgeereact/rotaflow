@@ -623,7 +623,6 @@ TXT;
             CURLOPT_HTTPHEADER => array_map(static fn (string $k, string $v): string => "$k: $v", array_keys($headers), $headers)]);
         $out = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
         return [$code, is_string($out) ? $out : ''];
     }
 

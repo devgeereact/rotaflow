@@ -75,7 +75,6 @@ final class Bootstrap
             CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2, CURLOPT_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_FOLLOWLOCATION => false]);
         $out = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
         if (!is_string($out) || $code !== 200) {
             throw new \RuntimeException('JWKS fetch failed');
         }
