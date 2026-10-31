@@ -59,28 +59,37 @@ export async function deleteAnnouncement(id: string): Promise<void> {
   await api.post(activeOrgPath(`/announcements/${seg(id)}/delete`));
 }
 
-/** Every read receipt in the org, one query, for the read-progress bar (0046). */
-export async function listAnnouncementReads(orgId: string): Promise<AnnouncementRead[]> {
+/**
+ * Every read receipt in the org, for the read-progress bar (0046). `everyone: false` (a person who is not an owner or
+ * manager) reads only their own receipts and never asks for everyone's, which the API refuses them; left out, the
+ * service asks and falls back on the refusal.
+ */
+export async function listAnnouncementReads(
+  orgId: string,
+  options: { everyone?: boolean } = {},
+): Promise<AnnouncementRead[]> {
   const list = await fetchAnnouncements(orgId);
   const out: AnnouncementRead[] = [];
-  try {
-    // An owner or manager reads every receipt, one announcement at a time.
-    for (const a of list) {
-      const r = await api.get<{ reads: { staff_profile_id: string; read_at: string }[] }>(
-        orgPath(orgId, `/announcements/${seg(a.id)}/reads`),
-      );
-      for (const read of r.reads) {
-        out.push({
-          id: `${a.id}:${read.staff_profile_id}`,
-          org_id: orgId,
-          announcement_id: a.id,
-          ...read,
-        });
+  if (options.everyone !== false) {
+    try {
+      // An owner or manager reads every receipt, one announcement at a time.
+      for (const a of list) {
+        const r = await api.get<{
+          reads: { staff_profile_id: string; read_at: string }[];
+        }>(orgPath(orgId, `/announcements/${seg(a.id)}/reads`));
+        for (const read of r.reads) {
+          out.push({
+            id: `${a.id}:${read.staff_profile_id}`,
+            org_id: orgId,
+            announcement_id: a.id,
+            ...read,
+          });
+        }
       }
+      return out;
+    } catch (error) {
+      if (!isApiCode(error, 'forbidden')) throw error;
     }
-    return out;
-  } catch (error) {
-    if (!isApiCode(error, 'forbidden')) throw error;
   }
   // Anyone else sees only their own receipts, which the list already carries.
   const me = await api.get<MePayload>('/me');

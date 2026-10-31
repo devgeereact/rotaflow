@@ -98,7 +98,7 @@ export function AnnouncementsPage(): JSX.Element {
           await Promise.all([
             getMyStaffProfile(orgId, user.id),
             listAnnouncements(orgId),
-            listAnnouncementReads(orgId),
+            listAnnouncementReads(orgId, { everyone: canManageStaff }),
             listActiveStaff(orgId),
             listLocations(orgId),
             listDepartments(orgId),
@@ -122,7 +122,7 @@ export function AnnouncementsPage(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [orgId, user, reloadKey, showError]);
+  }, [orgId, user, canManageStaff, reloadKey, showError]);
 
   const authors = useMemo(() => authorIndex(staff), [staff]);
 
