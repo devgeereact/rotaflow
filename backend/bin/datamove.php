@@ -9,6 +9,7 @@ declare(strict_types=1);
 //                                           target unless --resume; re-running changes nothing)
 //   php bin/datamove.php verify [options]   row counts, a checksum per table and a field-by-field sample; files too, if moved
 //   php bin/datamove.php files  [--apply]   copy Supabase Storage objects into <private root>/uploads (dry run unless --apply)
+//   php bin/datamove.php files --backup=DIR the final Storage backup: every object of every bucket, own names, SHA256SUMS
 //
 // Source (read-only: one REPEATABLE READ READ ONLY transaction): --source-uri-file=PATH (a file of mode 0600 holding the
 // postgres:// URI) or the SUPABASE_DB_URL environment variable. A pg_dump is restored first into a local database
@@ -38,7 +39,7 @@ foreach ($args as $a) {
         exit(2);
     }
 }
-$known = ['source-uri-file', 'resume', 'exclude-org', 'exclude-demo-orgs', 'sample', 'report', 'only', 'apply', 'supabase-url', 'service-key-file'];
+$known = ['source-uri-file', 'resume', 'exclude-org', 'exclude-demo-orgs', 'sample', 'report', 'only', 'apply', 'supabase-url', 'service-key-file', 'backup'];
 foreach (array_keys($opt) as $k) {
     if (!in_array($k, $known, true)) {
         fwrite(STDERR, "unknown option --$k\n");
@@ -129,14 +130,19 @@ try {
             return [$status, $body];
         };
         $files = new Files($src, $root, $mover->blockedObjects(), $fetch, $base);
-        $ok = $files->run(isset($opt['apply']));
+        if (is_string($opt['backup'] ?? null) && $opt['backup'] !== '') {
+            $ok = $files->backup($opt['backup']);
+            $cmd = 'files-backup';
+        } else {
+            $ok = $files->run(isset($opt['apply']));
+        }
     }
     $r = $mover->result();
     if ($files !== null) {
         $fr = $files->result();
         $r['files'] = $fr['counts'];
-        $r['problems'] = [...($cmd === 'files' ? [] : $r['problems']), ...$fr['problems']];
-        if ($cmd === 'files') {
+        $r['problems'] = [...(str_starts_with($cmd, 'files') ? [] : $r['problems']), ...$fr['problems']];
+        if (str_starts_with($cmd, 'files')) {
             $r['counts'] = [];
             $r['notes'] = [];
         }

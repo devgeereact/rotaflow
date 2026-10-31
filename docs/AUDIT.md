@@ -925,3 +925,81 @@ missing a required document; leave still refuses with it off; cover candidates s
 other reasons unchanged; the document cases now run with the flag on), suite `270` (+3: my_eligibility clean with it off,
 other reasons unchanged, then the document reason with it on). Mutation check: ignoring the flag fails 3 of those checks
 (250 x2, 270 x1).
+
+## 2026-10-31: Cutover preparation (Phase 6): the data move, its rehearsal, the runbook, on branch `cutover/data-move`
+
+Prepared, **not run**: nothing reached the server, live Clerk, Stripe, Supabase (no connection at all, not even read),
+Cloudflare or GitHub settings. `docs/CUTOVER.md` is the owner's runbook (go/no-go list, steps with checks and rollbacks,
+the table map and what does not carry over).
+
+**What was built**
+
+- `backend/bin/datamove.php` + `backend/src/DataMove/` (PHP CLI, chosen because the repo's server code, config loader
+  (`Bootstrap::config`), `Db`, `Secret` and `FileStore` are PHP, so the move writes through the API's own private config and
+  encrypts and lays out files exactly as the API reads them; PHP on the Mac has pdo_pgsql and pdo_mysql). `plan` (dry run,
+  default), `apply` (one transaction per group, FK order, refuses a non-empty target unless `--resume`, never overwrites a
+  row that differs), `verify` (counts, SHA-256 per table over every row canonicalised against the target column types, a
+  field-by-field sample), `files` (Storage into `<private root>/uploads`, size + MD5 checked, SHA-256 manifest, resumable;
+  `--backup=DIR` for the full Storage backup). Source read in one `REPEATABLE READ READ ONLY` transaction; URI and keys from
+  0600 files or env, never printed (messages scrubbed). Every value is checked against the target's own column metadata
+  (length, enum, range, precision) and every target unique key and foreign key is checked in the dry run.
+- `Users::resolve` refuses a session whose optional `email_verified` claim is not true (suite 030 +6: verified only,
+  case-insensitive, one account per email, placeholder rows never linked).
+- `scripts/cutover/supabase-freeze.sql`, `supabase-freeze-final.sql`, `supabase-unfreeze.sql` (statement triggers that
+  refuse writes on every public table; cron jobs paused with their state remembered; exact undo).
+- `release.json`, `scripts/release.mjs` (the kit's, byte for byte; excluded from Biome formatting), `.github/workflows/deploy.yml`
+  (manual only: push-to-deploy stays off; how to turn it on is in the file and the runbook).
+
+**Evidence** (local, 31 October 2026)
+
+- `pnpm run test:datamove` (`scripts/datamove-test.sh all`, `backend/tests/datamove/run.php`): **64 passed, 0 failed**.
+  Source: a throwaway PostgreSQL 17 built from all 164 `supabase/migrations` over a Supabase shim (auth, storage, cron, net,
+  vault), seeded by `seed-source.sql` (10,002 shifts across both 2026 clock changes, 1,924 clock events with microseconds,
+  3,000 audit rows, 51 people incl. unicode/emoji/`=` names, mixed-case, unconfirmed, Google-only, deleted, banned,
+  pending-erasure, legacy-admin; 3 organisations incl. demo and suspended; money in pence; unsafe Storage names; pending
+  deletions; rows in skipped tables). Target: MariaDB 13.0.2 on 127.0.0.1:3308, migrations 001-020. Results: plan 0
+  errors (4 expected warnings); apply 15,000+ rows; verify every table checksum match, 0 missing, 0 of 3,000+ sampled fields
+  differ; second apply refused; `--resume` changes nothing; an interrupted move finished by `--resume` verifies; a tampered
+  row is caught by verify and left alone by `--resume`; independent SQL checks on both sides (DST nights 11 h / 9 h, ms
+  cut, pence, Stripe ids, unicode, lower-cased emails, SMTP password decrypts, invite token hash, audit mapping, R2 flags off,
+  no maintenance mode); first sign-in links by verified email (case-insensitive), a deleted person gets a new empty account;
+  `--exclude-demo-orgs`; files: dry run, wrong key, corrupt download refused, resume, re-run, modes 0700/0600, the API reads a
+  renamed document byte for byte, verify catches a changed file; the full Storage backup and its resume; a `pg_dump` of the
+  data restored into a schema built from the migrations verifies against the moved data; freeze, final freeze, read while
+  frozen, unfreeze (cron states restored), unfreeze twice.
+- `scripts/datamove-test.sh mariadb-11.4`: the same move on **MariaDB 11.4.13** (Homebrew, the live version) on 3309:
+  migrations 001-020 done, plan/apply/verify OK, a second `apply --resume` changes 0 tables.
+- Walk on moved data (`scripts/datamove-test.sh walk-db`, then `scripts/walk.sh api` / `web`, `WALK_KEEP_DB=1`):
+  `screens.walk.ts` **254 passed, 0 failed** (37 screens x owner, manager, staff + 16 console screens, flags off and on) on
+  data that came through the move instead of `seed-demo.php`. `actions.walk.ts`: 4 passed, 1 skipped (no open shift that
+  person is eligible for), 2 failed on seed-demo fixtures, not on the move: one expects the leave type text "annual"
+  (seed-demo's wording; the synthetic data says holiday/sick), one picks `leave_requests ... LIMIT 1` across all
+  organisations and got another organisation's request (404 instead of 403). `flags.walk.ts` and `csp.walk.ts` not run
+  (they need seed-demo's documents and the preview build; unchanged code paths). The first run also failed five screens
+  on synthetic photo URLs that do not resolve: the overlay now clears them (no app defect).
+- Suite `275-datamove-map` (34, in `pnpm run check`): conversion rules, safe storage names, URI parsing and scrubbing, the
+  map against the migrated schema and FK order. `pnpm run check` exit 0 on every commit (PHP 2,227+, vitest 1,796).
+
+**Lossy or derived mappings** (also in `docs/CUTOVER.md`, "Table map"): audit ids renumbered (source uuid kept in
+metadata), severity `notice` -> `info`, visibility `both` -> `org`; pay-rate `note`/`created_by`; `incidents.is_public`;
+platform announcement `channel`; most `platform_settings` columns (branding, MFA/session settings: Clerk's now);
+`organisations.last_activity_at`/`is_demo`; invite `accepted_by`; clock times cut to milliseconds, other times to seconds;
+`calendar_feed_tokens` (people subscribe again); outbox, deliveries, jobs, health, integrations, IP allow-list, rate-limit
+and retention-run logs not moved; deleted/erased/profile-less people kept under unverifiable placeholder addresses;
+pending Supabase login deletions closed as abandoned; enquiries marked notified; unsafe file names renamed.
+
+**NOT TESTED**
+
+- Against the real Supabase project (no connection made): its real `auth.users` / `storage.objects` columns (the shim
+  follows GoTrue/Storage as of 2026; the dump restore path fails loudly on a column the shim lacks), the session pooler, TLS,
+  the real Storage API and service key, the real data's warnings.
+- The SSH tunnel to the cPanel MariaDB (the runbook gives the server-side alternative), the live 11.4 server itself (11.4.13
+  locally), the runtime user's privileges for the move (SELECT/INSERT/UPDATE on the live grants), cPanel `mysqldump`.
+- The freeze scripts in the Supabase SQL editor (tested on PostgreSQL 17 with the shim's cron table; real pg_cron and the
+  Supabase roles may differ), the drain finishing within 5 minutes.
+- `pnpm release` against the server (release.json is the kit format; its build, parts and smoke were read, not run), the
+  composed `.htaccess` behind Apache and Cloudflare, `deploy.yml` (never run; push-to-deploy off).
+- Clerk production: the `email_verified` claim shortcode (optional; the API only refuses an explicit false), a real sign-in
+  linking a moved person, Google-only people receiving codes.
+- Stripe webhook switch (test and live), the cron line, web push to subscriptions moved from Supabase (same VAPID keys assumed).
+- The walk's `flags`, `csp` specs and two `actions` cases on moved data (seed-demo fixtures); browsers other than Chromium.

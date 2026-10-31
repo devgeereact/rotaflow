@@ -92,6 +92,54 @@ EOF
     rm -rf "$PRIV/uploads" && mkdir -p "$PRIV/uploads"
     ROTAFLOW_PRIVATE_ROOT="$PRIV" php "$ROOT/backend/bin/migrate.php" | tail -1
     ;;
+  mariadb-11.4)
+    # The live host runs MariaDB 11.4.13; the harness runs 13.x. This starts a second throwaway server from Homebrew's
+    # mariadb@11.4 on 127.0.0.1:3309 (data in .local-test/mariadb-11.4), runs migrations 001-020 and the move there, verifies,
+    # and stops it again. Needs the seeded source (`source`).
+    B="$(brew --prefix mariadb@11.4)/bin"; D="$ROOT/.local-test/mariadb-11.4"; S4="$D/mysqld.sock"; P4="$ROOT/.local-test/datamove-private-114"
+    mkdir -p "$D" "$P4/config"
+    [ -d "$D/data/mysql" ] || "$B/mariadb-install-db" --no-defaults --datadir="$D/data" --auth-root-authentication-method=normal >/dev/null
+    nohup "$B/mariadbd" --no-defaults --datadir="$D/data" --port=3309 --bind-address=127.0.0.1 --socket="$S4" --pid-file="$D/mysqld.pid" \
+      --skip-name-resolve --innodb-flush-log-at-trx-commit=0 >"$D/mysqld.log" 2>&1 &
+    for _ in $(seq 1 60); do "$B/mariadb" --no-defaults --socket="$S4" -uroot -e 'SELECT 1' >/dev/null 2>&1 && break; sleep 0.5; done
+    "$B/mariadb" --no-defaults --socket="$S4" -uroot -e "SELECT VERSION(); DROP DATABASE IF EXISTS rotaflow_test_move114; CREATE DATABASE rotaflow_test_move114 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER IF NOT EXISTS 'rf_test'@'127.0.0.1' IDENTIFIED BY 'rf_test_local_only'; GRANT ALL PRIVILEGES ON rotaflow_test_move114.* TO 'rf_test'@'127.0.0.1'; FLUSH PRIVILEGES;"
+    cat >"$P4/config/config.php" <<EOF
+<?php
+return ['dsn' => 'mysql:host=127.0.0.1;port=3309;dbname=rotaflow_test_move114;charset=utf8mb4', 'user' => 'rf_test', 'password' => 'rf_test_local_only',
+    'clerk_issuer' => 'https://example.invalid', 'clerk_authorized_parties' => ['http://localhost'], 'secret_key' => '$(openssl rand -base64 32)'];
+EOF
+    cp "$P4/config/config.php" "$P4/config/migrate.php"; chmod 600 "$P4/config/"*.php; rm -rf "$P4/datamove"
+    printf 'postgres://postgres@127.0.0.1:%s/%s' "$PGPORT" "$SRC_DB" > "$P4/source-uri"; chmod 600 "$P4/source-uri"
+    rc=0
+    ROTAFLOW_PRIVATE_ROOT="$P4" php "$ROOT/backend/bin/migrate.php" | tail -1 || rc=1
+    for c in plan apply verify; do ROTAFLOW_PRIVATE_ROOT="$P4" php "$ROOT/backend/bin/datamove.php" $c --source-uri-file="$P4/source-uri" | tail -2 | head -1 || rc=1; done
+    ROTAFLOW_PRIVATE_ROOT="$P4" php "$ROOT/backend/bin/datamove.php" apply --resume --source-uri-file="$P4/source-uri" | { grep -cE "inserted=[1-9]|updated=[1-9]" || true; } | sed 's/^/tables changed by a second apply --resume: /'
+    kill "$(cat "$D/mysqld.pid")"
+    exit $rc
+    ;;
+  walk-db)
+    # The local-live walk against MOVED data: rebuild the source with the walk's Clerk test addresses on six people, then
+    # recreate the walk database (rotaflow_walk), migrate it and fill it with bin/datamove.php instead of seed-demo.php.
+    # Then: scripts/walk.sh api, scripts/walk.sh web, WALK_KEEP_DB=1 pnpm run e2e:walk.
+    "$0" source "${@:2}"
+    psql_src -f "$ROOT/backend/tests/datamove/walk-identities.sql" >/dev/null
+    WPRIV="$ROOT/.local-state/walk-private"
+    bash "$ROOT/scripts/walk.sh" config >/dev/null
+    mariadb --no-defaults --socket="$SOCK" -uroot <<SQL
+DROP DATABASE IF EXISTS rotaflow_walk;
+CREATE DATABASE rotaflow_walk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'rf_walk'@'127.0.0.1' IDENTIFIED BY 'rf_walk_local_only';
+GRANT ALL PRIVILEGES ON rotaflow_walk.* TO 'rf_walk'@'127.0.0.1';
+FLUSH PRIVILEGES;
+SQL
+    rm -rf "$WPRIV/uploads" "$WPRIV/datamove" "$WPRIV/cache"/rl-* 2>/dev/null || true
+    mkdir -p "$WPRIV/uploads"
+    ROTAFLOW_PRIVATE_ROOT="$WPRIV" php "$ROOT/backend/bin/migrate.php" | tail -1
+    printf 'postgres://postgres@127.0.0.1:%s/%s' "$PGPORT" "$SRC_DB" > "$WPRIV/source-uri" && chmod 600 "$WPRIV/source-uri"
+    ROTAFLOW_PRIVATE_ROOT="$WPRIV" php "$ROOT/backend/bin/datamove.php" apply --source-uri-file="$WPRIV/source-uri" | tail -2
+    ROTAFLOW_PRIVATE_ROOT="$WPRIV" php "$ROOT/backend/bin/datamove.php" verify --source-uri-file="$WPRIV/source-uri" | tail -2
+    ;;
   all)
     "$0" pg-up
     "$0" source "${@:2}"

@@ -146,6 +146,58 @@ final class Files
         }
     }
 
+    /**
+     * The final backup of Supabase Storage: EVERY object of EVERY bucket (orphans and objects queued for deletion included),
+     * under its own name, into $dir/<bucket>/<name>, each checked against the recorded size and MD5. Resumable: an object
+     * already there with the right size and MD5 is skipped. Writes a SHA256SUMS file. Never touches the private store.
+     */
+    public function backup(string $dir): bool
+    {
+        $dir = rtrim($dir, '/');
+        $sums = [];
+        foreach ($this->src->query("SELECT bucket_id, name, metadata->>'size' AS size, metadata->>'eTag' AS etag FROM storage.objects ORDER BY bucket_id, name")->fetchAll() as $o) {
+            $this->counts['listed']++;
+            $rel = $o['bucket_id'] . '/' . $o['name'];
+            if (str_contains('/' . $rel . '/', '/../') || str_contains($rel, "\0") || str_starts_with((string) $o['name'], '/')) {
+                $this->counts['failed']++;
+                $this->problem('error', $rel, 'object name is not a safe relative path: not backed up');
+                continue;
+            }
+            $dest = $dir . '/' . $rel;
+            $etag = trim((string) $o['etag'], '"');
+            $md5ok = static fn (string $b): bool => preg_match('/^[0-9a-f]{32}$/', $etag) !== 1 || md5($b) === $etag;
+            if (is_file($dest) && ($o['size'] === null || (int) $o['size'] === filesize($dest)) && $md5ok((string) file_get_contents($dest))) {
+                $this->counts['already_there']++;
+                $sums[] = hash_file('sha256', $dest) . '  ' . $rel;
+                continue;
+            }
+            $url = rtrim($this->baseUrl, '/') . '/storage/v1/object/' . rawurlencode((string) $o['bucket_id']) . '/' . implode('/', array_map('rawurlencode', explode('/', (string) $o['name'])));
+            try {
+                [$status, $body] = ($this->fetch)($url);
+            } catch (\Throwable $e) {
+                $this->counts['failed']++;
+                $this->problem('error', $rel, 'download failed: ' . Convert::scrub($e->getMessage()));
+                continue;
+            }
+            if ($status !== 200 || ($o['size'] !== null && (int) $o['size'] !== strlen($body)) || !$md5ok($body)) {
+                $this->counts['failed']++;
+                $this->problem('error', $rel, $status !== 200 ? "download answered HTTP $status" : 'size or MD5 differs from what Storage recorded');
+                continue;
+            }
+            is_dir(dirname($dest)) || mkdir(dirname($dest), 0700, true);
+            file_put_contents($dest . '.part', $body, LOCK_EX);
+            chmod($dest . '.part', 0600);
+            rename($dest . '.part', $dest);
+            $this->counts['copied']++;
+            $sums[] = hash('sha256', $body) . '  ' . $rel;
+        }
+        if (is_dir($dir)) {
+            file_put_contents($dir . '/SHA256SUMS', implode("\n", $sums) . "\n");
+            chmod($dir . '/SHA256SUMS', 0600);
+        }
+        return $this->errors() === 0;
+    }
+
     /** Every file in the manifest is still there with the same SHA-256. */
     public function verify(): bool
     {

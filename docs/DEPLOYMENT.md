@@ -258,6 +258,10 @@ references and grep it for the short SHA.
 
 ## The API and Clerk in `.htaccess` (S9, applies from the R1 cutover)
 
+The cutover itself (freeze, backups, migrations, data move, files, release with `pnpm release`, Clerk, Stripe, cron,
+rollback at every stage) is `docs/CUTOVER.md`. From the cutover on, releases use the kit script (`release.json`,
+`scripts/release.mjs`) instead of `cpanel-deploy`.
+
 The repository `.htaccess` now carries two things the cutover depends on. Both must survive the composition
 below (merge, never overwrite):
 

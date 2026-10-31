@@ -257,6 +257,13 @@ file_put_contents($priv . '/uploads/' . FileStore::DOCUMENTS . '/' . $doc, 'chan
 [$rc] = move($priv, "verify $S");
 ok('verify catches a changed file', $rc === 1);
 file_put_contents($priv . '/uploads/' . FileStore::DOCUMENTS . '/' . $doc, $wrote['staff-documents/' . $srcName]);
+$bk = $root . '/.local-test/datamove/storage-backup';
+exec('rm -rf ' . escapeshellarg($bk));
+[$rc, $r] = move($priv, "files $F --backup=" . escapeshellarg($bk));
+ok('the final Storage backup holds every object of every bucket under its own name, with SHA256SUMS', $rc === 0 && ($r['files']['copied'] ?? 0) === count($objs)
+    && is_file($bk . '/avatars-legacy/someone.png') && count(file($bk . '/SHA256SUMS', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: []) === count($objs), json_encode($r['files'] ?? null));
+[$rc, $r] = move($priv, "files $F --backup=" . escapeshellarg($bk));
+ok('the backup is resumable: a second run downloads nothing', $rc === 0 && ($r['files']['copied'] ?? -1) === 0 && $r['files']['already_there'] === count($objs));
 proc_terminate($server);
 
 echo "from a pg_dump\n";

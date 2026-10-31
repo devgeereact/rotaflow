@@ -34,6 +34,7 @@ here wins, and the other should link to it rather than restate it.
 | Accessibility rules and what the published statement claims                          | `docs/ACCESSIBILITY.md`                                                          |
 | Notification outbox, channels, cron jobs, web push                                   | `docs/NOTIFICATIONS-SPEC.md`                                                     |
 | Deploy, rollback, recovery, alert owners                                             | `docs/DEPLOYMENT.md`                                                             |
+| Cutover to cPanel + Clerk: runbook, data move, table map                             | `docs/CUTOVER.md`                                                                |
 | Design references (PNG mockups, two HTML references, review screenshots)             | `docs/design/`                                                                   |
 | How a QA audit is run; CI jobs and scheduled workflows (one table)                   | `qa/README.md`                                                                   |
 | Dated functional audit, console repair passes and design reviews                     | `qa/FUNCTIONAL-AUDIT.md`                                                         |
