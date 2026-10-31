@@ -571,16 +571,18 @@ final class Cover implements Module
     /**
      * Reasons and warnings for one person taking one shift, read against what is committed (published rotas and shifts with no rota; drafts
      * and archived history are not commitments). With $lock the person's committed shifts are locked too, so an approval cannot race a write.
+     * $ignore lists shifts that do not count against the person (a two-way swap: the shift they give up in exchange, S12d).
      * @param array<string,mixed> $sh a shift row with timezone (see shiftRows)
+     * @param list<string> $ignore
      * @return array{reasons:list<array{code:string,message:string}>, warnings:list<array{code:string,message:string}>}
      */
-    public static function assess(\PDO $pdo, string $o, string $staff, array $sh, bool $lock): array
+    public static function assess(\PDO $pdo, string $o, string $staff, array $sh, bool $lock, array $ignore = []): array
     {
-        return self::assessFor($pdo, $o, $sh, [$staff], $lock)[$staff];
+        return self::assessFor($pdo, $o, $sh, [$staff], $lock, $ignore)[$staff];
     }
 
-    /** @param list<string> $people @return array<string, array{reasons:list<array>, warnings:list<array>}> */
-    private static function assessFor(\PDO $pdo, string $o, array $sh, array $people, bool $lock): array
+    /** @param list<string> $people @param list<string> $ignore @return array<string, array{reasons:list<array>, warnings:list<array>}> */
+    private static function assessFor(\PDO $pdo, string $o, array $sh, array $people, bool $lock, array $ignore = []): array
     {
         if ($people === []) {
             return [];
@@ -592,16 +594,18 @@ final class Cover implements Module
         $in = implode(',', array_fill(0, count($people), '?'));
         $s = R::ts((string) $sh['starts_at']);
         $e = R::ts((string) $sh['ends_at']);
-        $window = [$o, ...$people, (string) $sh['id'], gmdate('Y-m-d H:i:s', $e + 8 * 86400), gmdate('Y-m-d H:i:s', $s - 8 * 86400)];
+        $skip = array_values(array_unique([(string) $sh['id'], ...array_map('strval', $ignore)]));
+        $not = implode(',', array_fill(0, count($skip), '?'));
+        $window = [$o, ...$people, ...$skip, gmdate('Y-m-d H:i:s', $e + 8 * 86400), gmdate('Y-m-d H:i:s', $s - 8 * 86400)];
         if ($lock) {
             // The person's shift rows only (never the rotas they hang off: publishing locks a rota first, and must not wait on cover).
-            $lk = $pdo->prepare("SELECT id FROM shifts WHERE org_id = ? AND staff_profile_id IN ($in) AND id <> ? AND starts_at < ? AND ends_at > ? FOR UPDATE");
+            $lk = $pdo->prepare("SELECT id FROM shifts WHERE org_id = ? AND staff_profile_id IN ($in) AND id NOT IN ($not) AND starts_at < ? AND ends_at > ? FOR UPDATE");
             $lk->execute($window);
             $lk->fetchAll();
         }
         $q = $pdo->prepare(
             "SELECT s.id, s.staff_profile_id, s.starts_at, s.ends_at, s.break_minutes, s.status FROM shifts s LEFT JOIN rotas x ON x.id = s.rota_id AND x.org_id = s.org_id
-              WHERE s.org_id = ? AND s.staff_profile_id IN ($in) AND s.status <> 'cancelled' AND s.id <> ? AND s.starts_at < ? AND s.ends_at > ?
+              WHERE s.org_id = ? AND s.staff_profile_id IN ($in) AND s.status <> 'cancelled' AND s.id NOT IN ($not) AND s.starts_at < ? AND s.ends_at > ?
                 AND (s.rota_id IS NULL OR x.status = 'published') LIMIT 20000"
         );
         $q->execute($window);

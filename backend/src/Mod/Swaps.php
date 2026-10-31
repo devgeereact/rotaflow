@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace RotaFlow\Mod;
 
-use RotaFlow\{Audit, CoverRules, Ctx, Db, HttpError, Input, Module, Notify, Scope, SchedulingRules, Time};
+use RotaFlow\{Audit, CoverRules, Ctx, Db, Flags, HttpError, Input, Module, Notify, Scope, SchedulingRules, Time};
 
 /**
  * Shift swaps and the open-shift board.
@@ -19,16 +19,37 @@ use RotaFlow\{Audit, CoverRules, Ctx, Db, HttpError, Input, Module, Notify, Scop
  *  - a shift a manager has opened a cover request for is applied for on the Cover page instead of being claimed.
  * Whatever the flag (owner decision, 31 Oct 2026), the instant open-shift claim takes the organisation lock first and checks the cover
  * eligibility (leave, availability, documents, not the absentee, overlap).
+ *
+ * Two-way swaps (S12d, owner decision 31 Oct 2026; flag two_way_swaps AND cover_tools, both seeded off): a swap to a named colleague may
+ * ask for one of their shifts in return (take_shift_id). Raising one takes the organisation lock, then both shift rows, and checks both
+ * ways that each person may take the other's shift (each ignoring the shift they give up). Approving moves BOTH shifts in one transaction
+ * under the same locks with eligibility re-checked, or nothing. Once a two-way swap exists the data decides, not the flags: it is always
+ * guarded against staleness (either shift changed or started cancels it) and always moved whole, so turning a flag off can never
+ * half-apply one. With either flag off a new swap cannot ask for a shift in return and the options route answers 403 feature_off.
  */
 final class Swaps implements Module
 {
+    public const TWO_WAY_FEATURE = 'two_way_swaps';
+    private const OPTIONS_DAYS = 28;
+
     public function __construct(private readonly Ctx $ctx) {}
+
+    /** Two-way swaps need their own flag and the cover module (its lock, eligibility and staleness). Fails closed. */
+    public static function twoWayOn(\PDO $pdo, string $o): bool
+    {
+        try {
+            return Cover::on($pdo, $o) && Flags::enabledForOrg($pdo, self::TWO_WAY_FEATURE, $o);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
 
     public function routes(): array
     {
         return [
             ['GET', '/orgs/{o}/swaps', $this->list(...)],
             ['POST', '/orgs/{o}/swaps', $this->create(...)],
+            ['GET', '/orgs/{o}/swaps/options', $this->options(...)],
             ['POST', '/orgs/{o}/swaps/{w}/respond', $this->respond(...)],
             ['POST', '/orgs/{o}/swaps/{w}/claim', $this->claim(...)],
             ['POST', '/orgs/{o}/swaps/{w}/cancel', $this->cancel(...)],
@@ -47,7 +68,11 @@ final class Swaps implements Module
         $pdo = $this->ctx->pdo;
         $m = Scope::membership($pdo, $user['id'], $o);
         $own = Scope::staffProfileId($pdo, $o, $user['id']);
-        $sql = 'SELECT w.*, s.starts_at AS shift_starts_at, s.ends_at AS shift_ends_at, s.location_id AS shift_location_id, s.staff_profile_id AS shift_staff_profile_id FROM shift_swaps w JOIN shifts s ON s.id = w.shift_id AND s.org_id = w.org_id WHERE w.org_id = ?';
+        $sql = 'SELECT w.*, s.starts_at AS shift_starts_at, s.ends_at AS shift_ends_at, s.location_id AS shift_location_id, s.staff_profile_id AS shift_staff_profile_id,
+                       t.starts_at AS take_starts_at, t.ends_at AS take_ends_at, t.location_id AS take_location_id, t.staff_profile_id AS take_staff_profile_id
+                  FROM shift_swaps w JOIN shifts s ON s.id = w.shift_id AND s.org_id = w.org_id
+                  LEFT JOIN shifts t ON t.id = w.take_shift_id AND t.org_id = w.org_id
+                 WHERE w.org_id = ?';
         $args = [$o];
         if (!in_array($m['effective_role'], Scope::MANAGERS, true)) {
             $sql .= " AND (w.requested_by = ? OR w.target_staff_profile_id = ? OR (w.target_staff_profile_id IS NULL AND w.status = 'pending'))";
@@ -102,6 +127,10 @@ final class Swaps implements Module
                 throw HttpError::invalid('Pick another active colleague in this organisation, or leave it open');
             }
         }
+        $take = Input::optStr($in, 'take_shift_id', 36);
+        if ($take !== null) {
+            return $this->createExchange($user, $ip, $o, $shiftId, $by, $target, $take, Input::optStr($in, 'note', 1000), $cid);
+        }
         $id = Db::uuid();
         try {
             // The fingerprint never leaves the server and is only read while the cover module is on (S12).
@@ -115,6 +144,127 @@ final class Swaps implements Module
         }
         Audit::log($pdo, $o, $user['id'], 'swap.requested', 'shift_swaps', $id, [], 'info', 'org', $ip);
         return [201, ['swap' => $this->present($this->load($o, $id)), 'already_applied' => false]];
+    }
+
+    /**
+     * A two-way swap: the requester's shift for one of the named colleague's (S12d). Organisation lock, then both shift rows in id order;
+     * both on a published rota, not started, not cancelled, each held by the right person; neither already in a pending or accepted
+     * swap; each person eligible for the other's shift (ignoring the one they give up). Nothing moves until it is approved.
+     * @return array{0:int,1:array<string,mixed>}
+     */
+    private function createExchange(array $user, string $ip, string $o, string $give, string $by, ?string $target, string $take, ?string $note, ?string $cid): array
+    {
+        $pdo = $this->ctx->pdo;
+        if (!self::twoWayOn($pdo, $o)) {
+            throw new HttpError(403, 'feature_off', 'Two-way swaps are not switched on for this organisation yet.');
+        }
+        if ($target === null) {
+            throw HttpError::invalid('Name the colleague whose shift you want in return');
+        }
+        $id = Db::uuid();
+        $pdo->beginTransaction();
+        try {
+            Cover::lockOrg($pdo, $o);
+            $rows = self::lockShifts($pdo, $o, [$give, $take]);
+            if (!isset($rows[$take])) {
+                throw HttpError::invalid('That shift is not in this organisation');
+            }
+            $g = $rows[$give];
+            $t = $rows[$take];
+            if (($why = CoverRules::exchangeProblem($g, $t, $by, $target, time())) !== null) {
+                throw HttpError::invalid($why);
+            }
+            $busy = $pdo->prepare("SELECT 1 FROM shift_swaps WHERE org_id = ? AND status IN ('pending','accepted') AND (shift_id IN (?, ?) OR take_shift_id IN (?, ?)) LIMIT 1");
+            $busy->execute([$o, $give, $take, $give, $take]);
+            if ($busy->fetchColumn() !== false) {
+                throw HttpError::conflict('swap_pending', 'One of these shifts already has a swap waiting');
+            }
+            $this->requireExchangeEligible($o, $g, $t, $by, $target);
+            $pdo->prepare('INSERT INTO shift_swaps (id, org_id, shift_id, take_shift_id, requested_by, target_staff_profile_id, note, client_event_id, shift_fingerprint, take_fingerprint) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+                ->execute([$id, $o, $give, $take, $by, $target, $note, $cid, CoverRules::fingerprint($g), CoverRules::fingerprint($t)]);
+            Audit::log($pdo, $o, $user['id'], 'swap.requested', 'shift_swaps', $id, ['two_way' => true], 'info', 'org', $ip);
+            $who = Notify::userOfStaff($pdo, $target);
+            if ($who !== null) {
+                Notify::enqueue($pdo, $o, 'swap/requested', [$who], 'swap', 'A colleague asked to swap shifts with you');
+            }
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($cid !== null && $e instanceof \PDOException && $e->getCode() === '23000' && ($prior = $this->byClient($cid)) !== null) {
+                return $this->replay($prior, $o, $by);
+            }
+            throw $e;
+        }
+        return [201, ['swap' => $this->present($this->loadListed($o, $id)), 'already_applied' => false]];
+    }
+
+    /** Both ways: the colleague may take the requester's shift (ignoring the one they give up), and the requester may take theirs. */
+    private function requireExchangeEligible(string $o, array $g, array $t, string $requester, string $target): void
+    {
+        $pdo = $this->ctx->pdo;
+        $g['timezone'] = $this->zoneOf($o, $g['location_id']);
+        $t['timezone'] = $this->zoneOf($o, $t['location_id']);
+        $them = Cover::assess($pdo, $o, $target, $g, true, [(string) $t['id']])['reasons'];
+        if ($them !== []) {
+            throw HttpError::conflict('not_eligible', 'Your colleague cannot take your shift: ' . implode('; ', array_column($them, 'message')));
+        }
+        $you = Cover::assess($pdo, $o, $requester, $t, true, [(string) $g['id']])['reasons'];
+        if ($you !== []) {
+            throw HttpError::conflict('not_eligible', 'The person offering cannot take the shift asked for: ' . implode('; ', array_column($you, 'message')));
+        }
+    }
+
+    /**
+     * Locks shift rows in id order (so two writers never lock the same pair in opposite orders) with their rota status.
+     * @param list<string> $ids @return array<string, array<string,mixed>>
+     */
+    private static function lockShifts(\PDO $pdo, string $o, array $ids): array
+    {
+        $ids = array_values(array_unique($ids));
+        sort($ids);
+        $q = $pdo->prepare('SELECT s.id, s.staff_profile_id, s.status, s.starts_at, s.ends_at, s.location_id, s.rota_id, s.break_minutes, r.status AS rota_status FROM shifts s LEFT JOIN rotas r ON r.id = s.rota_id AND r.org_id = s.org_id WHERE s.org_id = ? AND s.id = ? FOR UPDATE');
+        $out = [];
+        foreach ($ids as $id) {
+            $q->execute([$o, $id]);
+            if (($r = $q->fetch()) !== false) {
+                $out[(string) $r['id']] = $r;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * What a two-way swap can ask for (S12d): active colleagues, and their future shifts in the next 28 days on published rotas that are
+     * not cancelled and not already in a pending or accepted swap. Shift times and sites only (what a member already reads on the rota).
+     */
+    private function options(array $user, array $in, string $ip, string $o): array
+    {
+        $pdo = $this->ctx->pdo;
+        Scope::membership($pdo, $user['id'], $o);
+        if (!self::twoWayOn($pdo, $o)) {
+            throw new HttpError(403, 'feature_off', 'Two-way swaps are not switched on for this organisation yet.');
+        }
+        $own = Scope::staffProfileId($pdo, $o, $user['id']);
+        if ($own === null) {
+            throw new HttpError(403, 'no_staff_record', 'You do not have a staff record in this organisation');
+        }
+        $c = $pdo->prepare('SELECT id, first_name, last_name FROM staff_profiles WHERE org_id = ? AND active = 1 AND id <> ? ORDER BY first_name, last_name, id LIMIT 1000');
+        $c->execute([$o, $own]);
+        $q = $pdo->prepare(
+            "SELECT s.id, s.staff_profile_id, s.starts_at, s.ends_at, s.location_id FROM shifts s JOIN rotas r ON r.id = s.rota_id AND r.org_id = s.org_id
+              JOIN staff_profiles p ON p.id = s.staff_profile_id AND p.org_id = s.org_id AND p.active = 1
+              WHERE s.org_id = ? AND s.staff_profile_id IS NOT NULL AND s.staff_profile_id <> ? AND s.status <> 'cancelled' AND r.status = 'published'
+                AND s.starts_at > UTC_TIMESTAMP() AND s.starts_at < UTC_TIMESTAMP() + INTERVAL " . self::OPTIONS_DAYS . " DAY
+                AND NOT EXISTS (SELECT 1 FROM shift_swaps w WHERE w.org_id = s.org_id AND w.status IN ('pending','accepted') AND (w.shift_id = s.id OR w.take_shift_id = s.id))
+              ORDER BY s.starts_at, s.id LIMIT 500"
+        );
+        $q->execute([$o, $own]);
+        return [200, [
+            'colleagues' => $c->fetchAll(),
+            'shifts' => array_map(static fn (array $r): array => ['starts_at' => Time::iso($r['starts_at']), 'ends_at' => Time::iso($r['ends_at'])] + $r, $q->fetchAll()),
+        ]];
     }
 
     /** The named colleague accepts or declines a pending swap. Accepting changes nothing on the rota yet. */
@@ -197,10 +347,11 @@ final class Swaps implements Module
             throw HttpError::invalid("A swap decision is either 'approved' or 'rejected'");
         }
         $own = Scope::staffProfileId($pdo, $o, $user['id']);
-        $cover = Cover::on($pdo, $o);
+        // A two-way swap is guarded and moved whole whatever the flags say (S12d), so it takes the organisation lock like cover does.
+        $guard = Cover::on($pdo, $o) || $this->isExchange($o, $w);
         $pdo->beginTransaction();
         try {
-            if ($cover) {
+            if ($guard) {
                 Cover::lockOrg($pdo, $o); // S12: while cover is on, everything that moves a shift to a person takes this lock first (no deadlocks)
             }
             $q = $pdo->prepare('SELECT * FROM shift_swaps WHERE id = ? AND org_id = ? FOR UPDATE');
@@ -214,7 +365,7 @@ final class Swaps implements Module
             if (!$manager && !($swap['status'] === 'accepted' && $own !== null && $swap['requested_by'] === $own)) {
                 throw HttpError::forbidden('Not allowed to decide this swap.');
             }
-            if ($cover && ($why = self::voidIfStale($pdo, $swap, $user['id'], time())) !== null) {
+            if ($guard && ($why = self::voidIfStale($pdo, $swap, $user['id'], time())) !== null) {
                 $pdo->commit();
                 throw self::voided($why);
             }
@@ -231,7 +382,7 @@ final class Swaps implements Module
                 $pdo->commit();
                 return [200, ['outcome' => 'approved', 'reassigned' => false, 'reason' => 'no-target']];
             }
-            $applied = $this->applyReassignment($swap, $user['id'], $ip);
+            $applied = $swap['take_shift_id'] !== null ? $this->applyExchange($swap, $user['id'], $ip) : $this->applyReassignment($swap, $user['id'], $ip);
             Audit::log($pdo, $o, $user['id'], 'swap.approved', 'shift_swaps', $w, ['reassigned' => true], 'info', 'org', $ip);
             $this->tell($o, $swap, 'approved', $user['id']);
             $pdo->commit();
@@ -241,7 +392,11 @@ final class Swaps implements Module
             }
             throw $e;
         }
-        return [200, ['outcome' => 'approved', 'reassigned' => true, 'shift_id' => $applied['shift_id'], 'applied_at' => $applied['applied_at'], 'target_staff_profile_id' => $swap['target_staff_profile_id']]];
+        $out = ['outcome' => 'approved', 'reassigned' => true, 'shift_id' => $applied['shift_id'], 'applied_at' => $applied['applied_at'], 'target_staff_profile_id' => $swap['target_staff_profile_id']];
+        if ($swap['take_shift_id'] !== null) {
+            $out['take_shift_id'] = $swap['take_shift_id']; // only on a two-way swap, so a one-way answer is exactly as before
+        }
+        return [200, $out];
     }
 
     /** Move the shift of an APPROVED swap that has not yet moved it (a retry after a failed decide, or a swap approved without a target and since given one). */
@@ -268,6 +423,9 @@ final class Swaps implements Module
             }
             if ($swap['applied_at'] !== null) {
                 throw HttpError::conflict('swap_already_applied', 'This swap has already moved its shift.');
+            }
+            if ($swap['take_shift_id'] !== null) {
+                throw HttpError::conflict('swap_two_way', 'A two-way swap moves both shifts when it is approved, never one at a time.');
             }
             if (!in_array($m['effective_role'], Scope::MANAGERS, true) && $swap['requested_by'] !== $own) {
                 throw HttpError::forbidden('Not allowed to reassign this shift.');
@@ -315,6 +473,42 @@ final class Swaps implements Module
         $at = $pdo->prepare('SELECT applied_at FROM shift_swaps WHERE id = ?');
         $at->execute([$swap['id']]);
         return ['shift_id' => (string) $shift['id'], 'applied_at' => Time::iso($at->fetchColumn() ?: null)];
+    }
+
+    /**
+     * Inside the caller's transaction, organisation and swap locked (S12d). Locks both shifts in id order; refuses unless each is still held
+     * by its person, neither rota is archived, both people are active and each is still eligible for the other's shift. Then moves both.
+     * @param array<string,mixed> $swap
+     * @return array{shift_id:string,applied_at:?string}
+     */
+    private function applyExchange(array $swap, string $actor, string $ip): array
+    {
+        $pdo = $this->ctx->pdo;
+        $o = (string) $swap['org_id'];
+        $rows = self::lockShifts($pdo, $o, [(string) $swap['shift_id'], (string) $swap['take_shift_id']]);
+        $g = $rows[$swap['shift_id']] ?? throw HttpError::conflict('shift_gone', 'A shift in this swap no longer exists.');
+        $t = $rows[$swap['take_shift_id']] ?? throw HttpError::conflict('shift_gone', 'A shift in this swap no longer exists.');
+        if ($g['rota_status'] === 'archived' || $t['rota_status'] === 'archived') {
+            throw HttpError::conflict('rota_archived', 'A shift in this swap is on an archived rota. Raise the swap against the current version.');
+        }
+        if ($g['staff_profile_id'] !== $swap['requested_by'] || $t['staff_profile_id'] !== $swap['target_staff_profile_id']) {
+            throw HttpError::conflict('shift_reassigned', 'One of these shifts is no longer held by the person in the swap. Nothing was changed.');
+        }
+        $act = $pdo->prepare('SELECT COUNT(*) FROM staff_profiles WHERE org_id = ? AND id IN (?, ?) AND active = 1');
+        $act->execute([$o, $swap['requested_by'], $swap['target_staff_profile_id']]);
+        if ((int) $act->fetchColumn() !== 2) {
+            throw HttpError::conflict('target_inactive', 'Someone in this swap is no longer an active member of this organisation.');
+        }
+        $this->requireExchangeEligible($o, $g, $t, (string) $swap['requested_by'], (string) $swap['target_staff_profile_id']);
+        $mv = $pdo->prepare("UPDATE shifts SET staff_profile_id = ?, status = 'assigned' WHERE id = ? AND org_id = ?");
+        $mv->execute([$swap['target_staff_profile_id'], $g['id'], $o]);
+        $mv->execute([$swap['requested_by'], $t['id'], $o]);
+        $pdo->prepare('UPDATE shift_swaps SET applied_at = UTC_TIMESTAMP(), applied_shift_id = ?, applied_from_staff_profile_id = ? WHERE id = ? AND applied_at IS NULL')->execute([$g['id'], $swap['requested_by'], $swap['id']]);
+        Audit::log($pdo, $o, $actor, 'rota.shift_reassigned', 'shifts', (string) $g['id'], ['swap_id' => $swap['id'], 'from' => $swap['requested_by'], 'to' => $swap['target_staff_profile_id']], 'info', 'org', $ip);
+        Audit::log($pdo, $o, $actor, 'rota.shift_reassigned', 'shifts', (string) $t['id'], ['swap_id' => $swap['id'], 'from' => $swap['target_staff_profile_id'], 'to' => $swap['requested_by']], 'info', 'org', $ip);
+        $at = $pdo->prepare('SELECT applied_at FROM shift_swaps WHERE id = ?');
+        $at->execute([$swap['id']]);
+        return ['shift_id' => (string) $g['id'], 'applied_at' => Time::iso($at->fetchColumn() ?: null)];
     }
 
     // ---- open shifts -----------------------------------------------------------------------------------
@@ -410,8 +604,18 @@ final class Swaps implements Module
      */
     private static function staleOf(\PDO $pdo, array $swap, int $now): ?string
     {
+        $give = self::staleShift($pdo, $swap, (string) $swap['shift_id'], $swap['shift_fingerprint'] ?? null, $now);
+        if (($swap['take_shift_id'] ?? null) === null) {
+            return $give;
+        }
+        // S12d: a two-way swap goes ahead only while both shifts can.
+        return CoverRules::exchangeStale($give, self::staleShift($pdo, $swap, (string) $swap['take_shift_id'], $swap['take_fingerprint'] ?? null, $now));
+    }
+
+    private static function staleShift(\PDO $pdo, array $swap, string $shiftId, mixed $fp, int $now): ?string
+    {
         $q = $pdo->prepare('SELECT id, starts_at, ends_at, location_id, staff_profile_id, status, rota_id FROM shifts WHERE id = ? AND org_id = ? FOR UPDATE');
-        $q->execute([$swap['shift_id'], $swap['org_id']]);
+        $q->execute([$shiftId, $swap['org_id']]);
         $sh = $q->fetch();
         if ($sh === false) {
             return 'shift_changed';
@@ -422,7 +626,6 @@ final class Swaps implements Module
             $r->execute([$sh['rota_id'], $swap['org_id']]);
             $rota = $r->fetchColumn() ?: null;
         }
-        $fp = $swap['shift_fingerprint'] ?? null;
         return CoverRules::staleReason(is_string($fp) ? $fp : null, CoverRules::fingerprint($sh), (string) $sh['status'], $rota, SchedulingRules::ts((string) $sh['starts_at']), $now);
     }
 
@@ -455,7 +658,7 @@ final class Swaps implements Module
     private function guardStale(string $o, string $w): void
     {
         $pdo = $this->ctx->pdo;
-        if (!Cover::on($pdo, $o)) {
+        if (!Cover::on($pdo, $o) && !$this->isExchange($o, $w)) {
             return;
         }
         $pdo->beginTransaction();
@@ -510,6 +713,22 @@ final class Swaps implements Module
         Notify::enqueue($this->ctx->pdo, $o, 'swap/reviewed', [$who], 'swap', 'Your shift swap was ' . ($status === 'approved' ? 'approved' : 'declined'));
     }
 
+    /** Is this swap a two-way swap? (An unlocked read, used only to decide which locks to take.) */
+    private function isExchange(string $o, string $w): bool
+    {
+        $q = $this->ctx->pdo->prepare('SELECT take_shift_id IS NOT NULL FROM shift_swaps WHERE id = ? AND org_id = ?');
+        $q->execute([$w, $o]);
+        return (bool) $q->fetchColumn();
+    }
+
+    /** A swap with the shift columns the list carries. @return array<string,mixed> */
+    private function loadListed(string $o, string $w): array
+    {
+        $q = $this->ctx->pdo->prepare('SELECT w.*, t.starts_at AS take_starts_at, t.ends_at AS take_ends_at, t.location_id AS take_location_id, t.staff_profile_id AS take_staff_profile_id FROM shift_swaps w LEFT JOIN shifts t ON t.id = w.take_shift_id AND t.org_id = w.org_id WHERE w.id = ? AND w.org_id = ?');
+        $q->execute([$w, $o]);
+        return $q->fetch() ?: throw HttpError::notFound();
+    }
+
     /** @return array<string,mixed> */
     private function load(string $o, string $w): array
     {
@@ -538,11 +757,15 @@ final class Swaps implements Module
     /** @param array<string,mixed> $r */
     private function present(array $r): array
     {
-        unset($r['client_event_id'], $r['shift_fingerprint']);
+        unset($r['client_event_id'], $r['shift_fingerprint'], $r['take_fingerprint']);
+        if (($r['take_shift_id'] ?? null) === null) {
+            // A one-way swap answers exactly as before S12d: no two-way keys at all.
+            unset($r['take_shift_id'], $r['take_starts_at'], $r['take_ends_at'], $r['take_location_id'], $r['take_staff_profile_id']);
+        }
         if (array_key_exists('void_reason', $r) && $r['void_reason'] === null) {
             unset($r['void_reason']); // only a swap the cover module cancelled carries it, so responses are as before while the module is off
         }
-        foreach (['reviewed_at', 'applied_at', 'created_at', 'updated_at', 'shift_starts_at', 'shift_ends_at'] as $k) {
+        foreach (['reviewed_at', 'applied_at', 'created_at', 'updated_at', 'shift_starts_at', 'shift_ends_at', 'take_starts_at', 'take_ends_at'] as $k) {
             if (array_key_exists($k, $r)) {
                 $r[$k] = Time::iso($r[$k]);
             }
