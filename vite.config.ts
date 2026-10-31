@@ -158,10 +158,27 @@ export default defineConfig({
   server: {
     port: 5042,
     strictPort: true,
+    // Local-live only: `ROTAFLOW_API_PROXY=http://127.0.0.1:3042 pnpm dev` sends `/api` to a local PHP API
+    // (`scripts/walk.sh api`), so the app keeps its same-origin `/api` exactly as on the host. Unset, nothing changes.
+    ...(process.env['ROTAFLOW_API_PROXY']
+      ? {
+          proxy: {
+            '/api': { target: process.env['ROTAFLOW_API_PROXY'], changeOrigin: false },
+          },
+        }
+      : {}),
   },
   preview: {
     port: 5042,
     strictPort: true,
+    // Local-live only, as for `server` above: `scripts/walk.sh preview` serves a production build against the local API.
+    ...(process.env['ROTAFLOW_API_PROXY']
+      ? {
+          proxy: {
+            '/api': { target: process.env['ROTAFLOW_API_PROXY'], changeOrigin: false },
+          },
+        }
+      : {}),
   },
 
   plugins: forBuild([

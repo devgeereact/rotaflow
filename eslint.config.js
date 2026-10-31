@@ -31,6 +31,9 @@ export default tseslint.config(
       // the code.
       'coverage',
       'node_modules',
+      // Local scratch and recovery (gitignored), including the walk's production build in .local-state/walk-dist.
+      '.local-state',
+      '.local-test',
       'postcss.config.js',
       'supabase/functions', // Deno runtime (npm:/jsr: specifiers) — not tsc/ESLint compatible
       // Written by `supabase start`, which two of the four required gates
