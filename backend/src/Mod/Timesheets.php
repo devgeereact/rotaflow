@@ -3,24 +3,46 @@ declare(strict_types=1);
 
 namespace RotaFlow\Mod;
 
-use RotaFlow\{Audit, Ctx, Db, HttpError, Input, Module, Scope, Time};
+use RotaFlow\{Audit, Ctx, Db, Flags, HttpError, Input, Module, SchedulingRules, Scope, Time, TimesheetRules as R};
 
 /**
  * Timesheets: one decision per person per period. A person submits their own; an owner or manager approves a batch atomically
  * or sends one back. An approved or exported period is locked against a new submission. Correcting a clock event inside an approved
  * period flags it (recalculation_required_at) instead of silently changing a figure that has gone to payroll.
+ *
+ * R2 slice S13, behind the `timesheet_tools` flag (seeded off; fails closed). With it on:
+ *  - the list response gains `lines` (one per shift with a staff record in the asked period, at most 31 days, with its clock events and
+ *    the late / early finish / overtime flags beyond the organisation's tolerance) and `tolerance_minutes`. Pure rules: TimesheetRules.
+ *  - GET timesheets/export answers the payroll CSV of APPROVED (or exported) periods inside the range, owners and managers only, never a
+ *    platform support session. Reading it changes nothing (it does not mark periods exported).
+ * With it off the list answers exactly what it did and the export answers 403 feature_off (after membership, so a stranger gets 404).
  */
 final class Timesheets implements Module
 {
+    public const FEATURE = 'timesheet_tools';
     private const MAX_BATCH = 500;
     private const MAX_MINUTES = 100000; // ASSUMPTION: about 70 days of continuous work; a ceiling against a typo, not a rule
+    private const MAX_LINES = 5000;
+    /** Clock events read this long after the last shift ends, so a late clock-out still pairs; later than that reads as missing. */
+    private const LATE_OUT_MS = 12 * 3600 * 1000;
 
     public function __construct(private readonly Ctx $ctx) {}
+
+    /** Is the module on for this organisation? Fails closed: a lookup error reads as off. */
+    public static function on(\PDO $pdo, string $o): bool
+    {
+        try {
+            return Flags::enabledForOrg($pdo, self::FEATURE, $o);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
 
     public function routes(): array
     {
         return [
             ['GET', '/orgs/{o}/timesheets', $this->list(...)],
+            ['GET', '/orgs/{o}/timesheets/export', $this->export(...)],
             ['POST', '/orgs/{o}/timesheets/submit', $this->submit(...)],
             ['POST', '/orgs/{o}/timesheets/approve', $this->approve(...)],
             ['POST', '/orgs/{o}/timesheets/{t}/reopen', $this->reopen(...)],
@@ -55,7 +77,146 @@ final class Timesheets implements Module
         }
         $q = $pdo->prepare($sql . ' ORDER BY period_start DESC, staff_profile_id LIMIT 2000');
         $q->execute($args);
-        return [200, ['timesheets' => array_map($this->present(...), $q->fetchAll())]];
+        $out = ['timesheets' => array_map($this->present(...), $q->fetchAll())];
+        if (self::on($pdo, $o)) {
+            // The same person filter as the rows above: a member only ever sees their own lines.
+            $only = in_array($m['effective_role'], Scope::MANAGERS, true) ? Input::optStr($in, 'staff_profile_id', 36) : (Scope::staffProfileId($pdo, $o, $user['id']) ?? '');
+            $range = R::range($in['period_start'] ?? null, $in['period_end'] ?? null);
+            $settings = $this->settings($o);
+            // No lines (null) when the period is missing or longer than 31 days: the list itself still answers as before.
+            $out['lines'] = is_array($range) ? $this->lines($o, $range[0], $range[1], $only, $settings) : null;
+            $out['tolerance_minutes'] = R::tolerance($settings);
+        }
+        return [200, $out];
+    }
+
+    /**
+     * The payroll CSV (owners and managers; never a platform support session, since it is pay data leaving the product). Approved and
+     * exported periods that lie wholly inside period_start..period_end (at most 31 days), one row per person per period, in the fixed
+     * column order of TimesheetRules::COLUMNS. The figure is the APPROVED total_minutes, not a recalculation; a period whose clock events
+     * were corrected after approval says so in "Recalculation required". UTF-8 with a BOM; every text cell formula-safe.
+     */
+    private function export(array $user, array $in, string $ip, string $o): array
+    {
+        $pdo = $this->ctx->pdo;
+        $m = Scope::membership($pdo, $user['id'], $o);
+        if (!self::on($pdo, $o)) {
+            throw new HttpError(403, 'feature_off', 'Timesheet tools are not switched on for this organisation yet.');
+        }
+        Scope::require($m, Scope::MANAGERS);
+        if (($m['support'] ?? null) !== null) {
+            throw HttpError::forbidden('Platform support cannot export payroll');
+        }
+        $range = R::range($in['period_start'] ?? null, $in['period_end'] ?? null);
+        if (is_string($range)) {
+            throw HttpError::invalid($range);
+        }
+        [$from, $to] = $range;
+        $tz = Compliance::tz($pdo, $o);
+        $q = $pdo->prepare(
+            "SELECT t.staff_profile_id, t.period_start, t.period_end, t.total_minutes, t.status, t.version, t.approved_at, t.recalculation_required_at,
+                    sp.first_name, sp.last_name, sp.payroll_id,
+                    COALESCE(NULLIF(TRIM(CONCAT(ap.first_name, ' ', ap.last_name)), ''), NULLIF(TRIM(u.full_name), ''), u.email) AS approver
+               FROM timesheets t
+               JOIN staff_profiles sp ON sp.org_id = t.org_id AND sp.id = t.staff_profile_id
+               LEFT JOIN users u ON u.id = t.approved_by
+               LEFT JOIN staff_profiles ap ON ap.org_id = t.org_id AND ap.user_id = t.approved_by
+              WHERE t.org_id = ? AND t.status IN ('approved','exported') AND t.period_start >= ? AND t.period_end <= ?
+              ORDER BY sp.last_name, sp.first_name, sp.id, t.period_start, t.period_end
+              LIMIT 5000"
+        );
+        $q->execute([$o, $from, $to]);
+        $periods = $q->fetchAll();
+        // Flag counts per person per period, from the same lines the screen shows (any staff record, the whole range, once).
+        $byStaff = [];
+        if ($periods !== []) {
+            foreach ($this->lines($o, $from, $to, null, $this->settings($o)) as $l) {
+                $byStaff[$l['staff_profile_id']][] = [SchedulingRules::localParts(intdiv(R::ms($l['scheduled_start']), 1000), $tz)[0], $l['flags']];
+            }
+        }
+        $rows = [R::COLUMNS];
+        foreach ($periods as $p) {
+            $count = ['late' => 0, 'early_finish' => 0, 'overtime' => 0];
+            foreach ($byStaff[$p['staff_profile_id']] ?? [] as [$day, $flags]) {
+                if ($day >= $p['period_start'] && $day <= $p['period_end']) {
+                    foreach ($count as $k => $_) {
+                        $count[$k] += $flags[$k] ? 1 : 0;
+                    }
+                }
+            }
+            $minutes = (int) $p['total_minutes'];
+            $at = $p['approved_at'] !== null ? SchedulingRules::localParts(intdiv(R::ms((string) $p['approved_at']), 1000), $tz) : null;
+            $rows[] = [
+                trim($p['first_name'] . ' ' . $p['last_name']), (string) ($p['payroll_id'] ?? ''), (string) $p['staff_profile_id'],
+                (string) $p['period_start'], (string) $p['period_end'], $minutes, R::hours($minutes), (string) $p['status'], (int) $p['version'],
+                (string) ($p['approver'] ?? ''), $at !== null ? $at[0] . ' ' . $at[1] : '', $p['recalculation_required_at'] !== null ? 'Yes' : 'No',
+                $count['late'], $count['early_finish'], $count['overtime'], $tz,
+            ];
+        }
+        Audit::log($pdo, $o, $user['id'], 'timesheet.exported', 'timesheets', null, ['period_start' => $from, 'period_end' => $to, 'rows' => count($periods)], 'info', 'org', $ip);
+        return [200, ['__raw' => ['mime' => 'text/csv; charset=utf-8', 'body' => R::csv($rows), 'cache' => 'no-store', 'filename' => "rotaflow-payroll-$from-to-$to.csv"]]];
+    }
+
+    /**
+     * Lines for shifts starting in the local dates from..to (the organisation's timezone): shifts with a staff record that are not
+     * cancelled and belong to a published or archived rota (or to none), as members read them; paired with that person's clock events.
+     * Draft-rota shifts are not lines: nobody is working to them yet.
+     * @return list<array<string,mixed>>
+     */
+    private function lines(string $o, string $from, string $to, ?string $only, ?string $settings): array
+    {
+        $pdo = $this->ctx->pdo;
+        if ($only === '') {
+            return [];
+        }
+        [$a, $b] = R::window($from, $to, Compliance::tz($pdo, $o));
+        $db = static fn (int $ms): string => gmdate('Y-m-d H:i:s', intdiv($ms, 1000));
+        $sql = "SELECT s.id, s.staff_profile_id, s.location_id, s.starts_at, s.ends_at, s.break_minutes
+                  FROM shifts s LEFT JOIN rotas r ON r.org_id = s.org_id AND r.id = s.rota_id
+                 WHERE s.org_id = ? AND s.staff_profile_id IS NOT NULL AND s.status <> 'cancelled'
+                   AND (s.rota_id IS NULL OR r.status IN ('published','archived')) AND s.starts_at >= ? AND s.starts_at < ?";
+        $args = [$o, $db($a), $db($b)];
+        if ($only !== null) {
+            $sql .= ' AND s.staff_profile_id = ?';
+            $args[] = $only;
+        }
+        $q = $pdo->prepare($sql . ' ORDER BY s.starts_at, s.id LIMIT ' . self::MAX_LINES);
+        $q->execute($args);
+        $shifts = $q->fetchAll();
+        if ($shifts === []) {
+            return [];
+        }
+        $byStaff = [];
+        $lo = PHP_INT_MAX;
+        $hi = 0;
+        foreach ($shifts as $s) {
+            $byStaff[$s['staff_profile_id']][] = $s;
+            $lo = min($lo, R::ms($s['starts_at']));
+            $hi = max($hi, R::ms($s['ends_at']));
+        }
+        $ids = array_keys($byStaff);
+        $e = $pdo->prepare('SELECT staff_profile_id, type, event_at FROM clock_events WHERE org_id = ? AND event_at >= ? AND event_at < ? AND staff_profile_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ') ORDER BY event_at, id');
+        $e->execute([$o, $db($lo - R::EARLY_ARRIVAL_MS), $db($hi + self::LATE_OUT_MS), ...array_map('strval', $ids)]);
+        $events = [];
+        foreach ($e->fetchAll() as $ev) {
+            $events[$ev['staff_profile_id']][] = $ev;
+        }
+        $tol = R::tolerance($settings);
+        $paid = R::breaksPaid($settings);
+        $now = time() * 1000;
+        $segFor = [];
+        foreach ($byStaff as $sp => $list) {
+            $segFor += R::assign($list, R::segments($events[$sp] ?? []));
+        }
+        return array_map(static fn (array $s): array => R::line($s, $segFor[$s['id']] ?? null, $now, $tol, $paid), $shifts);
+    }
+
+    private function settings(string $o): ?string
+    {
+        $q = $this->ctx->pdo->prepare('SELECT settings FROM organisations WHERE id = ?');
+        $q->execute([$o]);
+        $v = $q->fetchColumn();
+        return is_string($v) ? $v : null;
     }
 
     /** A person submits their own period total. Refused once the period is approved or exported. */

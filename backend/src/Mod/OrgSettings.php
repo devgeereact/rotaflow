@@ -17,7 +17,7 @@ final class OrgSettings implements Module
     /**
      * The other organisation preferences the settings pages and the set-up wizard keep in `settings`, each with its
      * shape. Anything not listed is refused, so `settings` never becomes a free-form store a client can fill.
-     * Rules: ['str', max] | ['num', min, max] | ['bool'] | ['enum', [...]] | ['labels'] (owner/manager/staff, 40 chars each).
+     * Rules: ['str', max] | ['num', min, max] | ['int', min, max] | ['bool'] | ['enum', [...]] | ['labels'] (owner/manager/staff, 40 chars each).
      */
     private const PREFERENCES = [
         'size' => ['str', 40],
@@ -32,6 +32,7 @@ final class OrgSettings implements Module
         'max_consecutive_days' => ['num', 1, 31],
         'max_weekly_hours' => ['num', 1, 168],
         'breaks_are_paid' => ['bool'],
+        'timesheet_tolerance_minutes' => ['int', 0, 120], // S13: late / early finish / overtime flags only beyond this (default 10)
         'swap_approval_required' => ['bool'],
         'bank_holiday_region' => ['str', 40],
         'leave_year_start_month' => ['num', 1, 12],
@@ -60,6 +61,14 @@ final class OrgSettings implements Module
                 }
                 if ((!is_int($v) && !is_float($v)) || $v < $rule[1] || $v > $rule[2]) {
                     throw HttpError::invalid("$key must be a number from {$rule[1]} to {$rule[2]}");
+                }
+                return $v;
+            case 'int':
+                if ($v === null) {
+                    return null;
+                }
+                if (!is_int($v) || $v < $rule[1] || $v > $rule[2]) {
+                    throw HttpError::invalid("$key must be a whole number from {$rule[1]} to {$rule[2]}");
                 }
                 return $v;
             case 'bool':
