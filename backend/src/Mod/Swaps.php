@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace RotaFlow\Mod;
 
-use RotaFlow\{Audit, Ctx, Db, HttpError, Input, Module, Notify, Scope, Time};
+use RotaFlow\{Audit, CoverRules, Ctx, Db, HttpError, Input, Module, Notify, Scope, SchedulingRules, Time};
 
 /**
  * Shift swaps and the open-shift board.
@@ -12,6 +12,12 @@ use RotaFlow\{Audit, Ctx, Db, HttpError, Input, Module, Notify, Scope, Time};
  * board) accepts; then the requester or a manager finalises. Approving moves the shift in one transaction, and only if the
  * shift is still the requester's, its rota is not archived and the person taking it is still active. An open shift is claimed
  * first come, first served. Both write into a PUBLISHED rota on purpose: that is what a swap or a claim is for.
+ *
+ * With the cover module on (S12, flag cover_tools; off, all of this is exactly as before):
+ *  - a pending or accepted swap whose shift changed (times, site, holder, status, rota), was cancelled, sits on an archived rota or has
+ *    started is cancelled automatically (void_reason) when anyone touches it, and by the cover sweep in cron;
+ *  - the instant open-shift claim takes the organisation lock first and gains the cover eligibility check (leave, availability, documents,
+ *    not the absentee), and a shift a manager has opened a cover request for is applied for on the Cover page instead.
  */
 final class Swaps implements Module
 {
@@ -77,7 +83,7 @@ final class Swaps implements Module
             return $this->replay($prior, $o, $by);
         }
         $shiftId = Input::reqStr($in, 'shift_id', 36);
-        $q = $pdo->prepare('SELECT staff_profile_id, status FROM shifts WHERE id = ? AND org_id = ?');
+        $q = $pdo->prepare('SELECT staff_profile_id, status, starts_at, ends_at, location_id, rota_id FROM shifts WHERE id = ? AND org_id = ?');
         $q->execute([$shiftId, $o]);
         $shift = $q->fetch();
         if ($shift === false) {
@@ -97,8 +103,9 @@ final class Swaps implements Module
         }
         $id = Db::uuid();
         try {
-            $pdo->prepare('INSERT INTO shift_swaps (id, org_id, shift_id, requested_by, target_staff_profile_id, note, client_event_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
-                ->execute([$id, $o, $shiftId, $by, $target, Input::optStr($in, 'note', 1000), $cid]);
+            // The fingerprint never leaves the server and is only read while the cover module is on (S12).
+            $pdo->prepare('INSERT INTO shift_swaps (id, org_id, shift_id, requested_by, target_staff_profile_id, note, client_event_id, shift_fingerprint) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+                ->execute([$id, $o, $shiftId, $by, $target, Input::optStr($in, 'note', 1000), $cid, CoverRules::fingerprint($shift)]);
         } catch (\PDOException $e) {
             if ($cid !== null && $e->getCode() === '23000' && ($prior = $this->byClient($cid)) !== null) {
                 return $this->replay($prior, $o, $by);
@@ -120,6 +127,7 @@ final class Swaps implements Module
             throw HttpError::invalid("status must be 'accepted' or 'rejected'");
         }
         $own = Scope::staffProfileId($pdo, $o, $user['id']);
+        $this->guardStale($o, $w);
         $u = $pdo->prepare("UPDATE shift_swaps SET status = ? WHERE id = ? AND org_id = ? AND status = 'pending' AND target_staff_profile_id = ? AND ? IS NOT NULL");
         $u->execute([$status, $w, $o, $own, $own]);
         if ($u->rowCount() !== 1) {
@@ -143,6 +151,7 @@ final class Swaps implements Module
         if ($own === null) {
             throw new HttpError(403, 'no_staff_record', 'You do not have a staff record in this organisation');
         }
+        $this->guardStale($o, $w);
         $u = $pdo->prepare("UPDATE shift_swaps SET target_staff_profile_id = ?, status = 'accepted' WHERE id = ? AND org_id = ? AND status = 'pending' AND target_staff_profile_id IS NULL AND requested_by <> ?");
         $u->execute([$own, $w, $o, $own]);
         if ($u->rowCount() !== 1) {
@@ -187,8 +196,12 @@ final class Swaps implements Module
             throw HttpError::invalid("A swap decision is either 'approved' or 'rejected'");
         }
         $own = Scope::staffProfileId($pdo, $o, $user['id']);
+        $cover = Cover::on($pdo, $o);
         $pdo->beginTransaction();
         try {
+            if ($cover) {
+                Cover::lockOrg($pdo, $o); // S12: while cover is on, everything that moves a shift to a person takes this lock first (no deadlocks)
+            }
             $q = $pdo->prepare('SELECT * FROM shift_swaps WHERE id = ? AND org_id = ? FOR UPDATE');
             $q->execute([$w, $o]);
             $swap = $q->fetch() ?: throw HttpError::notFound();
@@ -199,6 +212,10 @@ final class Swaps implements Module
             $manager = in_array($m['effective_role'], Scope::MANAGERS, true);
             if (!$manager && !($swap['status'] === 'accepted' && $own !== null && $swap['requested_by'] === $own)) {
                 throw HttpError::forbidden('Not allowed to decide this swap.');
+            }
+            if ($cover && ($why = self::voidIfStale($pdo, $swap, $user['id'], time())) !== null) {
+                $pdo->commit();
+                throw self::voided($why);
             }
             $pdo->prepare('UPDATE shift_swaps SET status = ?, reviewed_by = ?, reviewed_at = UTC_TIMESTAMP() WHERE id = ?')->execute([$status, $user['id'], $w]);
             if ($status === 'rejected') {
@@ -233,8 +250,12 @@ final class Swaps implements Module
         $m = Scope::membership($pdo, $user['id'], $o);
         Scope::requireWritable($m);
         $own = Scope::staffProfileId($pdo, $o, $user['id']);
+        $cover = Cover::on($pdo, $o);
         $pdo->beginTransaction();
         try {
+            if ($cover) {
+                Cover::lockOrg($pdo, $o); // S12: while cover is on, everything that moves a shift to a person takes this lock first (no deadlocks)
+            }
             $q = $pdo->prepare('SELECT * FROM shift_swaps WHERE id = ? AND org_id = ? FOR UPDATE');
             $q->execute([$w, $o]);
             $swap = $q->fetch() ?: throw HttpError::notFound();
@@ -331,8 +352,12 @@ final class Swaps implements Module
         if ($own === null) {
             throw new HttpError(403, 'no_staff_record', 'You do not have a staff record in this organisation');
         }
+        $cover = Cover::on($pdo, $o);
         $pdo->beginTransaction();
         try {
+            if ($cover) {
+                Cover::lockOrg($pdo, $o); // S12: the same first lock as a cover approval, so the two never both fill one shift
+            }
             $q = $pdo->prepare('SELECT s.*, r.status AS rota_status FROM shifts s LEFT JOIN rotas r ON r.id = s.rota_id AND r.org_id = s.org_id WHERE s.id = ? AND s.org_id = ? FOR UPDATE');
             $q->execute([$h, $o]);
             $s = $q->fetch() ?: throw HttpError::notFound();
@@ -350,6 +375,18 @@ final class Swaps implements Module
             if ($clash->fetchColumn() !== false) {
                 throw HttpError::conflict('already_working', 'You are already working at that time');
             }
+            if ($cover) {
+                $req = $pdo->prepare("SELECT 1 FROM cover_requests WHERE org_id = ? AND shift_id = ? AND status = 'open'");
+                $req->execute([$o, $h]);
+                if ($req->fetchColumn() !== false) {
+                    throw HttpError::conflict('cover_request_open', 'A manager is choosing who covers this shift. Apply to cover it on the Cover page instead.');
+                }
+                $s['timezone'] = $this->zoneOf($o, $s['location_id']);
+                $why = Cover::assess($pdo, $o, $own, $s, true)['reasons'];
+                if ($why !== []) {
+                    throw HttpError::conflict('not_eligible', 'You cannot take this shift: ' . implode('; ', array_column($why, 'message')));
+                }
+            }
             $pdo->prepare("UPDATE shifts SET staff_profile_id = ?, status = 'assigned' WHERE id = ?")->execute([$own, $h]);
             Audit::log($pdo, $o, $user['id'], 'shift.claimed', 'shifts', $h, ['staff_profile_id' => $own], 'info', 'org', $ip);
             $pdo->commit();
@@ -358,6 +395,102 @@ final class Swaps implements Module
             throw $e;
         }
         return [200, ['shift_id' => $h]];
+    }
+
+    // ---- swaps that void themselves (S12, cover module on) ------------------------------------------------
+
+    /**
+     * Why this pending or accepted swap can no longer go ahead (CoverRules::staleReason), or null. Locks the shift row only.
+     * @param array<string,mixed> $swap
+     */
+    private static function staleOf(\PDO $pdo, array $swap, int $now): ?string
+    {
+        $q = $pdo->prepare('SELECT id, starts_at, ends_at, location_id, staff_profile_id, status, rota_id FROM shifts WHERE id = ? AND org_id = ? FOR UPDATE');
+        $q->execute([$swap['shift_id'], $swap['org_id']]);
+        $sh = $q->fetch();
+        if ($sh === false) {
+            return 'shift_changed';
+        }
+        $rota = null;
+        if ($sh['rota_id'] !== null) {
+            $r = $pdo->prepare('SELECT status FROM rotas WHERE id = ? AND org_id = ?');
+            $r->execute([$sh['rota_id'], $swap['org_id']]);
+            $rota = $r->fetchColumn() ?: null;
+        }
+        $fp = $swap['shift_fingerprint'] ?? null;
+        return CoverRules::staleReason(is_string($fp) ? $fp : null, CoverRules::fingerprint($sh), (string) $sh['status'], $rota, SchedulingRules::ts((string) $sh['starts_at']), $now);
+    }
+
+    /**
+     * Inside the caller's transaction, with the swap row locked: cancels a stale swap, tells both people, audits it. @return ?string the reason
+     * @param array<string,mixed> $swap
+     */
+    private static function voidIfStale(\PDO $pdo, array $swap, ?string $actor, int $now): ?string
+    {
+        if (!in_array($swap['status'], ['pending', 'accepted'], true) || ($why = self::staleOf($pdo, $swap, $now)) === null) {
+            return null;
+        }
+        $u = $pdo->prepare("UPDATE shift_swaps SET status = 'cancelled', void_reason = ? WHERE id = ? AND org_id = ? AND status IN ('pending','accepted')");
+        $u->execute([$why, $swap['id'], $swap['org_id']]);
+        if ($u->rowCount() !== 1) {
+            return null;
+        }
+        $who = array_filter([Notify::userOfStaff($pdo, (string) $swap['requested_by']), $swap['target_staff_profile_id'] !== null ? Notify::userOfStaff($pdo, (string) $swap['target_staff_profile_id']) : null]);
+        Notify::enqueue($pdo, (string) $swap['org_id'], 'swap/voided', array_values($who), 'swap', $why === 'shift_started' ? 'Swap cancelled: the shift has started' : 'Swap cancelled: the shift changed');
+        Audit::log($pdo, (string) $swap['org_id'], $actor, 'swap.voided', 'shift_swaps', (string) $swap['id'], ['reason' => $why]);
+        return $why;
+    }
+
+    private static function voided(string $why): HttpError
+    {
+        return HttpError::conflict('swap_void', $why === 'shift_started' ? 'The shift has started, so this swap was cancelled.' : 'The shift changed after this swap was raised, so it was cancelled. Raise a new one if it is still wanted.');
+    }
+
+    /** Before an answer or a claim, with the module on: a stale swap is cancelled (committed) and the caller gets 409 swap_void. */
+    private function guardStale(string $o, string $w): void
+    {
+        $pdo = $this->ctx->pdo;
+        if (!Cover::on($pdo, $o)) {
+            return;
+        }
+        $pdo->beginTransaction();
+        try {
+            Cover::lockOrg($pdo, $o);
+            $q = $pdo->prepare('SELECT * FROM shift_swaps WHERE id = ? AND org_id = ? FOR UPDATE');
+            $q->execute([$w, $o]);
+            $swap = $q->fetch();
+            $why = $swap === false ? null : self::voidIfStale($pdo, $swap, null, time());
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+        if ($why !== null) {
+            throw self::voided($why);
+        }
+    }
+
+    /** For the cover sweep (inside its transaction, organisation locked): cancels every stale pending or accepted swap. @return int how many */
+    public static function voidStale(\PDO $pdo, string $o, ?string $actor, int $now): int
+    {
+        $q = $pdo->prepare("SELECT * FROM shift_swaps WHERE org_id = ? AND status IN ('pending','accepted') FOR UPDATE");
+        $q->execute([$o]);
+        $n = 0;
+        foreach ($q->fetchAll() as $swap) {
+            $n += self::voidIfStale($pdo, $swap, $actor, $now) !== null ? 1 : 0;
+        }
+        return $n;
+    }
+
+    private function zoneOf(string $o, ?string $location): ?string
+    {
+        if ($location === null) {
+            return null;
+        }
+        $q = $this->ctx->pdo->prepare('SELECT timezone FROM locations WHERE id = ? AND org_id = ?');
+        $q->execute([$location, $o]);
+        $tz = $q->fetchColumn();
+        return SchedulingRules::validZone($tz) ? (string) $tz : null;
     }
 
     // ---- helpers ---------------------------------------------------------------------------------------
@@ -400,7 +533,10 @@ final class Swaps implements Module
     /** @param array<string,mixed> $r */
     private function present(array $r): array
     {
-        unset($r['client_event_id']);
+        unset($r['client_event_id'], $r['shift_fingerprint']);
+        if (array_key_exists('void_reason', $r) && $r['void_reason'] === null) {
+            unset($r['void_reason']); // only a swap the cover module cancelled carries it, so responses are as before while the module is off
+        }
         foreach (['reviewed_at', 'applied_at', 'created_at', 'updated_at', 'shift_starts_at', 'shift_ends_at'] as $k) {
             if (array_key_exists($k, $r)) {
                 $r[$k] = Time::iso($r[$k]);

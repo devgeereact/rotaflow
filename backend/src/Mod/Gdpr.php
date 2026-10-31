@@ -290,6 +290,10 @@ final class Gdpr implements Module
             $pdo->prepare('DELETE FROM emergency_contacts WHERE org_id = ? AND staff_profile_id = ?')->execute([$o, $s]);
             // Their documents go too (history included: a passport scan is not rota history); the folder below takes the files.
             $pdo->prepare('DELETE FROM documents WHERE org_id = ? AND staff_profile_id = ?')->execute([$o, $s]);
+            // What they wrote when they could not work a shift or offered to cover one (S12) can be about their health: the words go, the
+            // record that cover was arranged stays with the rota history.
+            $pdo->prepare("UPDATE cover_absences SET reason = '(removed)' WHERE org_id = ? AND staff_profile_id = ?")->execute([$o, $s]);
+            $pdo->prepare('UPDATE cover_applications SET note = NULL WHERE org_id = ? AND staff_profile_id = ?')->execute([$o, $s]);
             $pdo->prepare('UPDATE calendar_feed_tokens SET revoked_at = UTC_TIMESTAMP() WHERE org_id = ? AND staff_profile_id = ? AND revoked_at IS NULL')->execute([$o, $s]);
             $pdo->prepare("UPDATE staff_profiles SET first_name = 'Deleted', last_name = 'Member', email = NULL, phone = NULL, photo_url = NULL, photo_path = NULL, payroll_id = NULL, user_id = NULL, active = 0 WHERE id = ? AND org_id = ?")->execute([$s, $o]);
             foreach (FileStore::BUCKETS as $bucket) { // once per folder: erasing again queues nothing new while the first is still owed
