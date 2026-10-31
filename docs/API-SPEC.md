@@ -448,7 +448,7 @@ Nothing about a unique index is exposed. A member reads only their own records o
 | `POST .../swaps/{w}/cancel` | the requester, owner, manager | Before a decision |
 | `POST .../swaps/{w}/decide` | owner, manager; the requester once the colleague accepted | `{status: approved|rejected}`. Approving moves the shift atomically. Returns `outcome` (`approved`, `declined`, `already-decided`), `reassigned`. `shift_reassigned`, `target_inactive`, `rota_archived`, `shift_gone` 409 change nothing |
 | `POST .../swaps/{w}/reassign` | the requester, owner, manager | Move the shift of an approved swap that never moved it |
-| `GET /orgs/{o}/open-shifts` | member | Future, unassigned, open shifts on published rotas, with `clashes_with_mine` |
+| `GET /orgs/{o}/open-shifts` | member | Future, unassigned, open shifts on published rotas, with `clashes_with_mine` and (owner decision 31 Oct 2026, whatever `cover_tools` says) `my_eligibility{eligible, reasons[{code, message}]}`: the caller's **own** eligibility, the reasons the claim would refuse with (409 `not_eligible`: `inactive`, `absent`, `overlap`, `leave`, `unavailable`, `documents`; see S12). Only the caller's records are read; `null` for a member with no staff record (a platform support session included). The clash stays its own field (409 `already_working` covers drafts too) |
 | `POST /orgs/{o}/open-shifts/{h}/claim` | a member with a staff record | `shift_taken`, `already_working` 409; `not_published`, `already_started` 403 |
 | `GET /orgs/{o}/timesheets[?period_start&period_end&staff_profile_id&status]` | member (own), owner, manager | |
 | `POST /orgs/{o}/timesheets/submit` | the person | `{period_start, period_end, total_minutes}`; `timesheet_locked` 409 once approved or exported |
@@ -689,10 +689,13 @@ decision 31 Oct 2026: absence reasons can be health data).
 ### Slice S13 (R2): timesheets
 
 Behind the `timesheet_tools` feature flag, seeded **off** by migration 018: while it is off the list answers exactly as
-before (only `timesheets`) and the export answers **403 `feature_off`** after the membership check (a stranger still
-gets 404). Dates are the organisation's local dates (`organisations.timezone`, Europe/London when unset); instants are
-ISO 8601 UTC. Minutes are whole minutes from UTC instants (the floor of the exact difference), so an overnight shift
-across a clock change is exact. The tolerance is `organisations.settings.timesheet_tolerance_minutes`, a whole number
+before (only `timesheets`) and the export (GET and POST) answers **403 `feature_off`** after the membership check (a
+stranger still gets 404). With the flag on, the row status "Late" on the Timesheets page follows the same rule as the
+`late` flag below (owner decision 31 Oct 2026; `isLate` in `src/lib/timesheetRules.ts` mirrors
+`TimesheetRules::isLate`); off, it keeps the old browser rule (rounded minutes, more than 5). Dates are the
+organisation's local dates (`organisations.timezone`, Europe/London when unset); instants are ISO 8601 UTC. Minutes
+are whole minutes from UTC instants (the floor of the exact difference), so an overnight shift across a clock change
+is exact. The tolerance is `organisations.settings.timesheet_tolerance_minutes`, a whole number
 0 to 120 (default 10), written by `POST /orgs/{o}/settings` (owner; a fraction or text is 422).
 
 A **line** is one shift with a staff record, not cancelled, on a published or archived rota (or on none), starting in
@@ -707,7 +710,8 @@ tolerance), `no_clock_in` and `missing_clock_out` (only once the shift has ended
 | Method and path | Who | Does |
 | --------------- | --- | ---- |
 | `GET /orgs/{o}/timesheets[?period_start&period_end&staff_profile_id&status]` (changed, flag on only) | member (own), owner, manager | The response gains `lines` and `tolerance_minutes`. `lines[{shift_id, staff_profile_id, location_id, scheduled_start, scheduled_end, break_minutes, clock_in, clock_out, scheduled_minutes, recorded_minutes, variance_minutes, late_minutes, early_minutes, finished, flags{late, early_finish, overtime, no_clock_in, missing_clock_out}}]` for the period; `null` when either date is missing or the period is longer than 31 days (the timesheet rows still answer). A member gets only their own lines whatever `staff_profile_id` says; a member with no staff record gets `[]`. At most 5000 lines |
-| `GET /orgs/{o}/timesheets/export?period_start&period_end` | owner, manager (never a platform support session: 403) | The payroll CSV, `text/csv; charset=utf-8`, `Cache-Control: no-store`, file name `rotaflow-payroll-{from}-to-{to}.csv`. At most 31 days (422 with the sentence otherwise). One row per **approved or exported** period lying wholly inside the range (submitted and open periods, and periods that start before or end after it, are left out), sorted by last name, first name, staff id, period. The figure is the approved `total_minutes`, never a recalculation. Reading it changes nothing (it does not mark periods exported). Audited `timesheet.exported` with the dates and a row count only |
+| `GET /orgs/{o}/timesheets/export?period_start&period_end` | owner, manager (never a platform support session: 403) | The payroll CSV, `text/csv; charset=utf-8`, `Cache-Control: no-store`, `Content-Disposition: attachment; filename="rotaflow-timesheets-{org-slug}-{from}-{to}.csv"` (owner decision 31 Oct 2026; so a direct link downloads. The slug is lower-cased, anything but `a-z`, `0-9` and `-` becomes `-`, at most 60 characters, `organisation` when empty). At most 31 days (422 with the sentence otherwise). One row per **approved or exported** period lying wholly inside the range (submitted and open periods, and periods that start before or end after it, are left out), sorted by last name, first name, staff id, period. The figure is the approved `total_minutes`, never a recalculation. Reading it changes nothing (a preview: it does not mark periods exported). Audited `timesheet.exported` with the dates and a row count only |
+| `POST /orgs/{o}/timesheets/export` `{period_start, period_end}` (owner decision 31 Oct 2026) | owner, manager, writable membership (never a platform support session: 403) | **Exporting marks.** The same file and headers as the GET, and in one transaction (the organisation row locked first, then the included periods) every included `approved` period becomes `exported`. Periods already `exported` stay so and are still in the file; the **Status** column says what each period was when this export began (`approved`: marked by this export; `exported`: sent before). Response headers `X-RotaFlow-Marked-Exported` and `X-RotaFlow-Already-Exported` give the counts. Idempotent: again, it marks nothing. Two at once: one marks, the other waits and marks nothing. Not refused for read-only billing (staff still have to be paid). Audited `timesheet.exported` with `{period_start, period_end, rows, marked, already_exported}` only. An exported period stays locked against a new submission (`timesheet_locked`) and is still flagged by a clock correction |
 
 **CSV format.** UTF-8 with a byte-order mark, CRLF line ends, RFC 4180 quoting (a cell with a comma, quote, CR, LF or
 leading or trailing space is quoted). Every text cell that starts with `=`, `+`, `-`, `@`, tab or CR gets a leading
@@ -723,7 +727,7 @@ always this row, in this order (adding a column goes at the end; never reorder):
 | 5 | Period end | `YYYY-MM-DD` |
 | 6 | Approved minutes | Whole number |
 | 7 | Approved hours | Decimal with two places from the whole minutes by integer rounding, half up (`450` is `7.50`, `205` is `3.42`, `7` is `0.12`) |
-| 8 | Status | `approved` or `exported` |
+| 8 | Status | `approved` or `exported`, as the period stood when the export began (so in a `POST` export `approved` means "marked exported by this file") |
 | 9 | Version | Times approved |
 | 10 | Approved by | The approver's staff name, else their account name, else their email |
 | 11 | Approved at | `YYYY-MM-DD HH:MM` in the organisation's timezone |

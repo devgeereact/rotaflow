@@ -13,6 +13,13 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Timesheet and open-shift follow-ups (owner decisions on S13, branch `r2/s13-timesheets`, 31 October 2026).**
+  Exporting payroll now marks the approved periods in the file as exported (a new `POST timesheets/export`; the page
+  says how many were marked, and a period sent before still appears with Status `exported`), so nothing is paid twice
+  without anyone seeing it. The file downloads as `rotaflow-timesheets-<organisation>-<start>-<end>.csv`. With
+  `timesheet_tools` on, a timesheet row's "Late" follows the organisation's tolerance instead of a fixed 5 minutes
+  (off, unchanged). The Open shifts board tells a person why they cannot take a shift before they press Take it,
+  whether or not cover is on. Two-way swaps keep their own flag. No migration.
 - **Cover follow-ups and two-way swaps (owner decisions on S12, branch `r2/s13-timesheets`, 31 October 2026).** The
   instant open-shift claim now refuses someone on approved leave, declared unavailable, missing a required document or
   already working, whether or not the cover module is on. Platform support sessions cannot open any cover screen

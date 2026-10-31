@@ -353,7 +353,8 @@ re-made for RotaFlow's shifts, clock events and per-person period approvals.
    late, early finish and overtime lines in that period. A period is exported only if it lies wholly inside the range.
 3. **"Approved only" includes `exported`** (the S5 status that means approved and sent; nothing sets it yet), and
    **reading the export changes nothing**: a GET does not mark periods exported. Whether exporting should lock or mark
-   periods is an owner decision.
+   periods is an owner decision. (Decided 31 Oct 2026: `POST timesheets/export` marks; the GET stays read-only. See
+   "S13 follow-ups".)
 4. **No money in the CSV.** The plan names minutes and hours, not pay; RotaFlow's pay rates can change inside a period
    and the payroll system applies them. Hours are written from whole minutes by integer rounding (half up to two
    places), so there is no float drift (checked for every minute from 0 to 6000, both sides).
@@ -377,6 +378,8 @@ re-made for RotaFlow's shifts, clock events and per-person period approvals.
    payroll file has one, as the plan says.
 11. Two "late" readings now sit side by side with the flag on: the row status "Late" (the page's existing 5-minute
    rule) and the chip (the organisation's tolerance, default 10). Left as is; aligning them is an owner decision.
+   (Decided 31 Oct 2026: with the flag on the row follows the tolerance by the chip's rule; off, unchanged. See "S13
+   follow-ups".)
 12. Not ported: SiteRelay's per-line approve, adjust (with reason) and unlock, its `ts_approvals` / `ts_events`
    tables, `mine` and `summary` routes, and its "recorded offline" flag (RotaFlow's offline clock events are already
    labelled where they are recorded).
@@ -425,7 +428,8 @@ re-made for RotaFlow's shifts, clock events and per-person period approvals.
 - Any timesheet screen in a browser against a running API, and the CSV opened in Excel, Numbers, LibreOffice or a
   payroll importer (the file was checked byte by byte and parsed with PHP's `str_getcsv` only).
 - `Content-Disposition` is `inline` (the shared raw responder); the browser download names the file itself, so this
-  is cosmetic, but a direct link would open rather than save.
+  is cosmetic, but a direct link would open rather than save. (Fixed 31 Oct 2026: `attachment`, see "S13
+  follow-ups".)
 - Migration 018 on MariaDB 11.4 (the live version); only the local 13.0.2 test database ran it.
 - Lines for a large organisation (5000-line cap, one events query; not timed) and a 31-day export near that cap.
 - A shift whose site is in a different timezone from the organisation: windows and the CSV use the organisation's zone.
@@ -445,12 +449,15 @@ owner's, per `docs/RESTRUCTURE-PLAN.md` ("R2 gate").
 | S11 Scheduling | `scheduling_tools` | `016-scheduling.sql`: the flag only (limits are existing settings keys) | `rotas/{r}/publish-preview`, `rotas/{r}/patterns/generate`; publish and leave decision changed with the flag on | 235, 240 |
 | S12 Cover | `cover_tools` | `017-cover.sql`: `cover_absences`, `cover_requests`, `cover_applications`; `shift_swaps.shift_fingerprint`, `void_reason` | 14 cover routes; swaps changed with the flag on; the open-shift claim's eligibility check **always** on (owner decision) | 245, 250 |
 | S12d Two-way swaps | `two_way_swaps` (needs `cover_tools` too) | `019-two-way-swaps.sql`: `shift_swaps.take_shift_id`, `take_fingerprint`, index, FK | `swaps/options`; `POST swaps` gains `take_shift_id`; decide moves both shifts | 245, 265 |
-| S13 Timesheets | `timesheet_tools` | `018-timesheets.sql`: the flag only (tolerance is a settings key) | `timesheets/export`; the list gains `lines` with the flag on | 255, 260 |
+| S13 Timesheets | `timesheet_tools` | `018-timesheets.sql`: the flag only (tolerance is a settings key) | `GET timesheets/export` (read-only) and `POST timesheets/export` (marks exported); the list gains `lines` with the flag on | 255, 260 |
+| Follow-ups (31 Oct) | none new | none | `GET open-shifts` gains `my_eligibility` (always) | 099, 255, 260, 270 |
 
 Migrations 015 to 019 are all additive (019 sits after S13's 018 because S12d was decided after S13). One behaviour
 is not behind a flag, by the owner's decision: the instant open-shift claim refuses a person who is not eligible
 (approved leave, declared unavailability, a missing required document, the absentee, a clash) whatever `cover_tools`
-says, and platform support sessions are refused on every cover route.
+says, and platform support sessions are refused on every cover route. Following from it (owner decision, 31 Oct
+2026), the open-shifts list carries the caller's own eligibility (`my_eligibility`) whatever `cover_tools` says, and
+the card shows the reasons with Take it disabled.
 
 No new cron line and no new private config in any R2 slice: S10's reminders and S12's sweep run in the existing
 `bin/cron.php`.
@@ -464,11 +471,15 @@ No new cron line and no new private config in any R2 slice: S10's reminders and 
 - S11: whether ordinary shift writes (not only publish and patterns) should refuse a double-booking on the server;
   confirm the daily-rest reading (a continuous 11 hours in the 24 hours before a shift, SiteRelay's).
 - S12: the three questions are decided and built (eligibility on the claim always on; platform support refused on
-  cover; two-way swaps ported behind their own flag): see "S12 follow-ups" above. Still open: whether a claim
-  refused for eligibility should show the reasons before the click with `cover_tools` off (today the server's sentence
-  after the click); whether `two_way_swaps` should simply ride on `cover_tools` instead of its own flag.
-- S13: confirm the CSV columns with the payroll system in use; whether exporting should mark periods `exported`;
-  whether the row status "Late" (5 minutes) should follow the tolerance (default 10).
+  cover; two-way swaps ported behind their own flag): see "S12 follow-ups" below.
+  **Decided 31 Oct 2026 and built** (see "S13 follow-ups" below): the reasons a claim would be refused for show
+  before the click, with `cover_tools` on or off (`my_eligibility` on the open-shifts list); `two_way_swaps` **keeps
+  its own flag** (no change: it works only with `cover_tools` on as well, as migration 019 records).
+- S13: confirm the CSV columns with the payroll system in use (still open). **Decided 31 Oct 2026 and built** (see
+  "S13 follow-ups" below): exporting marks the approved periods `exported` (`POST timesheets/export`; the GET stays a
+  read-only preview); the row status "Late" follows the tolerance (default 10) only while `timesheet_tools` is on,
+  the old 5 minutes while it is off; the file downloads as an attachment named
+  `rotaflow-timesheets-<org-slug>-<start>-<end>.csv`.
 - All: migrations 015 to 019 rehearsed against the live MariaDB 11.4 structure at cutover prep (only the local 13.0.2
   test database has run them).
 
@@ -483,12 +494,15 @@ platform admin with a support session)
   last Sunday of March or October, leave approval listing shifts to cover.
 - S12: report absence, open a cover request, offers and candidates with reasons, approve and assign, two people taking
   one open shift at once, a swap voided by moving its shift, the support session refused on every cover screen; with
-  `cover_tools` off, a person on leave refused at Take it with the reason shown.
+  `cover_tools` off, a person on leave sees the reason on the open-shift card with Take it disabled, before any click.
 - S12d: offer a shift asking for one in return, the colleague accepts, a manager approves and both rota cells change;
   move one of the two shifts and see the swap cancelled; turn the flag off with one waiting and approve it.
-- S13: chips on a week with late, early and over lines, the tolerance changed in Policies, the payroll CSV opened in
-  the real spreadsheet and payroll importer (check the BOM, names with accents, a name starting with `=`), a period
-  corrected after approval showing "Recalculation required".
+- S13: chips on a week with late, early and over lines, the tolerance changed in Policies (the row status "Late"
+  moves with it; with the flag off it is the old 5 minutes), the payroll CSV opened in the real spreadsheet and payroll
+  importer (check the BOM, names with accents, a name starting with `=`), a period corrected after approval showing
+  "Recalculation required"; export twice and read the two messages (marked, then none new), the second file's Status
+  column saying `exported`; `curl -OJ` with a bearer token against `GET timesheets/export` saving the file under its
+  `rotaflow-timesheets-...csv` name, and the in-app download keeping that name in Safari, Chrome and Firefox.
 - Platform support session: the documents, cover and payroll export refusals.
 - Shapes: any screen whose request or response does not match the PHP handler (matched by reading, never in a browser).
 
@@ -514,7 +528,7 @@ The owner decided three S12 questions on 31 October 2026 (relayed by the coordin
   first survived); `cover_request_open` taken out from behind the flag.
 - The Open shifts page shows the server's sentence on a refused claim (as it already did for `already_working`);
   with the flag off it does not show the reasons before the click (that view reads the cover routes). NOT TESTED in a
-  browser.
+  browser. (Since 31 Oct 2026 it does, flag on or off: `my_eligibility`, see "S13 follow-ups".)
 
 **2. Platform support sessions are refused on every cover route.**
 
@@ -573,3 +587,130 @@ Four commits: pure rules (S12d-a), backend (S12d-b), front end (S12d-c), docs (S
   at the same instant (the organisation lock serialises them; not raced in a test); offline queueing of a two-way
   request (the queued item carries `take_shift_id` and replays through the same call, by reading only); MariaDB 11.4
   for migration 019 (`ADD CONSTRAINT ... FOREIGN KEY IF NOT EXISTS` ran on the local 13.0.2 only).
+
+## 2026-10-31: S13 follow-ups (owner decisions), on branch `r2/s13-timesheets`
+
+The owner said yes to five follow-ups on 31 October 2026 (relayed by the coordinator). Local commits on
+`r2/s13-timesheets` after the S12 follow-ups; nothing pushed. No migration (019 is still the last), no new flag.
+
+**1. Exporting payroll marks the periods it contains `exported`, so payroll is not paid twice.**
+
+- Choice: **`POST /orgs/{o}/timesheets/export`** `{period_start, period_end}` beside the unchanged GET (the cleaner of
+  the two offered: the method says it writes, the path and the file stay one thing; a `mark=1` flag on a GET-shaped
+  route would have made a write depend on a query parameter). The GET stays a read-only preview.
+- One transaction: the organisation row locked first (the R2 lock order, `Cover::lockOrg`), then the included
+  timesheet rows (`FOR UPDATE`, id order), then the file is built and **exactly the included `approved` periods**
+  become `exported`. Already-exported periods stay so and are still in the file.
+- Choice for flagging what was exported before: **the existing Status column**, read as the period stood when the
+  export began (`approved` = marked by this file, `exported` = sent before), so the column list payroll imports is
+  unchanged; plus two response headers, `X-RotaFlow-Marked-Exported` and `X-RotaFlow-Already-Exported`, which the page
+  uses for its message ("Payroll CSV downloaded. 3 periods marked as exported. 1 period in the file had been exported
+  before.").
+- Owners and managers with a writable membership; a platform support session 403 `forbidden` (as the GET); behind
+  `timesheet_tools` (403 `feature_off`, a stranger 404). Not refused for read-only billing: staff still have to be paid.
+  Audited `timesheet.exported` with `{period_start, period_end, rows, marked, already_exported}`, no names or ids.
+- Front end: the payroll button uses the marking route (`apiClient.postFile`, the POST twin of `getFile`, which also
+  exposes response headers), the dialog says that downloading marks the periods, and the page reloads after marking.
+  An `exported` period now counts as signed off on the Timesheets page (`isSignedOff`), so it is never offered for
+  approval again (before, nothing set `exported`, so this changes nothing with the flag off).
+- Unchanged and worth knowing: an exported period stays locked against a new submission (`timesheet_locked`) and is
+  still flagged by a clock correction (`Clock` already covered `exported`). `POST timesheets/approve` on an exported
+  period still puts it back to `approved` with `version + 1` (the S5 behaviour, through the API only; the page no
+  longer offers it), so the next export includes it again with the new version. Whether approve should refuse
+  exported periods is left for the owner.
+
+**2. The row status "Late" follows the tolerance, only with `timesheet_tools` on.**
+
+- `TimesheetRules::isLate` / `lateMinutes` (PHP) and `isLate` / `lateMinutes` (`src/lib/timesheetRules.ts`): more than
+  the tolerance in whole minutes, the floor of the exact difference; the server's late flag now goes through it. The
+  page passes the organisation's tolerance to `buildTimesheetDayRows` only while the flag is on
+  (`lateToleranceFor`); off, nothing is passed and the old rule runs untouched (rounded minutes, more than 5). With the
+  flag on the "N min late" label is the same whole-minute figure as the chip. The page reads the tolerance from the
+  organisation as well as from the lines response, so a failed lines read does not fall back to 10 silently.
+
+**3. Staff see why a claim would be refused before they click, whether or not `cover_tools` is on.**
+
+- Choice: **a field on the existing list**, `my_eligibility{eligible, reasons[{code, message}]}` on every row of
+  `GET /orgs/{o}/open-shifts` (no new endpoint, no second round trip). The reasons are the claim's own
+  (`inactive`, `absent`, `overlap`, `leave`, `unavailable`, `documents`, with the same sentences); `null` for a member
+  with no staff record (a support session included). `clashes_with_mine` stays as it was.
+- `Cover::assessShifts` reads only the caller's records (their shifts, leave, availability, active flag, absences and
+  documents), one query per kind of fact for up to 500 shifts, documents once per local date; the pure rules then
+  filter by person again. It never locks: the claim re-checks under its locks.
+- The open-shift card shows the reasons and disables Take it (the reason is also on the button's title). A shift that
+  only clashes keeps its "Clashes with your rota" badge as before; with `cover_tools` on, the cover row still wins.
+
+**4. Two-way swaps keep their own `two_way_swaps` flag.** No change to code: it works only with `cover_tools` on as
+well (S12d, migration 019). Recorded here and in the R2 gate.
+
+**5. The CSV downloads as an attachment.** Both export routes send `Content-Disposition: attachment;
+filename="rotaflow-timesheets-<org-slug>-<start>-<end>.csv"` (`TimesheetRules::exportFilename`: the stored slug
+lower-cased, anything but `a-z`, `0-9` and `-` becomes `-`, runs collapse, at most 60 characters, `organisation` when
+empty; mirrored by `payrollFilename` for the browser's fallback). The raw-response headers are now built by
+`Api::rawHeaders`, which `backend/public/api/index.php` writes as is, so the suites test the real header lines. Every
+other raw file (calendar feed, photos, documents) stays `inline` exactly as before; the file name keeps the old
+character rule; extra headers pass only as `X-RotaFlow-*` with plain ASCII values.
+
+**Evidence (local, 31 October 2026)**
+
+- `pnpm run check` exit 0 before each commit (ESLint, Biome, `tsc`, vitest, build, bundle, migration safety, doc
+  counts, export coverage, PHP lint and suites). PHP 2149 assertions, 0 failed (2097 before: `255` + 6, `260` + 23,
+  new `270-open-shift-eligibility` 18, `099` + 5). vitest 1788 (1768 before). Bundle 731.6 KiB of 760 (730.9 before).
+- `260`: the POST off (403 `feature_off`, stranger 404, nobody 401) and off again; staff 403; validation 422 with
+  nothing marked; the GET still read-only; the POST returns byte for byte the file the GET gave a moment before;
+  Status `approved, exported, approved`; the headers exactly (attachment, name, both counts); exactly the included
+  approved periods marked and nothing else (a fortnight starting before, later weeks, a submitted period, another
+  organisation); figures, versions and approvers untouched; audit metadata exactly the five keys; idempotent (0
+  marked, all `exported`); the exported period locked against submission; the owner may; an empty range; **two
+  marking exports at the same instant** on their own connections (both 200 with both periods, one marks 2 and the
+  other 0, each period exported once, two audits); the export **waiting on the organisation lock before it locks any
+  timesheet row** (a third connection locks the period with `NOWAIT` while it waits), then marking; a support session
+  refused with nothing marked. `Api::rawHeaders`: an attachment for the export, `inline` for the calendar feed and a
+  photo, a file name that cannot break its quotes, extra headers filtered.
+- `255`: `isLate` and `lateMinutes` at every boundary (mirrored case for case in `timesheetRules.test.ts`); file
+  names (clean slug, hostile slug, none, all non-ASCII, the 60-character cap).
+- `270`: with `cover_tools` off, leave, declared unavailability, a missing document (on every shift), a clash, the
+  absentee and an inactive record each give their reason; for every person and every shift the reasons equal
+  `Cover::assess` (the claim's own check); the claim refuses with the same sentence; an eligible colleague's list
+  carries no other person's id, name, leave, unavailability, documents or absence (searched in the raw JSON), nor
+  does pat's beyond her own leave; a member without a staff record gets `null`; a manager with one sees only their
+  own; stranger 404, nobody 401; flag on gives the same answers as flag off. Suites 110, 250 and 265 pass unchanged.
+- `099` (access sweep): `open_shifts` never appears in a stranger's or no-organisation user's answer to any route;
+  a live support session sees a real open shift with `my_eligibility` `null`; the owner sees one eligibility object;
+  stranger, no-organisation user and nobody refused. The support-refusal sweep picks up `POST timesheets/export`
+  automatically (25 routes now).
+- vitest: `timesheetDayRows.test.ts` + 5 (flag off: exactly the old rule incl. 5 min 30 s rounding to late; flag on
+  at 10, 15 and 0; the label; `lateToleranceFor`), `timesheetRules.test.ts` + 2, `timesheetService.test.ts` 5 (new:
+  the marking route, the file name fallback, the counts, the message, `isSignedOff`), `apiClient.test.ts` + 3
+  (`postFile`; the GET still sends no body), `openShiftService.test.ts` 2 (new: parsing, malformed input),
+  `OpenShiftsCover.test.tsx` + 3 (cover off: the reasons and a disabled Take it; eligible as before; a clash only
+  keeps its badge).
+- Mutation checks (36 tried; each of these 33 made a suite fail, then was reverted). Late: TS `isLate` `>` to `>=`; TS
+  `lateMinutes` rounding; the flag-off threshold moved to 10; the flag-off branch flooring; the tolerant branch
+  ignoring the tolerance; `lateToleranceFor` ignoring the flag; PHP `isLate` `>=`; PHP `lateMinutes` rounding. Export:
+  the organisation lock removed; the lock moved after the period lock; the GET marking; the POST marking nothing; the
+  POST marking every approved period of the organisation; the Status column read after marking; the role check, the
+  support refusal and the flag check removed; the disposition back to inline; the two count headers swapped; names
+  added to the audit; `rawHeaders` always inline, extras unfiltered, the file name unsanitised; `exportFilename`
+  without slug cleaning or the length cap. Eligibility: the absentee read for anyone; documents not checked; inactive
+  ignored; always eligible; an object for a member without a staff record; the card ignoring the list's eligibility;
+  the clash-only overlap filter removed; the service dropping the field. Three did not bite and are recorded as
+  belt-and-braces: removing the person filter from `assessShifts`' leave, availability and shift queries (the pure
+  rules, `SchedulingRules::leaveHit` / `unavailableHit` and `CoverRules::assess`, filter by person again, so no other
+  person's data reaches the answer either way).
+
+**NOT TESTED**
+
+- Any of it in a browser against a running API: the payroll button's message and reload, the open-shift card with the
+  reasons, the "Late" row with a changed tolerance.
+- The real HTTP headers through Apache/LiteSpeed (`index.php` writes `Api::rawHeaders` exactly, by reading; the suites
+  call the API object, not the entrypoint). A **plain link** to the export in a browser carries no bearer token (the
+  API's only credential), so it answers 401; `attachment` takes effect for any authenticated client (the app's own
+  download, `curl` with a token, or a signed link if one is ever added).
+- Two marking exports over **overlapping but different** ranges at once (the organisation lock serialises them; only
+  the same range was raced). A marking export racing an approval of a period in its range (row locks order them;
+  reasoned, not raced).
+- `my_eligibility` timing for an organisation with 500 open shifts (one query per kind of fact plus one documents
+  read per local date; not timed). Shifts whose site is in another timezone than the organisation: the same zone rule
+  as the claim (the site's zone, else the organisation's), checked only for London.
+- The local MariaDB 13.0.2 only; MariaDB 11.4 (live) did not run these suites. Playwright.
