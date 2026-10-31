@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildTimesheetDayRows,
+  lateToleranceFor,
   minutesOverThreshold,
   payrollCutOffLabel,
+  type TimesheetDayRow,
   weekTotalsForStaff,
 } from '@/lib/timesheetDayRows';
+import type { WorkedSegment } from '@/lib/hours';
 import type { ClockEvent, Location, Shift } from '@/types';
 
 const TZ = 'Europe/London';
@@ -221,6 +224,93 @@ describe('buildTimesheetDayRows', () => {
     const shift = mkShift({ staff_profile_id: null });
     const rows = buildTimesheetDayRows([shift], new Map(), LOCATIONS, TZ);
     expect(rows).toHaveLength(0);
+  });
+});
+
+/**
+ * Owner decision (31 Oct 2026): with `timesheet_tools` on the page passes the organisation's
+ * tolerance and "Late" is the server's rule (whole minutes, floor, more than the tolerance);
+ * with it off nothing is passed and the old rule (rounded, more than 5) stands unchanged.
+ */
+describe('buildTimesheetDayRows: Late and the tolerance', () => {
+  const closedAt = (clockIn: string): Map<string, WorkedSegment[]> =>
+    new Map([
+      [
+        'staff-1',
+        [
+          {
+            clockIn: mkEvent({ event_at: clockIn }),
+            clockOut: mkEvent({ type: 'out', event_at: '2026-08-11T15:00:00.000Z' }),
+            breakMinutes: 30,
+            minutes: 400,
+            reviewReason: null,
+            openBreakSince: null,
+          },
+        ],
+      ],
+    ]);
+  const row = (clockIn: string, tolerance?: number): TimesheetDayRow =>
+    buildTimesheetDayRows([mkShift()], closedAt(clockIn), LOCATIONS, TZ, tolerance)[0]!;
+
+  it('flag off (no tolerance passed): exactly the old rule, rounded minutes more than 5', () => {
+    expect(row('2026-08-11T07:05:00.000Z')).toMatchObject({
+      status: 'complete',
+      flag: null,
+    });
+    // 5 min 30 s rounds to 6: late under the old rule, and its label is the rounded figure.
+    expect(row('2026-08-11T07:05:30.000Z')).toMatchObject({
+      status: 'late',
+      flag: '6 min late',
+    });
+    expect(row('2026-08-11T07:08:00.000Z')).toMatchObject({
+      status: 'late',
+      flag: '8 min late',
+    });
+    expect(row('2026-08-11T07:12:00.000Z')).toMatchObject({
+      status: 'late',
+      flag: '12 min late',
+    });
+  });
+
+  it('flag on, default 10: 8 minutes is on time, 10:59 is 10 (not late), 11 is late', () => {
+    expect(row('2026-08-11T07:08:00.000Z', 10)).toMatchObject({
+      status: 'complete',
+      flag: null,
+    });
+    expect(row('2026-08-11T07:10:00.000Z', 10).status).toBe('complete');
+    expect(row('2026-08-11T07:10:59.000Z', 10).status).toBe('complete');
+    expect(row('2026-08-11T07:11:00.000Z', 10)).toMatchObject({
+      status: 'late',
+      flag: '11 min late',
+    });
+  });
+
+  it('flag on: the label is whole minutes (floor), the same figure as the late chip', () => {
+    expect(row('2026-08-11T07:12:59.000Z', 10)).toMatchObject({
+      status: 'late',
+      flag: '12 min late',
+    });
+  });
+
+  it('the page passes the tolerance only with the flag on', () => {
+    expect(lateToleranceFor(false, 15)).toBeUndefined();
+    expect(lateToleranceFor(true, 15)).toBe(15);
+    expect(lateToleranceFor(true, 0)).toBe(0);
+    // Flag off with a tolerance of 15 set: 8 minutes is still late, as before.
+    expect(row('2026-08-11T07:08:00.000Z', lateToleranceFor(false, 15)).status).toBe(
+      'late',
+    );
+    expect(row('2026-08-11T07:08:00.000Z', lateToleranceFor(true, 15)).status).toBe(
+      'complete',
+    );
+  });
+
+  it('flag on follows the organisation: 15 clears 12, 0 flags one minute, never early', () => {
+    expect(row('2026-08-11T07:12:00.000Z', 15).status).toBe('complete');
+    expect(row('2026-08-11T07:16:00.000Z', 15).status).toBe('late');
+    expect(row('2026-08-11T07:00:59.000Z', 0).status).toBe('complete');
+    expect(row('2026-08-11T07:01:00.000Z', 0).status).toBe('late');
+    expect(row('2026-08-11T06:30:00.000Z', 0).status).toBe('complete');
   });
 });
 

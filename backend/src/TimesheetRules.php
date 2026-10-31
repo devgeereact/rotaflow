@@ -70,6 +70,22 @@ final class TimesheetRules
         return max(0, intdiv(max(0, $toMs - $fromMs), 60000) - $breakMinutes);
     }
 
+    /** Whole minutes a clock-in is after the scheduled start: the floor of the exact difference, never below 0. Mirrors timesheetRules.ts. */
+    public static function lateMinutes(int $inMs, int $startMs): int
+    {
+        return intdiv(max(0, $inMs - $startMs), 60000);
+    }
+
+    /**
+     * Late beyond the tolerance: more than $tol whole minutes after the start (10 min 59 s is 10, not late at 10). The late flag on a line,
+     * and (owner decision, 31 Oct 2026; only with timesheet_tools on) the browser's row status "Late" by its mirror isLate in
+     * src/lib/timesheetRules.ts, so the two never disagree.
+     */
+    public static function isLate(int $inMs, int $startMs, int $tol): bool
+    {
+        return self::lateMinutes($inMs, $startMs) > $tol;
+    }
+
     /** Minutes as decimal hours with two places, by integer rounding (half up): 450 -> "7.50", 205 -> "3.42", 7 -> "0.12". */
     public static function hours(int $minutes): string
     {
@@ -196,7 +212,7 @@ final class TimesheetRules
         $out = $seg['out'] ?? null;
         $scheduled = self::workedMinutes($start, $end, $break);
         $recorded = $in !== null && $out !== null ? self::workedMinutes($in, $out, $break) : null;
-        $late = $in !== null ? intdiv(max(0, $in - $start), 60000) : 0;
+        $late = $in !== null ? self::lateMinutes($in, $start) : 0;
         $early = $out !== null ? intdiv(max(0, $end - $out), 60000) : 0;
         $finished = $nowMs >= $end;
         return [
@@ -215,7 +231,7 @@ final class TimesheetRules
             'early_minutes' => $early,
             'finished' => $finished,
             'flags' => [
-                'late' => $in !== null && $late > $tol,
+                'late' => $in !== null && self::isLate($in, $start, $tol),
                 'early_finish' => $out !== null && $early > $tol,
                 'overtime' => $recorded !== null && $recorded > $scheduled + $tol,
                 'no_clock_in' => $in === null && $finished,

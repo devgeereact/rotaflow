@@ -4,6 +4,7 @@ import { fromIsoInTimezone } from '@/lib/rotaGrid';
 import { shiftNetMinutes } from '@/lib/rotaInsights';
 import type { Location, Shift } from '@/types';
 import { formatTimeRange } from '@/lib/timeRange';
+import { isLate, lateMinutes as wholeMinutesLate } from '@/lib/timesheetRules';
 
 export type TimesheetDayStatus = 'complete' | 'late' | 'on_shift' | 'absent';
 
@@ -23,8 +24,20 @@ export interface TimesheetDayRow {
 
 /** A clock-in later than this past the shift's own start reads as "late",
  * matching the reference's "12 min late" example rather than flagging every
- * clock-in a minute or two after the hour. */
+ * clock-in a minute or two after the hour. Only while `timesheet_tools` is off:
+ * with it on, the organisation's tolerance decides (see `buildTimesheetDayRows`). */
 const LATE_THRESHOLD_MINUTES = 5;
+
+/**
+ * What the page passes as `lateToleranceMinutes`: the organisation's tolerance only while the
+ * `timesheet_tools` flag is on, else nothing (the old 5-minute rule).
+ */
+export function lateToleranceFor(
+  timesheetToolsOn: boolean,
+  toleranceMinutes: number,
+): number | undefined {
+  return timesheetToolsOn ? toleranceMinutes : undefined;
+}
 
 /**
  * The segment this shift's clock events actually belong to.
@@ -61,12 +74,20 @@ function pickSegmentForShift(
  * today is not yet an attendance question, so `todaysStartedShifts` should
  * already be filtered to `starts_at <= now` before it reaches here — this
  * function has no clock of its own to check that against.
+ *
+ * `lateToleranceMinutes` (owner decision, 31 Oct 2026): pass the organisation's
+ * `timesheet_tolerance_minutes` only while the `timesheet_tools` flag is on. Then
+ * "Late" is the server's rule exactly (`isLate`: more than the tolerance in whole
+ * minutes, the floor of the exact difference), so the row status and the late chip
+ * never disagree. Left out (flag off), the row reads exactly as before: rounded
+ * minutes, more than 5.
  */
 export function buildTimesheetDayRows(
   todaysStartedShifts: Shift[],
   segmentsByStaff: Map<string, WorkedSegment[]>,
   locationById: Map<string, Location>,
   fallbackTimezone: string,
+  lateToleranceMinutes?: number,
 ): TimesheetDayRow[] {
   return todaysStartedShifts
     .filter((s): s is Shift & { staff_profile_id: string } => s.staff_profile_id !== null)
@@ -119,13 +140,18 @@ export function buildTimesheetDayRows(
         timezone,
       );
       const actualLabel = `${clockInTime}, ${clockOutTime}`;
-      const lateMinutes = Math.round(
-        (new Date(segment.clockIn.event_at).getTime() -
-          new Date(shift.starts_at).getTime()) /
-          60_000,
-      );
+      const inMs = new Date(segment.clockIn.event_at).getTime();
+      const startMs = new Date(shift.starts_at).getTime();
+      const tolerant = lateToleranceMinutes !== undefined;
+      const lateMinutes = tolerant
+        ? wholeMinutesLate(inMs, startMs)
+        : Math.round((inMs - startMs) / 60_000);
 
-      if (lateMinutes > LATE_THRESHOLD_MINUTES) {
+      if (
+        tolerant
+          ? isLate(inMs, startMs, lateToleranceMinutes)
+          : lateMinutes > LATE_THRESHOLD_MINUTES
+      ) {
         return {
           ...base,
           actualLabel,

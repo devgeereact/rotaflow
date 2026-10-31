@@ -109,6 +109,27 @@ export function payrollHours(minutes: number): string {
   return `${sign}${Math.floor(hundredths / 100)}.${String(hundredths % 100).padStart(2, '0')}`;
 }
 
+/**
+ * Whole minutes a clock-in is after the scheduled start: the floor of the exact difference,
+ * never below 0. The same as `TimesheetRules::lateMinutes` on the server.
+ */
+export function lateMinutes(clockInMs: number, startMs: number): number {
+  return Math.floor(Math.max(0, clockInMs - startMs) / 60_000);
+}
+
+/**
+ * Late beyond the tolerance: more than `toleranceMinutes` whole minutes after the start
+ * (10 minutes 59 seconds is 10, not late at 10). The same as `TimesheetRules::isLate`, which
+ * raises the late chip; with `timesheet_tools` on the row status "Late" uses it too.
+ */
+export function isLate(
+  clockInMs: number,
+  startMs: number,
+  toleranceMinutes: number,
+): boolean {
+  return lateMinutes(clockInMs, startMs) > toleranceMinutes;
+}
+
 /** The tolerance an organisation set, or 10. Whole minutes 0 to 120, as the server reads it. */
 export function toleranceFrom(settings: unknown): number {
   if (typeof settings !== 'object' || settings === null || Array.isArray(settings)) {

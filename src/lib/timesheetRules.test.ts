@@ -3,6 +3,8 @@ import {
   chipsByShift,
   exportRangeProblem,
   flagChips,
+  isLate,
+  lateMinutes,
   payrollFilename,
   payrollHours,
   toleranceFrom,
@@ -141,6 +143,30 @@ describe('payrollHours', () => {
         `${Math.floor(h / 100)}.${String(h % 100).padStart(2, '0')}`,
       );
     }
+  });
+});
+
+describe('lateMinutes and isLate (mirrors suite 255)', () => {
+  const start = Date.UTC(2030, 3, 1, 9, 0, 0);
+  const at = (min: number, sec = 0): number => start + min * 60_000 + sec * 1000;
+
+  it('counts whole minutes after the start, the floor, never below 0', () => {
+    expect(lateMinutes(at(0), start)).toBe(0);
+    expect(lateMinutes(at(10, 59), start)).toBe(10);
+    expect(lateMinutes(at(11), start)).toBe(11);
+    expect(lateMinutes(at(-30), start)).toBe(0);
+    expect(lateMinutes(at(0, 59) + 999, start)).toBe(0);
+  });
+
+  it('is late only beyond the tolerance', () => {
+    expect(isLate(at(10), start, 10)).toBe(false);
+    expect(isLate(at(10, 59), start, 10)).toBe(false);
+    expect(isLate(at(11), start, 10)).toBe(true);
+    expect(isLate(at(11), start, 15)).toBe(false);
+    expect(isLate(at(0, 59), start, 0)).toBe(false);
+    expect(isLate(at(1), start, 0)).toBe(true);
+    expect(isLate(at(-5), start, 0)).toBe(false);
+    expect(isLate(at(121), start, 120)).toBe(true);
   });
 });
 

@@ -67,6 +67,12 @@ check('overtime: 10 minutes over the schedule is within tolerance, 11 is overtim
 check('overtime: arriving early counts too (in at 08:40, out at 17:00 is 20 over)', $at('2030-04-01 08:40:00', '2030-04-01 17:00:00')['overtime'] === true);
 check('a larger tolerance widens every flag', $at('2030-04-01 09:20:00', '2030-04-01 16:40:00', 30) === ['late' => false, 'early_finish' => false, 'overtime' => false, 'no_clock_in' => false, 'missing_clock_out' => false]);
 
+// isLate / lateMinutes: the rule the browser's row status "Late" mirrors with timesheet_tools on (src/lib/timesheetRules.test.ts, same cases).
+$st = $ms('2030-04-01 09:00:00');
+$min = static fn (int $m, int $s = 0): int => $st + $m * 60000 + $s * 1000;
+check('lateMinutes: whole minutes after the start, the floor, never below 0', T::lateMinutes($min(0), $st) === 0 && T::lateMinutes($min(10, 59), $st) === 10 && T::lateMinutes($min(11), $st) === 11 && T::lateMinutes($min(-30), $st) === 0 && T::lateMinutes($min(0, 59) + 999, $st) === 0);
+check('isLate: only beyond the tolerance (10 and 10:59 not late at 10; 11 late; 11 not late at 15; 0:59 not late at 0, 1 is; early never; 121 late at 120)', !T::isLate($min(10), $st, 10) && !T::isLate($min(10, 59), $st, 10) && T::isLate($min(11), $st, 10) && !T::isLate($min(11), $st, 15) && !T::isLate($min(0, 59), $st, 0) && T::isLate($min(1), $st, 0) && !T::isLate($min(-5), $st, 0) && T::isLate($min(121), $st, 120));
+
 // ---- the tolerance setting --------------------------------------------------------------------------------------------------------------------
 check('tolerance: unset is 10; a whole number 0-120 is used', T::tolerance(null) === 10 && T::tolerance('{}') === 10 && T::tolerance('{"timesheet_tolerance_minutes":5}') === 5 && T::tolerance('{"timesheet_tolerance_minutes":0}') === 0 && T::tolerance('{"timesheet_tolerance_minutes":120}') === 120);
 check('tolerance: a fraction, text, a negative or more than 120 falls back to 10', T::tolerance('{"timesheet_tolerance_minutes":7.5}') === 10 && T::tolerance('{"timesheet_tolerance_minutes":"15"}') === 10 && T::tolerance('{"timesheet_tolerance_minutes":-1}') === 10 && T::tolerance('{"timesheet_tolerance_minutes":121}') === 10 && T::tolerance('not json') === 10);

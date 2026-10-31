@@ -25,6 +25,7 @@ import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import {
   chipsByShift,
   DEFAULT_TOLERANCE_MINUTES,
+  toleranceFrom,
   type FlagChip,
 } from '@/lib/timesheetRules';
 import { logAuditEvent } from '@/services/auditService';
@@ -33,6 +34,7 @@ import { DEFAULT_POLICIES, schedulingPolicies } from '@/lib/orgPreferences';
 import { pairClockEvents, segmentsStartingWithin, type WorkedSegment } from '@/lib/hours';
 import {
   buildTimesheetDayRows,
+  lateToleranceFor,
   weekTotalsForStaff,
   minutesOverThreshold,
   payrollCutOffLabel as computePayrollCutOffLabel,
@@ -194,6 +196,10 @@ export function TimesheetsPage(): JSX.Element {
   const [overtimeThresholdHours, setOvertimeThresholdHours] = useState(
     DEFAULT_POLICIES.overtimeThresholdHours,
   );
+  // S13 tolerance (Settings → Policies "Timesheet flags"). Read from the organisation here as
+  // well as from the lines response, so the row status "Late" follows it even if the lines
+  // read fails. Used only while `timesheet_tools` is on.
+  const [toleranceMinutes, setToleranceMinutes] = useState(DEFAULT_TOLERANCE_MINUTES);
   useEffect(() => {
     if (!orgId) return;
     let active = true;
@@ -204,6 +210,7 @@ export function TimesheetsPage(): JSX.Element {
           setOvertimeThresholdHours(
             schedulingPolicies(org.settings).overtimeThresholdHours,
           );
+          setToleranceMinutes(toleranceFrom(org.settings));
         }
       } catch (err) {
         reportError(err, { area: 'timesheets:load-policies' });
@@ -217,7 +224,6 @@ export function TimesheetsPage(): JSX.Element {
   // S13 flag chips: the server's lines for this week, read on their own so a failure leaves
   // the page exactly as it is without them. Re-read whenever the week's events are reloaded.
   const [lineChips, setLineChips] = useState<Map<string, FlagChip[]> | null>(null);
-  const [toleranceMinutes, setToleranceMinutes] = useState(DEFAULT_TOLERANCE_MINUTES);
   useEffect(() => {
     const first = weekDates[0];
     const last = weekDates[weekDates.length - 1];
@@ -299,8 +305,17 @@ export function TimesheetsPage(): JSX.Element {
         segmentsByStaffId,
         new Map(locations.map((l) => [l.id, l])),
         timezone,
+        // Owner decision (31 Oct 2026): with the flag on, "Late" follows the tolerance; off, the old 5 minutes.
+        lateToleranceFor(timesheetToolsOn, toleranceMinutes),
       ),
-    [todaysStartedShifts, segmentsByStaffId, locations, timezone],
+    [
+      todaysStartedShifts,
+      segmentsByStaffId,
+      locations,
+      timezone,
+      timesheetToolsOn,
+      toleranceMinutes,
+    ],
   );
 
   const approvedStaffIds = useMemo(() => {
