@@ -74,7 +74,11 @@ export function buildCsv<T>(
 
 /** Trigger a browser download of arbitrary text content. */
 export function downloadFile(filename: string, content: string, mimeType: string): void {
-  const blob = new Blob([content], { type: mimeType });
+  downloadBlob(filename, new Blob([content], { type: mimeType }));
+}
+
+/** Trigger a browser download of bytes already in hand (a file the API produced). */
+export function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

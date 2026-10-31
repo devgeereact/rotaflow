@@ -15,9 +15,18 @@ import {
 } from '@/services/clockService';
 import {
   approveTimesheets,
+  downloadPayrollCsv,
+  listTimesheetLines,
   listTimesheets,
+  TIMESHEET_FEATURE,
   type Timesheet,
 } from '@/services/timesheetService';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import {
+  chipsByShift,
+  DEFAULT_TOLERANCE_MINUTES,
+  type FlagChip,
+} from '@/lib/timesheetRules';
 import { logAuditEvent } from '@/services/auditService';
 import { getOrganisation } from '@/services/orgService';
 import { DEFAULT_POLICIES, schedulingPolicies } from '@/lib/orgPreferences';
@@ -68,6 +77,8 @@ export function TimesheetsPage(): JSX.Element {
   const { user } = useAuth();
   const { showError, showSuccess } = useToast();
   const isManager = canApprove;
+  // Slice S13. Off (the default), none of the state below is filled and the page renders as before.
+  const timesheetToolsOn = useFeatureAccess().has(TIMESHEET_FEATURE);
 
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -203,6 +214,33 @@ export function TimesheetsPage(): JSX.Element {
     };
   }, [orgId]);
 
+  // S13 flag chips: the server's lines for this week, read on their own so a failure leaves
+  // the page exactly as it is without them. Re-read whenever the week's events are reloaded.
+  const [lineChips, setLineChips] = useState<Map<string, FlagChip[]> | null>(null);
+  const [toleranceMinutes, setToleranceMinutes] = useState(DEFAULT_TOLERANCE_MINUTES);
+  useEffect(() => {
+    const first = weekDates[0];
+    const last = weekDates[weekDates.length - 1];
+    if (!orgId || !timesheetToolsOn || !first || !last) {
+      setLineChips(null);
+      return;
+    }
+    let active = true;
+    void (async () => {
+      try {
+        const r = await listTimesheetLines(orgId, first, last);
+        if (!active) return;
+        setLineChips(chipsByShift(r.lines ?? []));
+        setToleranceMinutes(r.toleranceMinutes);
+      } catch (err) {
+        reportError(err, { area: 'timesheets:load-lines' });
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [orgId, timesheetToolsOn, weekDates, weekEvents]);
+
   useRealtimeRefresh({
     tables: ['clock_events', 'shifts'],
     scope: { column: 'org_id', value: orgId },
@@ -297,12 +335,13 @@ export function TimesheetsPage(): JSX.Element {
         status: row.status,
         flag: row.flag,
         approved: approvedStaffIds.has(row.staffId),
+        ...(lineChips ? { chips: lineChips.get(row.shiftId) ?? [] } : {}),
       };
     });
     return rows.sort((a, b) =>
       `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`),
     );
-  }, [dayRows, staffById, today, approvedStaffIds]);
+  }, [dayRows, staffById, today, approvedStaffIds, lineChips]);
 
   const filteredRows = useMemo(() => {
     let rows = displayRows;
@@ -375,6 +414,20 @@ export function TimesheetsPage(): JSX.Element {
     if (orgId) void logAuditEvent(orgId, 'timesheet.exported', 'timesheet', undefined);
     showSuccess(`Timesheets exported, ${filteredRows.length} rows.`);
   }, [filteredRows, today, orgId, showSuccess, showError]);
+
+  const handlePayrollExport = useCallback(
+    async (from: string, to: string): Promise<void> => {
+      if (!orgId) return;
+      try {
+        await downloadPayrollCsv(orgId, from, to);
+        showSuccess('Payroll CSV downloaded.');
+      } catch (err) {
+        reportError(err, { area: 'timesheets:payroll-export' });
+        showError('Could not export payroll. Please try again.');
+      }
+    },
+    [orgId, showSuccess, showError],
+  );
 
   const approveForStaff = useCallback(
     async (staffIds: string[]): Promise<void> => {
@@ -578,6 +631,16 @@ export function TimesheetsPage(): JSX.Element {
         onApprovePerson={handleApprovePerson}
         timezoneForRow={timezoneForRow}
         clockEventsForRow={clockEventsForRow}
+        payrollExport={
+          timesheetToolsOn
+            ? {
+                defaultFrom: weekDates[0] ?? today,
+                defaultTo: weekDates[weekDates.length - 1] ?? today,
+                toleranceMinutes,
+                onExport: handlePayrollExport,
+              }
+            : undefined
+        }
       />
     );
   }

@@ -16,6 +16,8 @@ import {
   type TimesheetDisplayRow,
 } from '@/components/timesheets/TimesheetRowsTable';
 import type { TimesheetDayStatus } from '@/lib/timesheetDayRows';
+import { exportRangeProblem, TIMESHEET_MAX_DAYS } from '@/lib/timesheetRules';
+import { Label } from '@/components/ui/Label';
 import type { ClockEvent } from '@/types';
 
 export interface ManagerTimesheetTiles {
@@ -27,6 +29,17 @@ export interface ManagerTimesheetTiles {
   stillClockedIn: number;
   awaitingApproval: number;
   payrollCutOff: string;
+}
+
+/**
+ * The payroll CSV export (slice S13, `timesheet_tools` flag). Absent with the flag off, so the
+ * header shows only the existing "Export CSV".
+ */
+export interface PayrollExportProps {
+  defaultFrom: string;
+  defaultTo: string;
+  toleranceMinutes: number;
+  onExport: (from: string, to: string) => Promise<void>;
 }
 
 interface AmendTarget {
@@ -53,6 +66,7 @@ export interface ManagerTimesheetsProps {
     clockIn: ClockEvent | null;
     clockOut: ClockEvent | null;
   };
+  payrollExport?: PayrollExportProps;
 }
 
 /**
@@ -78,8 +92,10 @@ export function ManagerTimesheets({
   onApprovePerson,
   timezoneForRow,
   clockEventsForRow,
+  payrollExport,
 }: ManagerTimesheetsProps): JSX.Element {
   const [amendTarget, setAmendTarget] = useState<AmendTarget | null>(null);
+  const [payrollOpen, setPayrollOpen] = useState(false);
   const [amendBusy, setAmendBusy] = useState(false);
   const [approveWeekOpen, setApproveWeekOpen] = useState(false);
 
@@ -96,6 +112,12 @@ export function ManagerTimesheets({
               <Download size={14} aria-hidden="true" className="mr-1.5" />
               Export CSV
             </Button>
+            {payrollExport && (
+              <Button variant="secondary" onClick={() => setPayrollOpen(true)}>
+                <Download size={14} aria-hidden="true" className="mr-1.5" />
+                Export payroll CSV
+              </Button>
+            )}
             <Button onClick={() => setApproveWeekOpen(true)}>Approve week</Button>
           </>
         }
@@ -184,6 +206,14 @@ export function ManagerTimesheets({
         }}
       />
 
+      {payrollExport && (
+        <PayrollExportModal
+          open={payrollOpen}
+          onClose={() => setPayrollOpen(false)}
+          {...payrollExport}
+        />
+      )}
+
       <Modal
         open={approveWeekOpen}
         onClose={() => setApproveWeekOpen(false)}
@@ -214,5 +244,75 @@ export function ManagerTimesheets({
         </div>
       </Modal>
     </div>
+  );
+}
+
+function PayrollExportModal({
+  open,
+  onClose,
+  defaultFrom,
+  defaultTo,
+  toleranceMinutes,
+  onExport,
+}: PayrollExportProps & { open: boolean; onClose: () => void }): JSX.Element {
+  const [from, setFrom] = useState(defaultFrom);
+  const [to, setTo] = useState(defaultTo);
+  const [busy, setBusy] = useState(false);
+  const problem = exportRangeProblem(from, to);
+
+  return (
+    <Modal open={open} onClose={onClose} title="Export payroll CSV">
+      <p className="text-sm text-content-muted dark:text-content-muted-dark">
+        Approved periods only, one row per person per period, with the approved minutes
+        and hours, who approved them, and how many lines were late, finished early or ran
+        over (by more than {toleranceMinutes} minutes). A period that lies partly outside
+        these dates is left out. At most {TIMESHEET_MAX_DAYS} days.
+      </p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="payroll-from">From</Label>
+          <Input
+            id="payroll-from"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="payroll-to">To</Label>
+          <Input
+            id="payroll-to"
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </div>
+      </div>
+      {problem && (
+        <p
+          role="alert"
+          className="mt-3 text-sm text-danger-ink dark:text-danger-ink-dark"
+        >
+          {problem}
+        </p>
+      )}
+      <div className="mt-5 flex justify-end gap-3">
+        <Button variant="secondary" onClick={onClose} disabled={busy}>
+          Cancel
+        </Button>
+        <Button
+          disabled={busy || problem !== null}
+          onClick={() => {
+            setBusy(true);
+            void onExport(from, to).finally(() => {
+              setBusy(false);
+              onClose();
+            });
+          }}
+        >
+          {busy ? 'Exporting…' : 'Download CSV'}
+        </Button>
+      </div>
+    </Modal>
   );
 }

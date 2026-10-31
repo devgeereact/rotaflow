@@ -22,6 +22,13 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Toggle } from '@/components/ui/Toggle';
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { TIMESHEET_FEATURE } from '@/services/timesheetService';
+import {
+  DEFAULT_TOLERANCE_MINUTES,
+  MAX_TOLERANCE_MINUTES,
+  toleranceFrom,
+} from '@/lib/timesheetRules';
 
 type NumericPolicyKey =
   | 'overtimeThresholdHours'
@@ -147,6 +154,10 @@ export function SettingsPoliciesPage(): JSX.Element {
   const { showError, showSuccess } = useToast();
 
   const [policies, setPolicies] = useState<SchedulingPolicies>(DEFAULT_POLICIES);
+  // Slice S13. Only shown, and only saved, with the `timesheet_tools` flag on: off, the save
+  // sends exactly the keys it always has.
+  const timesheetToolsOn = useFeatureAccess().has(TIMESHEET_FEATURE);
+  const [tolerance, setTolerance] = useState(DEFAULT_TOLERANCE_MINUTES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -161,6 +172,7 @@ export function SettingsPoliciesPage(): JSX.Element {
         const org = await getOrganisation(orgId);
         if (!active) return;
         setPolicies(schedulingPolicies(org.settings));
+        setTolerance(toleranceFrom(org.settings));
       } catch (err) {
         if (!active) return;
         reportError(err, { area: 'settings-policies:load' });
@@ -178,7 +190,10 @@ export function SettingsPoliciesPage(): JSX.Element {
     if (!orgId) return;
     setSaving(true);
     try {
-      await mergeOrgSettings(orgId, policiesToSettings(policies));
+      await mergeOrgSettings(orgId, {
+        ...policiesToSettings(policies),
+        ...(timesheetToolsOn ? { timesheet_tolerance_minutes: tolerance } : {}),
+      });
       await refresh();
       showSuccess('Scheduling policies saved.');
     } catch (err) {
@@ -187,7 +202,7 @@ export function SettingsPoliciesPage(): JSX.Element {
     } finally {
       setSaving(false);
     }
-  }, [orgId, policies, refresh, showError, showSuccess]);
+  }, [orgId, policies, tolerance, timesheetToolsOn, refresh, showError, showSuccess]);
 
   if (loading) {
     return (
@@ -271,6 +286,50 @@ export function SettingsPoliciesPage(): JSX.Element {
           />
         </div>
       </SettingsSection>
+
+      {timesheetToolsOn && (
+        <SettingsSection
+          title="Timesheet flags"
+          description="How far from the rota a clocked time may be before its timesheet line is flagged."
+        >
+          <div className="max-w-xs">
+            <Label htmlFor="policy-timesheet-tolerance">Tolerance</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                id="policy-timesheet-tolerance"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={MAX_TOLERANCE_MINUTES}
+                step={1}
+                disabled={!canEdit}
+                value={String(tolerance)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  const parsed = Number(e.target.value);
+                  // Whole minutes 0 to 120 only, as the server accepts.
+                  if (
+                    !Number.isInteger(parsed) ||
+                    parsed < 0 ||
+                    parsed > MAX_TOLERANCE_MINUTES
+                  ) {
+                    return;
+                  }
+                  setTolerance(parsed);
+                }}
+              />
+              <span className="shrink-0 text-sm text-content-muted dark:text-content-muted-dark">
+                minutes
+              </span>
+            </div>
+            <p className="mt-1.5 text-xs text-content-muted dark:text-content-muted-dark">
+              Late, early finish and overtime are flagged only beyond this.
+            </p>
+            <p className="mt-1 text-xs text-content dark:text-content-dark">
+              {`With ${tolerance} minutes, a clock-in ${tolerance + 1} minutes after the start is flagged late; ${tolerance} minutes is not.`}
+            </p>
+          </div>
+        </SettingsSection>
+      )}
 
       <SettingsSection
         title="Holiday year"

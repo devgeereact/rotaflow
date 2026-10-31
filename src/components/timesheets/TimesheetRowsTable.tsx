@@ -3,6 +3,7 @@ import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { StaffAvatar } from '@/components/ui/StaffAvatar';
 import type { TimesheetDayStatus } from '@/lib/timesheetDayRows';
+import type { FlagChip } from '@/lib/timesheetRules';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';
 
 export interface TimesheetDisplayRow {
@@ -20,6 +21,11 @@ export interface TimesheetDisplayRow {
   flag: string | null;
   /** True once this person's week has an approved timesheet on file. */
   approved: boolean;
+  /**
+   * Late / early finish / overtime chips from the server (slice S13, `timesheet_tools` flag).
+   * Absent with the flag off, so the row renders exactly as before.
+   */
+  chips?: FlagChip[];
 }
 
 const STATUS_LABEL: Record<TimesheetDayStatus, string> = {
@@ -125,6 +131,18 @@ export function TimesheetRowsTable({
                   <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
                     {row.flag}
                   </p>
+                )}
+                {row.chips && row.chips.length > 0 && (
+                  <ul
+                    className="mt-1.5 flex flex-wrap gap-1"
+                    aria-label="Timesheet flags"
+                  >
+                    {row.chips.map((chip) => (
+                      <li key={chip.key}>
+                        <Badge tone={chip.tone}>{chip.label}</Badge>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </td>
               {showActions && (

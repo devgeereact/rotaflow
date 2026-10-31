@@ -1,5 +1,11 @@
 import { activeOrgPath, api, orgPath, seg } from '@/lib/api';
 import type { Database } from '@/types/database.types';
+import { downloadBlob } from '@/lib/csv';
+import {
+  DEFAULT_TOLERANCE_MINUTES,
+  payrollFilename,
+  type TimesheetLine,
+} from '@/lib/timesheetRules';
 
 export type Timesheet = Database['public']['Tables']['timesheets']['Row'];
 export type TimesheetStatus = Timesheet['status'];
@@ -98,4 +104,49 @@ export async function reopenTimesheet(id: string): Promise<Timesheet> {
     activeOrgPath(`/timesheets/${seg(id)}/reopen`),
   );
   return r.timesheet;
+}
+
+/** The `timesheet_tools` feature flag (slice S13). Off, nothing below is called. */
+export const TIMESHEET_FEATURE = 'timesheet_tools';
+
+export interface TimesheetLinesResult {
+  /** null when the period is longer than 31 days (the server computes no lines then). */
+  lines: TimesheetLine[] | null;
+  toleranceMinutes: number;
+}
+
+/**
+ * The lines and their flags for a period, as the server computes them. Only meaningful with
+ * the flag on: off, the server answers no `lines` and this reads as none.
+ */
+export async function listTimesheetLines(
+  orgId: string,
+  periodStart: string,
+  periodEnd: string,
+): Promise<TimesheetLinesResult> {
+  const r = await api.get<{
+    timesheets: Timesheet[];
+    lines?: TimesheetLine[] | null;
+    tolerance_minutes?: number;
+  }>(orgPath(orgId, '/timesheets'), { period_start: periodStart, period_end: periodEnd });
+  return {
+    lines: r.lines ?? null,
+    toleranceMinutes: r.tolerance_minutes ?? DEFAULT_TOLERANCE_MINUTES,
+  };
+}
+
+/**
+ * The payroll CSV of approved periods inside the range, downloaded as the server wrote it
+ * (UTF-8 with a BOM, formula-safe cells). Nothing is rebuilt in the browser.
+ */
+export async function downloadPayrollCsv(
+  orgId: string,
+  periodStart: string,
+  periodEnd: string,
+): Promise<void> {
+  const file = await api.getFile(orgPath(orgId, '/timesheets/export'), {
+    period_start: periodStart,
+    period_end: periodEnd,
+  });
+  downloadBlob(file.filename ?? payrollFilename(periodStart, periodEnd), file.body);
 }

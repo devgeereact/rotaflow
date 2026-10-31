@@ -35,6 +35,16 @@ export interface ApiClient {
     query?: Record<string, string | number | boolean | undefined>,
   ) => Promise<T>;
   post: <T>(path: string, body?: unknown) => Promise<T>;
+  /**
+   * A GET that answers a file (a CSV, say) rather than JSON. Errors still arrive as the JSON error shape and
+   * throw `ApiError`, exactly as `get` does. `filename` is read from Content-Disposition when the API sends one.
+   */
+  getFile: (path: string, query?: Query) => Promise<ApiFile>;
+}
+
+export interface ApiFile {
+  body: Blob;
+  filename: string | null;
 }
 
 type Query = Record<string, string | number | boolean | undefined>;
@@ -102,7 +112,40 @@ export function createApiClient(opts: ApiClientOptions): ApiClient {
     return payload as T;
   }
 
+  async function getFile(path: string, query?: Query): Promise<ApiFile> {
+    const token = await opts.getToken();
+    const headers: Record<string, string> = { Accept: '*/*' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    let res: Response;
+    try {
+      res = await doFetch(`${opts.baseUrl}${withQuery(path, query)}`, {
+        method: 'GET',
+        headers,
+        credentials: 'omit',
+      });
+    } catch {
+      throw new ApiError(0, 'network', 'Could not reach the server');
+    }
+    if (!res.ok) {
+      if (res.status === 401) opts.onUnauthorized?.();
+      let payload: unknown = null;
+      try {
+        payload = await res.json();
+      } catch {
+        payload = null;
+      }
+      if (isErrorBody(payload)) {
+        throw new ApiError(res.status, payload.error.code, payload.error.message);
+      }
+      throw new ApiError(res.status, 'http_error', `Request failed (${res.status})`);
+    }
+    const disposition = res.headers.get('Content-Disposition') ?? '';
+    const name = /filename="([^"]+)"/.exec(disposition)?.[1] ?? null;
+    return { body: await res.blob(), filename: name };
+  }
+
   return {
+    getFile,
     get: <T>(path: string, query?: Query) => request<T>('GET', withQuery(path, query)),
     post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
   };

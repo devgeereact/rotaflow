@@ -132,3 +132,48 @@ describe('apiClient', () => {
     });
   });
 });
+
+describe('getFile', () => {
+  it('sends the bearer token and returns the bytes and the file name', async () => {
+    const { fetchImpl, calls } = stub(
+      () =>
+        new Response('﻿Staff name\r\n', {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition':
+              'inline; filename="rotaflow-payroll-2026-10-19-to-2026-10-25.csv"',
+          },
+        }),
+    );
+    const file = await client(fetchImpl).getFile('/orgs/o1/timesheets/export', {
+      period_start: '2026-10-19',
+      period_end: '2026-10-25',
+    });
+    expect(calls[0]?.[0]).toBe(
+      '/api/orgs/o1/timesheets/export?period_start=2026-10-19&period_end=2026-10-25',
+    );
+    expect(headersOf(calls[0]).Authorization).toBe('Bearer tok_123');
+    expect(calls[0]?.[1].credentials).toBe('omit');
+    expect(file.filename).toBe('rotaflow-payroll-2026-10-19-to-2026-10-25.csv');
+    expect(await file.body.text()).toContain('Staff name');
+  });
+
+  it('turns the JSON error shape into ApiError and reports a 401', async () => {
+    const onUnauthorized = vi.fn();
+    const { fetchImpl } = stub(() =>
+      reply(403, { error: { code: 'feature_off', message: 'Not on yet' } }),
+    );
+    await expect(client(fetchImpl).getFile('/x')).rejects.toMatchObject({
+      status: 403,
+      code: 'feature_off',
+    });
+    const { fetchImpl: f401 } = stub(() =>
+      reply(401, { error: { code: 'unauthorized', message: 'Sign in' } }),
+    );
+    await expect(client(f401, { onUnauthorized }).getFile('/x')).rejects.toBeInstanceOf(
+      ApiError,
+    );
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+  });
+});
