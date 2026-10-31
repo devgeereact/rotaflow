@@ -588,11 +588,16 @@ most one open absence report and one open cover request per shift. Rules: `backe
   rota when the swap was raised; recorded on every new swap, never returned, read only while the flag is on) and
   `void_reason` (`shift_changed`, `shift_started`; set only when the cover module cancels a stale swap).
 - **Flag**: `feature_flags.cover_tools` is seeded **off**.
+- **Two-way swaps** (`backend/migrations/019-two-way-swaps.sql`, S12d, owner decision 31 Oct 2026; additive):
+  `shift_swaps.take_shift_id` (the colleague's shift asked for in return; same-organisation foreign key to
+  `shifts (org_id, id)`, cascade, as `shift_id`; index `shift_swaps_take`) and `shift_swaps.take_fingerprint` (that
+  shift's S12 fingerprint when raised; never returned). Both NULL on a one-way swap. Flag
+  `feature_flags.two_way_swaps`, seeded **off**, and it works only with `cover_tools` on too.
 - **Deletion**: erasing a person replaces their absence reasons with `(removed)` and clears their application notes
   (the records stay with the rota history); deleting a shift or organisation cascades. Not in the organisation export
   yet (the PHP export is not built; S10's documents are in the same position).
-- **Not copied from SiteRelay**: its `shift_swaps` (RotaFlow's own swaps stay, with the two columns above) and its
-  published-shift projection (`published_shifts`).
+- **Not copied from SiteRelay**: its `shift_swaps` table (RotaFlow's own swaps stay, with the columns above; its
+  two-way `take_shift_id` idea was ported onto them in S12d) and its published-shift projection (`published_shifts`).
 
 ### 4.19 Timesheets (MariaDB `backend/migrations/018-timesheets.sql`, R2 slice S13)
 

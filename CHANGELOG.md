@@ -13,6 +13,13 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Cover follow-ups and two-way swaps (owner decisions on S12, branch `r2/s13-timesheets`, 31 October 2026).** The
+  instant open-shift claim now refuses someone on approved leave, declared unavailable, missing a required document or
+  already working, whether or not the cover module is on. Platform support sessions cannot open any cover screen
+  (absence reasons can be health data). And a swap can now ask for one of the colleague's shifts in return: approving
+  moves both shifts or neither, each person is checked against the other's shift, and the swap cancels itself if
+  either shift changes or starts. Two-way swaps ship off behind their own `two_way_swaps` flag (needs `cover_tools`).
+  Migration `backend/migrations/019-two-way-swaps.sql`.
 - **Timesheet flags and the payroll CSV, behind the `timesheet_tools` flag (R2 slice S13, branch
   `r2/s13-timesheets`, 31 October 2026).** Each timesheet line shows Late, Early finish and Overtime chips beyond the
   organisation's tolerance (default 10 minutes, Settings, Policies), worked out on the server from UTC instants so a

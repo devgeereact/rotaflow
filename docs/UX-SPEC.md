@@ -216,6 +216,7 @@ No design reference; built in the existing components. Hidden while the flag is 
 | ✅ | Cover (staff) | `/app/cover`, rail row "Cover" | Upcoming published shifts with "Cannot work it" (a reason for the manager; Withdraw while open), shifts a manager is finding cover for with "Offer to cover" or the reason the reader cannot, and what happened to recent reports and offers |
 | ✅ | Cover board (owners, managers) | `/app/cover` | Counts; who cannot work (Find cover, Keep on shift); requests with each offer's eligibility (Approve disabled with the reason when someone cannot take it; Turn down); unfilled shifts in the next 72 hours (Ask for cover); "Who could take it": ranked candidates with reasons, warnings, hours that week and Assign |
 | ✅ | Open shifts | `/app/open-shifts`, each card | A shift a manager opened for cover shows "Manager choosing cover" and Offer to cover (to the Cover page) instead of Take it; a shift the reader cannot take shows why beside a disabled Take it. The API refuses both regardless |
+| ✅ | Two-way swaps (S12d, `two_way_swaps` with `cover_tools`) | `/app/swaps`, Offer a shift; each request row | Once a colleague is named, "In return (optional)" lists their upcoming shifts; choosing one makes a swap both ways. The row shows "Taking" (the shift in return) beside "Giving Away". Off, the dialog and rows are as before |
 
 ## 7d. Timesheets (R2 slice S13), behind the `timesheet_tools` flag
 

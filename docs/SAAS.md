@@ -524,7 +524,9 @@ itself: a restore, a real charge, and a phone.
       managers open a cover request (the person comes off the published shift, eligible people are told), see ranked
       candidates with reasons, and approve or assign in one transaction with the organisation locked first and
       eligibility re-checked (active, no overlap, not the absentee, approved leave, declared unavailability, documents);
-      the instant open-shift claim gains the same check; swaps cancel themselves when their shift changes or starts.
+      the instant open-shift claim gains the same check (always, whatever the flag, by owner decision); swaps cancel
+      themselves when their shift changes or starts; two-way swaps (one shift for another, both moved or neither) behind
+      their own `two_way_swaps` flag (S12d, `019-two-way-swaps.sql`, suite `265-two-way-swaps`).
       **Built on the branch `r2/s12-cover`, behind the `cover_tools` flag (seeded off), not released.** Becomes 🟢 when
       the owner turns the flag on after a local-live walk-through. `backend/migrations/017-cover.sql` ·
       `backend/src/Mod/Cover.php` · suites `245-cover-rules`, `250-cover` · `src/lib/coverRules.test.ts`

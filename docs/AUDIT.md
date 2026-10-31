@@ -443,8 +443,14 @@ owner's, per `docs/RESTRUCTURE-PLAN.md` ("R2 gate").
 | ----- | ----------------- | -------------------- | ---------- | ------ |
 | S10 Compliance | `staff_documents` | `015-compliance.sql`: `document_types`, `document_reminders`, `documents` review columns (default approved) | 13 org routes + the signed `/document-files` link | 230 |
 | S11 Scheduling | `scheduling_tools` | `016-scheduling.sql`: the flag only (limits are existing settings keys) | `rotas/{r}/publish-preview`, `rotas/{r}/patterns/generate`; publish and leave decision changed with the flag on | 235, 240 |
-| S12 Cover | `cover_tools` | `017-cover.sql`: `cover_absences`, `cover_requests`, `cover_applications`; `shift_swaps.shift_fingerprint`, `void_reason` | 14 cover routes; claim and swaps changed (see the S12 follow-ups below) | 245, 250 |
+| S12 Cover | `cover_tools` | `017-cover.sql`: `cover_absences`, `cover_requests`, `cover_applications`; `shift_swaps.shift_fingerprint`, `void_reason` | 14 cover routes; swaps changed with the flag on; the open-shift claim's eligibility check **always** on (owner decision) | 245, 250 |
+| S12d Two-way swaps | `two_way_swaps` (needs `cover_tools` too) | `019-two-way-swaps.sql`: `shift_swaps.take_shift_id`, `take_fingerprint`, index, FK | `swaps/options`; `POST swaps` gains `take_shift_id`; decide moves both shifts | 245, 265 |
 | S13 Timesheets | `timesheet_tools` | `018-timesheets.sql`: the flag only (tolerance is a settings key) | `timesheets/export`; the list gains `lines` with the flag on | 255, 260 |
+
+Migrations 015 to 019 are all additive (019 sits after S13's 018 because S12d was decided after S13). One behaviour
+is not behind a flag, by the owner's decision: the instant open-shift claim refuses a person who is not eligible
+(approved leave, declared unavailability, a missing required document, the absentee, a clash) whatever `cover_tools`
+says, and platform support sessions are refused on every cover route.
 
 No new cron line and no new private config in any R2 slice: S10's reminders and S12's sweep run in the existing
 `bin/cron.php`.
@@ -457,11 +463,13 @@ No new cron line and no new private config in any R2 slice: S10's reminders and 
   their Storage files into `~/rotaflow-private/uploads/staff-documents/<org>/<staff>/`.
 - S11: whether ordinary shift writes (not only publish and patterns) should refuse a double-booking on the server;
   confirm the daily-rest reading (a continuous 11 hours in the 24 hours before a shift, SiteRelay's).
-- S12: three decided by the owner on 31 October (eligibility on the claim always on; platform support refused on
-  cover; port two-way swaps): see the S12 follow-up sections below for what was built and what remains.
+- S12: the three questions are decided and built (eligibility on the claim always on; platform support refused on
+  cover; two-way swaps ported behind their own flag): see "S12 follow-ups" above. Still open: whether a claim
+  refused for eligibility should show the reasons before the click with `cover_tools` off (today the server's sentence
+  after the click); whether `two_way_swaps` should simply ride on `cover_tools` instead of its own flag.
 - S13: confirm the CSV columns with the payroll system in use; whether exporting should mark periods `exported`;
   whether the row status "Late" (5 minutes) should follow the tolerance (default 10).
-- All: migrations 015 to 018 rehearsed against the live MariaDB 11.4 structure at cutover prep (only the local 13.0.2
+- All: migrations 015 to 019 rehearsed against the live MariaDB 11.4 structure at cutover prep (only the local 13.0.2
   test database has run them).
 
 **What the local-live walk-through must cover** (the branch against the live API on `https://local.rotaflow.space`,
@@ -474,8 +482,10 @@ platform admin with a support session)
 - S11: assign warnings as you type, Before you publish with a double-booking (refused), Generate pattern across the
   last Sunday of March or October, leave approval listing shifts to cover.
 - S12: report absence, open a cover request, offers and candidates with reasons, approve and assign, two people taking
-  one open shift at once, a swap voided by moving its shift, the support session refused; the two-way swap flow if
-  built.
+  one open shift at once, a swap voided by moving its shift, the support session refused on every cover screen; with
+  `cover_tools` off, a person on leave refused at Take it with the reason shown.
+- S12d: offer a shift asking for one in return, the colleague accepts, a manager approves and both rota cells change;
+  move one of the two shifts and see the swap cancelled; turn the flag off with one waiting and approve it.
 - S13: chips on a week with late, early and over lines, the tolerance changed in Policies, the payroll CSV opened in
   the real spreadsheet and payroll importer (check the BOM, names with accents, a name starting with `=`), a period
   corrected after approval showing "Recalculation required".
@@ -517,3 +527,49 @@ The owner decided three S12 questions on 31 October 2026 (relayed by the coordin
   `/cover`, `/documents`, `/compliance` and `/timesheets/export` (24 routes) answers 403 `forbidden`; with
   `cover_tools` off, cover still answers `forbidden`, not `feature_off`.
 - Mutation checks (each failed suite 099, then reverted): the refusal removed; the refusal moved after the flag.
+
+**3. Two-way swaps (S12d), ported from SiteRelay.**
+
+Four commits: pure rules (S12d-a), backend (S12d-b), front end (S12d-c), docs (S12d-d). SiteRelay's model
+(`shift_swaps.take_shift_id`, `swap-options`, `approveSwap` moving both shifts with `requireEligible` both ways and
+`staleReason` on both) re-made on RotaFlow's own swaps.
+
+- **Flag: its own, `two_way_swaps`, seeded off, and it works only with `cover_tools` on as well** (the safer of the
+  two choices offered): cover can go live without two-way swaps getting their soak, and two-way swaps never run
+  without the organisation lock, eligibility and staleness rules they rely on. Recorded in migration 019.
+- **The data decides once one exists.** A two-way swap raised while the flags were on is always guarded (either shift
+  changed or started cancels it, on the colleague's answer and the decision) and always moved whole, even if a flag is
+  turned off afterwards; `reassign` refuses it (`swap_two_way`). Without that, turning a flag off could have moved one
+  shift and not the other. With the flags off a new swap cannot ask for a shift in return (403 `feature_off`), the
+  options route is 403, and one-way swaps answer exactly as before (no new keys; suites 110, 250 and 265).
+- Raising one locks the organisation, then both shifts in id order (the same order as approval, so two writers never
+  deadlock on a pair). Both shifts must be on a published rota, not started or cancelled, held by the right people;
+  neither may already be in a waiting swap. Eligibility is checked both ways, each person ignoring the shift they give
+  up (`Cover::assess` gained an ignore list), so two overlapping shifts can be exchanged. It is re-checked at approval.
+- Not ported: SiteRelay's swap screens (RotaFlow's Swaps page gains one optional field and a second shift on the row),
+  its `withdrawn` / `declined` / `void` statuses (RotaFlow keeps `cancelled` with `void_reason`, as S12 did), and
+  two-way swaps on the open board (an exchange needs a named colleague).
+- Evidence: suite 265 (50 assertions): flags off (403, nothing written; one-way swaps unchanged with no new keys); one
+  flag on is not enough; options (colleagues, never own, draft, cancelled or started shifts, only times, site and
+  holder, no staff record); raising (colleague required; six invalid asks 422; another organisation's shift 422;
+  nothing written by refusals; 201 with the shift asked for and no fingerprints; the colleague told; swap_pending on
+  either shift; options drop a shift in a waiting swap; ineligible colleague and ineligible requester 409; overlapping
+  shifts exchanged); visibility (the colleague and the manager see it, a third person does not, nobody claims it);
+  approval moves both, both audited, idempotent; reassign refused; the requester finalises an accepted one; staleness
+  of the shift asked for (changed, given to someone else), of the shift offered, and the sweep (started); eligibility
+  re-checked at approval (leave approved since); with the flags turned off afterwards an existing one still moves both,
+  is still voided, is guarded on the colleague's answer, and can be rejected; two managers approving at once (one
+  approves, one finds it decided, moved exactly once); tenancy. Suite 245 + 4 (pure), `coverRules.test.ts` + 4,
+  `TwoWaySwaps.test.tsx` 4 (the dialog without options submits exactly the old draft; with them, the shift in return;
+  rows with and without `takeShift`).
+- Mutation checks (each failed a suite, then reverted; 14): pure: a change on the take side not winning; the holder
+  check; the published-rota check. Backend: the second shift not moved; the eligibility re-check at approval removed;
+  the take shift's staleness ignored; the decision's organisation lock and guard tied back to the flag; the flag check
+  on raising removed; the reassign refusal removed; the options' "already in a swap" filter removed; the ignore list
+  dropped; `twoWayOn` without cover; the swap_pending refusal removed; the respond guard tied back to the flag (the
+  last two survived first and got tests). The organisation lock on raising has no test of its own (approval's lock and
+  the two-approvals race are tested).
+- NOT TESTED: any of it in a browser against a running API; two people raising exchanges over the same pair of shifts
+  at the same instant (the organisation lock serialises them; not raced in a test); offline queueing of a two-way
+  request (the queued item carries `take_shift_id` and replays through the same call, by reading only); MariaDB 11.4
+  for migration 019 (`ADD CONSTRAINT ... FOREIGN KEY IF NOT EXISTS` ran on the local 13.0.2 only).
