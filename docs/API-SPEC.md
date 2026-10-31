@@ -680,3 +680,54 @@ eligibility under the lock (**409 `not_eligible`** with every reason in one sent
 | `POST /orgs/{o}/cover/absences/{a}/dismiss` | owner, manager | The person stays on the shift and is told |
 | `POST /orgs/{o}/open-shifts/{h}/claim` (changed, flag on only) | as before | Takes the organisation lock first; refuses **409 `cover_request_open`** when a manager has opened a cover request for the shift (apply instead) and **409 `not_eligible`** for the reasons above (the existing `already_working`, `shift_taken`, `not_published`, `already_started` answer first) |
 | `POST /orgs/{o}/swaps/{w}/respond`, `/claim`, `/decide` (changed, flag on only) | as before | A pending or accepted swap whose shift changed since it was raised (times, site, holder, status, rota), was cancelled, sits on an archived rota or has started is cancelled (`status: cancelled`, `void_reason: shift_changed\|shift_started`) and the call answers **409 `swap_void`**; both people told. `decide` and `reassign` take the organisation lock first. `GET /swaps` rows carry `void_reason` only on a swap the module cancelled |
+
+### Slice S13 (R2): timesheets
+
+Behind the `timesheet_tools` feature flag, seeded **off** by migration 018: while it is off the list answers exactly as
+before (only `timesheets`) and the export answers **403 `feature_off`** after the membership check (a stranger still
+gets 404). Dates are the organisation's local dates (`organisations.timezone`, Europe/London when unset); instants are
+ISO 8601 UTC. Minutes are whole minutes from UTC instants (the floor of the exact difference), so an overnight shift
+across a clock change is exact. The tolerance is `organisations.settings.timesheet_tolerance_minutes`, a whole number
+0 to 120 (default 10), written by `POST /orgs/{o}/settings` (owner; a fraction or text is 422).
+
+A **line** is one shift with a staff record, not cancelled, on a published or archived rota (or on none), starting in
+the period. Its recorded times are that person's clock events paired in time order (`in` then `out`; a second `in`
+closes the first with no clock-out; an `out` with nothing open and break events do not pair), and the segment whose
+clock-in is from 3 hours before the start up to the scheduled end, closest to the start, belongs to it (each segment
+to one shift only). The scheduled break is deducted from both the scheduled and the recorded minutes, unless
+`breaks_are_paid` is true. Flags: `late` (clock-in more than the tolerance in whole minutes after the start),
+`early_finish` (clock-out more than the tolerance before the end), `overtime` (recorded more than scheduled plus the
+tolerance), `no_clock_in` and `missing_clock_out` (only once the shift has ended).
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /orgs/{o}/timesheets[?period_start&period_end&staff_profile_id&status]` (changed, flag on only) | member (own), owner, manager | The response gains `lines` and `tolerance_minutes`. `lines[{shift_id, staff_profile_id, location_id, scheduled_start, scheduled_end, break_minutes, clock_in, clock_out, scheduled_minutes, recorded_minutes, variance_minutes, late_minutes, early_minutes, finished, flags{late, early_finish, overtime, no_clock_in, missing_clock_out}}]` for the period; `null` when either date is missing or the period is longer than 31 days (the timesheet rows still answer). A member gets only their own lines whatever `staff_profile_id` says; a member with no staff record gets `[]`. At most 5000 lines |
+| `GET /orgs/{o}/timesheets/export?period_start&period_end` | owner, manager (never a platform support session: 403) | The payroll CSV, `text/csv; charset=utf-8`, `Cache-Control: no-store`, file name `rotaflow-payroll-{from}-to-{to}.csv`. At most 31 days (422 with the sentence otherwise). One row per **approved or exported** period lying wholly inside the range (submitted and open periods, and periods that start before or end after it, are left out), sorted by last name, first name, staff id, period. The figure is the approved `total_minutes`, never a recalculation. Reading it changes nothing (it does not mark periods exported). Audited `timesheet.exported` with the dates and a row count only |
+
+**CSV format.** UTF-8 with a byte-order mark, CRLF line ends, RFC 4180 quoting (a cell with a comma, quote, CR, LF or
+leading or trailing space is quoted). Every text cell that starts with `=`, `+`, `-`, `@`, tab or CR gets a leading
+apostrophe so a spreadsheet reads it as text; integers the server computed are written as plain numbers. The header is
+always this row, in this order (adding a column goes at the end; never reorder):
+
+| # | Column | Value |
+| - | ------ | ----- |
+| 1 | Staff name | First and last name |
+| 2 | Payroll ID | `staff_profiles.payroll_id`, empty when unset |
+| 3 | Staff ID | The staff record id |
+| 4 | Period start | `YYYY-MM-DD` |
+| 5 | Period end | `YYYY-MM-DD` |
+| 6 | Approved minutes | Whole number |
+| 7 | Approved hours | Decimal with two places from the whole minutes by integer rounding, half up (`450` is `7.50`, `205` is `3.42`, `7` is `0.12`) |
+| 8 | Status | `approved` or `exported` |
+| 9 | Version | Times approved |
+| 10 | Approved by | The approver's staff name, else their account name, else their email |
+| 11 | Approved at | `YYYY-MM-DD HH:MM` in the organisation's timezone |
+| 12 | Recalculation required | `Yes` when a clock event in the period was corrected after approval, else `No` |
+| 13 | Late lines | Lines in the period flagged late |
+| 14 | Early finish lines | Lines flagged early finish |
+| 15 | Overtime lines | Lines flagged overtime |
+| 16 | Time zone | The IANA zone the dates and times are in |
+
+SiteRelay's per-line approve, adjust and unlock routes (`timesheets/lines/{s}/...`, `timesheets/approve` by shift,
+`timesheets/mine`, `timesheets/summary`) were not ported: RotaFlow approves per person per period, and its clock
+corrections (`POST clock-events/{e}/correct`, with the recalculation flag) and reopen already cover adjusting.

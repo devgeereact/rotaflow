@@ -319,3 +319,165 @@ Spec: `docs/RESTRUCTURE-PLAN.md` section 4, "S12 Cover". Ported from SiteRelay's
   the shift starts).
 - Notices through real SMTP and a real device; the sweep under the host's cron.
 - Playwright.
+
+## 2026-10-31: S13 (R2), timesheets: tolerance flags beside each line, payroll CSV export
+
+Branch `r2/s13-timesheets` from `r2/s12-cover` (fdc36bd), local commits only. Nothing pushed or deployed.
+Spec: `docs/RESTRUCTURE-PLAN.md` section 4, "S13 Timesheets". Ported from SiteRelay's `Timesheets` module
+(`compute`, `workedMinutes`, `csvCell`, `csv`, `hours`), its `081-timesheets` suite and `logic.ts` (read only),
+re-made for RotaFlow's shifts, clock events and per-person period approvals.
+
+**What changed**
+
+- Pure rules first (commit S13a): `backend/src/TimesheetRules.php` (whole minutes from UTC milliseconds, decimal
+  hours by integer rounding, the UTC window of local dates via S11's `SchedulingRules::localTs`, clock-event pairing,
+  one segment per shift, the flags at the tolerance, the tolerance setting, the CSV) and `src/lib/timesheetRules.ts`
+  (chips, the 31-day range, the hours mirror). Suite `255-timesheet-rules` and `timesheetRules.test.ts`.
+- Migration `backend/migrations/018-timesheets.sql` (additive): only the `timesheet_tools` flag, seeded **off**. No
+  tables (as the plan says). `OrgSettings` accepts `timesheet_tolerance_minutes` (a new `int` rule, 0 to 120).
+- `backend/src/Mod/Timesheets.php`: with the flag on, `GET timesheets` gains `lines` and `tolerance_minutes`;
+  new `GET timesheets/export` (the payroll CSV). Suite `260-timesheets`.
+- Front end (commit S13c): chips beside each line, "Export payroll CSV" (a range dialog; the server's file
+  downloaded as is via a new `apiClient.getFile`), Settings, Policies "Timesheet flags". All only with the flag on.
+
+**Decisions where the spec met the code (the safer option taken)**
+
+1. **The flags live in the list response; the approved figure does not change.** The plan says "flags computed in the
+   existing list response", but RotaFlow's list returns per-person period rows, not lines. With the flag on the
+   response gains a `lines` array beside the unchanged `timesheets`; off, the response is byte-for-byte the old shape
+   (suite 260 checks the keys). The approval figure is still the one the page computes and sends; the server's lines do
+   not replace it (changing what goes to payroll is out of scope and would need its own soak).
+2. **One CSV row per approved period, not per line.** SiteRelay approves each line; RotaFlow approves a person's period
+   (`timesheets.total_minutes`), so that is the figure payroll must get. Each row carries the approved minutes and
+   hours, who approved it and when, whether a clock correction after approval needs a recalculation, and counts of
+   late, early finish and overtime lines in that period. A period is exported only if it lies wholly inside the range.
+3. **"Approved only" includes `exported`** (the S5 status that means approved and sent; nothing sets it yet), and
+   **reading the export changes nothing**: a GET does not mark periods exported. Whether exporting should lock or mark
+   periods is an owner decision.
+4. **No money in the CSV.** The plan names minutes and hours, not pay; RotaFlow's pay rates can change inside a period
+   and the payroll system applies them. Hours are written from whole minutes by integer rounding (half up to two
+   places), so there is no float drift (checked for every minute from 0 to 6000, both sides).
+5. **Breaks.** The plan's "scheduled break deducted both sides" is followed, except that an organisation with
+   `breaks_are_paid` true (an existing Policies setting) deducts nothing. Clocked breaks (`break_start` / `break_end`)
+   are not used for the flags; the page's own paid-hours figure still uses them, as before.
+6. **Whole minutes at the tolerance, both ways.** Late means the clock-in is more than the tolerance in whole minutes
+   after the start (10 min 59 s is 10, not late at 10); early finish the same before the end; overtime when recorded
+   minutes exceed scheduled by more than the tolerance. SiteRelay measured early finish in seconds; the two are made
+   consistent here.
+7. **Which shifts are lines.** Not cancelled, with a staff record, on a published or archived rota or on none: what
+   staff are working to. Draft-rota shifts get no line (and no chip) even though the manager's page lists them.
+8. **Matching clock events to shifts** follows the page's existing rule (a clock-in from three hours before the start
+   to the scheduled end, closest to the start), with one tightening: a clock-in answers for one shift only, so a split
+   day cannot make the second shift look on time. Events are read up to 12 hours after the last shift ends.
+9. **A platform support session cannot export payroll** (403), as S10 refused documents: the file is pay data leaving
+   the product. It can still read the timesheet list, as before.
+10. **The old browser "Export CSV" is unchanged** (flag on or off): it exports the visible day's rows. The payroll
+   export is a separate button. The shared `csv.ts` download code was split (`downloadBlob`) without changing what
+   `downloadFile` or `downloadCsv` produce (their tests unchanged and passing). The browser CSV has no BOM; only the
+   payroll file has one, as the plan says.
+11. Two "late" readings now sit side by side with the flag on: the row status "Late" (the page's existing 5-minute
+   rule) and the chip (the organisation's tolerance, default 10). Left as is; aligning them is an owner decision.
+12. Not ported: SiteRelay's per-line approve, adjust (with reason) and unlock, its `ts_approvals` / `ts_events`
+   tables, `mine` and `summary` routes, and its "recorded offline" flag (RotaFlow's offline clock events are already
+   labelled where they are recorded).
+
+**Evidence (local, 31 October 2026)**
+
+- `pnpm run check` exit 0 before each commit (ESLint, Biome, `tsc`, vitest, build, bundle, migration safety, doc
+  counts, export coverage, PHP lint and suites).
+- PHP: 2037 assertions, 0 failed (S12 ended at 1917; + 63 in `255-timesheet-rules`, + 57 in `260-timesheets`).
+  `255`: worked minutes (break, never negative, floor of the exact milliseconds), instants with milliseconds and
+  offsets, hours for known cases and every minute 0 to 6000, the window of a London day on both clock changes (25 and
+  23 hours) and a 169-hour week, another zone, the 31-day range, lines across both clock changes (510 and 420 minutes),
+  paid breaks, unfinished shifts, every tolerance boundary (10 min, 10:59, 11 min; zero tolerance; early finish;
+  overtime; early arrival), the tolerance setting, pairing, matching (split day, once only, the 3-hour and end
+  boundaries, closest wins), CSV cells (`=`, `+`, `-`, `@`, tab, CR, comma, quote, newline, leading space, UTF-8,
+  `-5` as text and as a number), BOM and CRLF, the column list. `260`: flag off (list keys exactly `timesheets`;
+  export 403 `feature_off`, stranger 404, nobody 401; approval unchanged); the tolerance setting (whole number, owner
+  only); flag on: the week of 19 to 25 October 2026 by local dates (00:30 BST Monday and 23:30 GMT Sunday in; the
+  Sunday before and the Monday after out), cancelled and draft-rota shifts left out, break deducted both sides, the
+  3-hour overnight shift across the clock change, late with no clock-out, overtime, no clock-in, early finish, a
+  clock-out after the last shift still pairing, 11 minutes late flagged at 10 and not at 15, paid breaks; a person sees
+  only their own lines (a filter cannot widen it), no staff record gives none, the other organisation sees none, more
+  than 31 days gives `null` lines; the export (MIME, file name, no-store, BOM, CRLF, header equals the documented
+  columns, only approved or exported periods wholly inside the range, not other organisations, sorted by last name,
+  2430 = 40.50, 7 = 0.12, 61 = 1.02, payroll id, approver name, approved at in local time, recalculation required
+  after a correction, flag counts per person and per period, injection neutralised in names and payroll ids, no cell
+  in the file starting with a formula character, read-only, audited without personal data, an empty range is the
+  header alone); owner may, staff 403, stranger 404, nobody 401, validation 422, 31 days allowed, a live support
+  session 403; flag off again. Suite `115-timesheets` (S5) unchanged and passing proves the old behaviour.
+- Mutation checks (each made a suite fail, then reverted; 29 in all): pure: late, early finish and overtime `>` to
+  `>=`; the hours rounding term removed; minutes rounded instead of floored; the window end as start + 24 h (fails
+  both clock changes); `-` and tab removed from the formula characters; paid breaks ignored; the tolerance upper
+  bound removed; segment reuse allowed; the 3-hour boundary inclusive; the 31-day cap off by one; no clock-in flagged
+  before the end; the BOM removed. Endpoint: the export's role check removed; the support refusal removed; the
+  export's flag check removed; the list's flag check removed; `submitted` added to the exported statuses; the range
+  test widened to overlap; a member's `staff_profile_id` honoured; the draft-rota filter removed; the cancelled
+  filter removed; no-staff-record lines widened; the per-period flag count made per-person; recalculation Yes/No
+  swapped; the late clock-out read window removed; the `int` settings rule loosened to accept fractions. Two survived
+  on the first run and got tests (per-period counting; the late clock-out window).
+- vitest: 1760 tests (S12 ended at 1742): `timesheetRules.test.ts` 12, `TimesheetFlags.test.tsx` 4 (no chips and
+  only the old Export CSV without the flag props; chips in order; the range dialog refuses 32 days and exports the
+  chosen dates), `apiClient.test.ts` + 2 (`getFile`). Bundle 728.6 KiB of 760.
+
+**NOT TESTED**
+
+- Any timesheet screen in a browser against a running API, and the CSV opened in Excel, Numbers, LibreOffice or a
+  payroll importer (the file was checked byte by byte and parsed with PHP's `str_getcsv` only).
+- `Content-Disposition` is `inline` (the shared raw responder); the browser download names the file itself, so this
+  is cosmetic, but a direct link would open rather than save.
+- Migration 018 on MariaDB 11.4 (the live version); only the local 13.0.2 test database ran it.
+- Lines for a large organisation (5000-line cap, one events query; not timed) and a 31-day export near that cap.
+- A shift whose site is in a different timezone from the organisation: windows and the CSV use the organisation's zone.
+- Playwright.
+
+## R2 gate: S10 to S13 (summary for the owner)
+
+All four R2 slices are built on stacked local branches (`r2/s10-compliance` -> `r2/s11-scheduling` -> `r2/s12-cover`
+-> `r2/s13-timesheets`), local commits only, nothing pushed or deployed. Each ships dark behind its own feature flag,
+seeded **off** and enforced on the server (403 `feature_off` after the membership check; existing routes answer
+exactly as before while off, each proved by tests). The release decision (once per module or once for all) is the
+owner's, per `docs/RESTRUCTURE-PLAN.md` ("R2 gate").
+
+| Slice | Flag (seeded off) | Migration (additive) | New routes | Suites |
+| ----- | ----------------- | -------------------- | ---------- | ------ |
+| S10 Compliance | `staff_documents` | `015-compliance.sql`: `document_types`, `document_reminders`, `documents` review columns (default approved) | 13 org routes + the signed `/document-files` link | 230 |
+| S11 Scheduling | `scheduling_tools` | `016-scheduling.sql`: the flag only (limits are existing settings keys) | `rotas/{r}/publish-preview`, `rotas/{r}/patterns/generate`; publish and leave decision changed with the flag on | 235, 240 |
+| S12 Cover | `cover_tools` | `017-cover.sql`: `cover_absences`, `cover_requests`, `cover_applications`; `shift_swaps.shift_fingerprint`, `void_reason` | 14 cover routes; claim and swaps changed (see the S12 follow-ups below) | 245, 250 |
+| S13 Timesheets | `timesheet_tools` | `018-timesheets.sql`: the flag only (tolerance is a settings key) | `timesheets/export`; the list gains `lines` with the flag on | 255, 260 |
+
+No new cron line and no new private config in any R2 slice: S10's reminders and S12's sweep run in the existing
+`bin/cron.php`.
+
+**Owner decisions still open across the four slices**
+
+- When to turn each flag on (after the local-live walk below), one at a time or together.
+- S10: confirm the host's PHP `post_max_size` and `upload_max_filesize` are at least 15M (10 MB documents); decide how
+  long withdrawn and rejected documents are kept (`docs/SECURITY.md`); at cutover, move Supabase `documents` rows and
+  their Storage files into `~/rotaflow-private/uploads/staff-documents/<org>/<staff>/`.
+- S11: whether ordinary shift writes (not only publish and patterns) should refuse a double-booking on the server;
+  confirm the daily-rest reading (a continuous 11 hours in the 24 hours before a shift, SiteRelay's).
+- S12: three decided by the owner on 31 October (eligibility on the claim always on; platform support refused on
+  cover; port two-way swaps): see the S12 follow-up sections below for what was built and what remains.
+- S13: confirm the CSV columns with the payroll system in use; whether exporting should mark periods `exported`;
+  whether the row status "Late" (5 minutes) should follow the tolerance (default 10).
+- All: migrations 015 to 018 rehearsed against the live MariaDB 11.4 structure at cutover prep (only the local 13.0.2
+  test database has run them).
+
+**What the local-live walk-through must cover** (the branch against the live API on `https://local.rotaflow.space`,
+real Clerk sign-in, one organisation with each flag turned on in the console in turn, as owner, manager, staff and a
+platform admin with a support session)
+
+- Every R2 screen with its flag off first (nothing new visible, old screens unchanged), then on.
+- S10: upload, submit, review (four eyes: the uploader cannot approve; owner can), withdraw, supersede, the queue and
+  summary, the eligibility chip; a real 10 MB file; a reminder after moving a test document's expiry near.
+- S11: assign warnings as you type, Before you publish with a double-booking (refused), Generate pattern across the
+  last Sunday of March or October, leave approval listing shifts to cover.
+- S12: report absence, open a cover request, offers and candidates with reasons, approve and assign, two people taking
+  one open shift at once, a swap voided by moving its shift, the support session refused; the two-way swap flow if
+  built.
+- S13: chips on a week with late, early and over lines, the tolerance changed in Policies, the payroll CSV opened in
+  the real spreadsheet and payroll importer (check the BOM, names with accents, a name starting with `=`), a period
+  corrected after approval showing "Recalculation required".
+- Platform support session: the documents, cover and payroll export refusals.
+- Shapes: any screen whose request or response does not match the PHP handler (matched by reading, never in a browser).

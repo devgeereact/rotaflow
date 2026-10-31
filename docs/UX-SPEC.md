@@ -217,6 +217,17 @@ No design reference; built in the existing components. Hidden while the flag is 
 | ✅ | Cover board (owners, managers) | `/app/cover` | Counts; who cannot work (Find cover, Keep on shift); requests with each offer's eligibility (Approve disabled with the reason when someone cannot take it; Turn down); unfilled shifts in the next 72 hours (Ask for cover); "Who could take it": ranked candidates with reasons, warnings, hours that week and Assign |
 | ✅ | Open shifts | `/app/open-shifts`, each card | A shift a manager opened for cover shows "Manager choosing cover" and Offer to cover (to the Cover page) instead of Take it; a shift the reader cannot take shows why beside a disabled Take it. The API refuses both regardless |
 
+## 7d. Timesheets (R2 slice S13), behind the `timesheet_tools` flag
+
+No design reference; built in the existing components. Hidden while the flag is off (the default): the page, its
+existing "Export CSV" (the visible day's rows, built in the browser) and the Policies save are exactly as before.
+
+| Status | Screen | Where | What it does |
+| ------ | ------ | ----- | ------------ |
+| ✅ | Flag chips | `/app/timesheets`, beside each line's status (managers and staff) | "Late 12 min", "Early finish 15 min", "Overtime 25 min" from the server's lines, only beyond the organisation's tolerance. No chip for no clock-in / no clock-out: the status already says so. If the lines cannot load the page shows no chips and works as before |
+| ✅ | Export payroll CSV | `/app/timesheets` header (owners, managers) | A dialog with From and To (defaults: this week), at most 31 days (the sentence shows and Download is disabled otherwise), then the server's file downloads as is: approved periods only, one row per person per period |
+| ✅ | Timesheet flags | Settings, Policies | "Tolerance", whole minutes 0 to 120 (default 10), with a worked example. Saved with the other policies (owner) |
+
 ## 8. Tables with no UI
 
 **`platform_health_probes` and `rate_limit_events`. Both correctly so.**

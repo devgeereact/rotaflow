@@ -324,7 +324,7 @@ precisely because they cannot be, and "it works" throughout this document means
 | Status                | Count |
 | --------------------- | ----- |
 | 🟢 Complete           | 113   |
-| 🟡 Partial            | 8     |
+| 🟡 Partial            | 9     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -528,6 +528,14 @@ itself: a restore, a real charge, and a phone.
       **Built on the branch `r2/s12-cover`, behind the `cover_tools` flag (seeded off), not released.** Becomes 🟢 when
       the owner turns the flag on after a local-live walk-through. `backend/migrations/017-cover.sql` ·
       `backend/src/Mod/Cover.php` · suites `245-cover-rules`, `250-cover` · `src/lib/coverRules.test.ts`
+- [ ] CAP-011b 🟡 Timesheet flags and payroll export (R2 slice S13) — each timesheet line shows late, early finish
+      and overtime chips beyond the organisation's tolerance (default 10 minutes, Settings, Policies), computed on the
+      server from UTC instants (exact across clock changes, scheduled break deducted both sides); owners and managers
+      export a payroll CSV of approved periods (at most 31 days, UTF-8 with a BOM, fixed columns, formula-injection
+      safe, exact minutes and hours, never to a platform support session). **Built on the branch `r2/s13-timesheets`,
+      behind the `timesheet_tools` flag (seeded off), not released.** Becomes 🟢 when the owner turns the flag on after
+      a local-live walk-through. `backend/migrations/018-timesheets.sql` · `backend/src/TimesheetRules.php` ·
+      `backend/src/Mod/Timesheets.php` · suites `255-timesheet-rules`, `260-timesheets` · `src/lib/timesheetRules.test.ts`
 - [x] CAP-011 🟢 Clock in/out — GPS and manual, offline outbox, geofence recorded, duplicates refused server-side
       `src/pages/app/ClockInPage.tsx`, `supabase/migrations/0115_clock_event_sequence_guard.sql` · GAP-040 closed #281 · 6 pgTAP assertions
 - [x] CAP-012 🟢 Offline clock-in honesty — a queued write is labelled "Saved on this device, not sent yet"

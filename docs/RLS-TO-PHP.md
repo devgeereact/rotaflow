@@ -353,3 +353,14 @@ of it only while the `cover_tools` flag is on; off, every cover route answers 40
 | `decide_shift_swap` (staleness) | Refused a shift no longer the requester's; nothing else | `Swaps::decide`, `respond`, `claim` with the flag on: a swap whose shift changed (fingerprint), was cancelled, sits on an archived rota or has started is cancelled (`void_reason`) and answers 409 `swap_void`; `Cover::cron` sweeps the rest | 250 incl. mutation | NEW (flag on only) |
 | Candidates, overview, open, mine (new) | n/a | Membership first (stranger 404), flag, then role: candidates and overview owners and managers; open and mine any member, own staff record only | 250, 099 | NEW |
 
+
+## S13: timesheets (lines with tolerance flags, payroll CSV)
+
+No new tables. New PHP checks on an existing route and one new route, only while the `timesheet_tools` flag is on; off,
+the list answers exactly as before and the export answers 403 `feature_off`.
+
+| Table or function | Postgres rule (final) | PHP check | Test | Status |
+| ----------------- | --------------------- | --------- | ---- | ------ |
+| `timesheets` list, `lines` (new key) | Timesheet rows: a member reads their own, managers everyone's (S5) | `Timesheets::list` with the flag on: lines for the caller's own staff record only (a `staff_profile_id` filter cannot widen it; no staff record gives `[]`), managers everyone's or the one they filter; shifts and clock events of this organisation only | 260 incl. mutation, 099 | NEW (flag on only) |
+| `GET timesheets/export` (new) | n/a (the old export was built in the browser from rows the reader could already see) | Membership first (stranger 404), flag, owners and managers, **never a platform support session** (403), range at most 31 days; approved or exported periods of this organisation only; read-only; audited without personal data | 260 incl. mutation, 099 | NEW |
+| `organisations.settings.timesheet_tolerance_minutes` (new key) | Settings written by the owner | `OrgSettings::save`: owner only, a whole number 0 to 120 (`int` rule) | 260 incl. mutation | NEW |

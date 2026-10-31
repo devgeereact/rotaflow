@@ -594,6 +594,20 @@ most one open absence report and one open cover request per shift. Rules: `backe
 - **Not copied from SiteRelay**: its `shift_swaps` (RotaFlow's own swaps stay, with the two columns above) and its
   published-shift projection (`published_shifts`).
 
+### 4.19 Timesheets (MariaDB `backend/migrations/018-timesheets.sql`, R2 slice S13)
+
+No new tables. Lines and flags are computed on read from `shifts` and `clock_events`
+(`backend/src/TimesheetRules.php`); the approved figure stays `timesheets.total_minutes`, one row per person per
+period, as in S5.
+
+- **Setting**: `organisations.settings.timesheet_tolerance_minutes`, a whole number 0 to 120, default 10 when unset
+  or not a whole number. Late, early finish and overtime are flagged only beyond it. Written by Settings, Policies.
+  `breaks_are_paid` (already there) decides whether the scheduled break is deducted from both sides.
+- **Flag**: `feature_flags.timesheet_tools` is seeded **off**.
+- **Statuses**: the export reads `approved` and `exported` periods and changes neither; nothing sets `exported` yet.
+- **Not copied from SiteRelay**: `ts_approvals` and `ts_events` (its per-line approve, adjust and unlock model):
+  RotaFlow's period approvals, clock corrections (`clock_event_corrections`) and the recalculation flag cover it.
+
 ## 5. Row Level Security
 
 RLS is **enabled on every table**. Policies use `security definer` helper functions

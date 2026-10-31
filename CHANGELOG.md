@@ -13,6 +13,13 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Timesheet flags and the payroll CSV, behind the `timesheet_tools` flag (R2 slice S13, branch
+  `r2/s13-timesheets`, 31 October 2026).** Each timesheet line shows Late, Early finish and Overtime chips beyond the
+  organisation's tolerance (default 10 minutes, Settings, Policies), worked out on the server from UTC instants so a
+  night shift across a clock change is exact, with the scheduled break deducted from both sides. Owners and managers
+  export a payroll CSV of approved periods (at most 31 days; UTF-8 with a BOM; sixteen fixed columns; exact minutes
+  and hours; cells that would run as a formula are made text). Migration `backend/migrations/018-timesheets.sql` (the
+  flag only). Ships off; with it off the Timesheets page and its existing Export CSV are unchanged.
 - **Compliance, behind the `staff_documents` flag (R2 slice S10, branch `r2/s10-compliance`, 30 October
   2026).** Document types with UK examples; staff upload documents against a type and they count only once an
   owner or manager approves them (never the person themself; a manager cannot approve what they uploaded for
