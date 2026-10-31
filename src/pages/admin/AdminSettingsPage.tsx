@@ -9,7 +9,6 @@ import { Callout } from '@/components/ui/Callout';
 import { SettingRow } from '@/components/ui/SettingRow';
 import { useRegisterConsoleRefresh } from '@/hooks/useConsoleRefresh';
 import { Select } from '@/components/ui/Select';
-import { Toggle } from '@/components/ui/Toggle';
 import { AdminError, AdminLoading, AdminPage } from '@/components/admin/AdminPage';
 import { getPlatformSettings } from '@/services/platformSettingsService';
 import {
@@ -29,10 +28,6 @@ import {
   listRetentionPolicies,
   type RetentionPolicy,
 } from '@/services/platformFactsService';
-import {
-  getMyMfaStatus,
-  setPlatformMfaRequired,
-} from '@/services/platformSettingsService';
 import type { PlatformAdmin, PlatformRole, PlatformSettings, Profile } from '@/types';
 
 type Tab = 'authentication' | 'retention' | 'administrators';
@@ -161,57 +156,6 @@ export function AdminSettingsPage(): JSX.Element {
 
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useRegisterConsoleRefresh(retry);
-
-  /**
-   * The caller's own second-factor state (`0102`).
-   *
-   * Read server-side rather than from the token in this tab, so what the
-   * screen offers matches what the database would allow. Turning the
-   * requirement on from a session that has not done MFA is refused there, and
-   * a button that fails is worse than one that explains.
-   */
-  const [mfa, setMfa] = useState<{
-    hasVerifiedFactor: boolean;
-    sessionIsAal2: boolean;
-  } | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const status = await getMyMfaStatus();
-        if (active) setMfa(status);
-      } catch (err) {
-        reportError(err, { area: 'admin:settings:mfa-status' });
-        if (active) setMfa(null);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [reloadKey]);
-
-  const toggleMfaRequired = useCallback(
-    async (required: boolean): Promise<void> => {
-      try {
-        await setPlatformMfaRequired(required);
-        showSuccess(
-          required
-            ? 'Platform administrators now need a second factor to reach this console.'
-            : 'The second-factor requirement is off.',
-        );
-        setReloadKey((k) => k + 1);
-      } catch (err) {
-        reportError(err, { area: 'admin:settings:mfa-toggle' });
-        showError(
-          required
-            ? 'Sign in with your second factor first. Requiring it from a session that has not used it would lock you out.'
-            : 'Could not change the requirement.',
-        );
-      }
-    },
-    [showError, showSuccess],
-  );
 
   const ownerCount = useMemo(
     () => (admins ?? []).filter((a) => a.grant.role === 'platform_owner').length,
@@ -461,49 +405,16 @@ export function AdminSettingsPage(): JSX.Element {
           <div className="space-y-4">
             <Callout tone="warning" title="These settings are not editable here">
               <p>
-                Password policy, email verification, magic links, session length and OAuth
-                providers are owned by Supabase Auth and configured in the Supabase
-                dashboard. Storing a copy of them in this database would create a switch
-                that persists a value nothing reads.
+                Sign-in methods, email verification, session length and two-step
+                verification belong to Clerk and are set in the Clerk dashboard. Turn on
+                multi-factor for platform staff accounts there. Storing a copy of them in
+                this database would create a switch that persists a value nothing reads.
               </p>
               <p>
                 What is below is the real, build-time configuration this deployment is
                 running with.
               </p>
             </Callout>
-            <Panel title="Second factor for this console" bodyClassName="p-4">
-              <SettingRow
-                label="Require a second factor of platform administrators"
-                hint={
-                  settings.require_mfa
-                    ? 'Enforced by is_platform_admin(): a console policy refuses a session that has not completed a second factor.'
-                    : 'Off. Administrators reach this console with a password alone.'
-                }
-                control={
-                  <Toggle
-                    checked={settings.require_mfa}
-                    // Turning it ON needs a session that has itself done MFA.
-                    // The database refuses otherwise; disabling the control
-                    // says so before the click rather than after.
-                    disabled={!settings.require_mfa && !(mfa?.sessionIsAal2 ?? false)}
-                    onChange={(next: boolean) => void toggleMfaRequired(next)}
-                    label="Require a second factor of platform administrators"
-                  />
-                }
-              />
-              {!settings.require_mfa && !(mfa?.sessionIsAal2 ?? false) && (
-                <p className="pt-3 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
-                  {mfa?.hasVerifiedFactor
-                    ? 'You have a second factor but this session did not use it. Sign out and back in with your code, then turn this on.'
-                    : 'Set one up on your own account first (Account → Security). Requiring a second factor from a session that has not used one would lock you out of this console — the database refuses it for that reason.'}
-                </p>
-              )}
-              <p className="pt-3 text-xs leading-relaxed text-content-muted dark:text-content-muted-dark">
-                This column existed from `0027` with a default of on, and nothing checked
-                it until `0102`. It was set to off in that migration because off is what
-                was true: there were no enrolled factors at all.
-              </p>
-            </Panel>
             <Panel title="Actual configuration" flush>
               <ul className="divide-y divide-surface-border dark:divide-surface-border-dark">
                 <Capability
