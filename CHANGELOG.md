@@ -13,6 +13,14 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Local-live walk and the cutover branch (branch `release/cutover`, 31 October 2026).** The cutover now ships the
+  whole stack from `release/cutover` with every R2 flag off. A repeatable local walk of every screen as owner, manager,
+  staff and platform admin (`pnpm run e2e:walk`, `scripts/walk.sh`, demo data from `backend/bin/seed-demo.php`) found
+  and fixed: the API's first answer after sign-in being unreadable on PHP 8.5; staff hitting refused requests every
+  minute for the sidebar badges (now their own counts) and the support banner; a manager's Integrations tab and staff
+  Announcements asking for owner or manager data; the console Settings page calling a removed MFA check; and the staff
+  documents routes answering while their flag was off (now refused on the server, except the plain read the expiring-
+  document warnings use).
 - **Timesheet and open-shift follow-ups (owner decisions on S13, branch `r2/s13-timesheets`, 31 October 2026).**
   Exporting payroll now marks the approved periods in the file as exported (a new `POST timesheets/export`; the page
   says how many were marked, and a period sent before still appears with Status `exported`), so nothing is paid twice

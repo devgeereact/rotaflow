@@ -43,6 +43,20 @@ All work lands on a local branch `move/cpanel-clerk` (the owner's house conventi
 rotaflow.space keep running on Supabase until the R1 cutover is approved. Nothing is pushed
 without the owner's word.
 
+**Decision (31 October 2026): the cutover ships the full stack with every R2 flag off.** The R1 cutover deploys a new
+branch `release/cutover`, cut from `r2/s13-timesheets` (R1 plus S10 to S13 and the owner follow-ups), with the five R2
+flags (`staff_documents`, `scheduling_tools`, `cover_tools`, `timesheet_tools`, `two_way_swaps`) seeded **off**,
+instead of `move/cpanel-clerk` alone. Why: the flags already give "behaves as before" (each slice is dark on the server
+while off, proved by its suites and by the local-live walk), and carrying fixes back across five stacked branches would
+add risk without adding safety. Every fix from Phase 5 (local-live) is made on `release/cutover`. R2 still goes live
+module by module, by switching a flag on in the console, each its own owner decision ("R2 gate" in `docs/AUDIT.md`).
+The one R2 behaviour not behind a flag, by the owner's decision, is the open-shift claim's eligibility check
+(`docs/AUDIT.md`, "S12 follow-ups").
+
+Phase 5 (local-live) was run on 31 October 2026 on `release/cutover` against a local API and database with the Clerk
+development instance: `docs/AUDIT.md`, "Local-live walk", holds the screen-by-role-by-flag table, the fixes and the
+checks only the owner can make live. To run it again: `scripts/walk.sh` (header) and `pnpm run e2e:walk`.
+
 ## 3. Slice order
 
 Each slice ends with: the gate green (`pnpm check` once S0 lands), new-user, error and

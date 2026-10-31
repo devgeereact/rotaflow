@@ -759,3 +759,142 @@ follow-up, the same day; the owner's reason for item 1 was "stop payroll being p
   no caller); two owners reopening the same period at the same instant (the organisation lock and the re-read make
   the second answer 409 `not_exported`, or, if it reads after the first committed, the old reopen to `open`; not
   raced); migration 020 on MariaDB 11.4.
+
+## 2026-10-31: Local-live walk (Phase 5), on branch `release/cutover`
+
+**Decision recorded: the cutover ships the full stack with every R2 flag off.** A new branch `release/cutover`, cut
+from `r2/s13-timesheets` (f629684: R1, S9 to S13 and every owner follow-up), is what the R1 cutover deploys, with
+`staff_documents`, `scheduling_tools`, `cover_tools`, `timesheet_tools` and `two_way_swaps` seeded off, instead of
+`move/cpanel-clerk` alone. The flags already give "behaves as before" (each slice is dark on the server while off), and
+carrying fixes back across five stacked branches would add risk. Every fix below is on `release/cutover`, local commits
+only. The same decision is in `docs/RESTRUCTURE-PLAN.md`, section 2.
+
+**Set-up (local only; nothing reached the server, live Clerk, Stripe or Supabase)**
+
+- Database: the test harness's throwaway MariaDB 13.0.2 on 127.0.0.1:3308, its own database `rotaflow_walk` and user
+  `rf_walk`, migrations 001 to 020 applied by the real runner (`backend/bin/migrate.php`). Private config (gitignored)
+  in `.local-state/walk-private/config/` names the Clerk DEVELOPMENT issuer `https://discrete-walrus-17.clerk.accounts.dev`
+  and the authorised parties `http://localhost:5042` and `http://localhost:5041`.
+- Demo data: `backend/bin/seed-demo.php` (LOCAL/DEMO ONLY: refuses a host other than 127.0.0.1/localhost, a database
+  whose name lacks walk, demo or test, and a database that already has an organisation). One organisation (Demo Care
+  Group, business plan, trial), three sites, five departments, six job titles, fifteen staff with two pay rates each
+  (one name starts with `=` for the CSV check, several have accents), four weeks of rotas per care site (the previous
+  week holds the clock change on Sunday 25 October 2026; two published, one more published, one draft), open shifts,
+  a shift under way at the time of seeding with its clock-in, clock events for last week and this week so far (on time,
+  12 minutes late, 20 minutes early, 25 minutes over), last week's timesheets (approved, submitted, open), approved,
+  pending, rejected and sick leave, overtime, two pending swaps, availability, three document types and four stored PDF
+  documents, an announcement and notifications. `--anchor=YYYY-MM-DD` moves the weeks.
+- Sign-in: six Clerk test-mode users on the RotaFlow DEVELOPMENT instance (`owner`, `manager`, `staff`, `staff2`,
+  `admin`, `noorg` `+clerk_test@example.com`, code 424242), created once with the Clerk backend API, because Clerk's
+  sign-up form never completed headless (its bot protection spinner). The API links each to the seeded user by the
+  verified email on first sign-in. `admin` was made platform owner with `backend/bin/grant-platform-owner.php` against
+  the local database.
+- Servers: `scripts/walk.sh api` (PHP built-in server on 127.0.0.1:3042 through `scripts/walk-router.php`, four
+  workers), `scripts/walk.sh web` (Vite on 5042 with `/api` proxied there by `ROTAFLOW_API_PROXY`, the dev Clerk key,
+  no Sentry DSN), `scripts/walk.sh preview` (a production build in `.local-state/walk-dist`, never `dist/`, served on
+  5041 with the same proxy, for the CSP walk).
+
+**How to run it again**
+
+```
+scripts/test-db.sh up && scripts/walk.sh db     # recreate, migrate, seed, grant the admin
+scripts/walk.sh api                             # terminal 1
+scripts/walk.sh web                             # terminal 2
+scripts/walk.sh preview                         # terminal 3, only for csp.walk.ts (it skips itself without it)
+pnpm run e2e:walk                               # reseeds first unless WALK_KEEP_DB=1; WALK_FRESH_AUTH=1 signs in again
+```
+
+The specs are `e2e/walk/*.walk.ts` with their own config (`e2e/walk/playwright.walk.config.ts`), alongside the
+Supabase-era specs in `e2e/` (left as they were: they need a live Supabase and are not part of this release's evidence).
+`screens.walk.ts`: every screen as owner, manager and staff (37 each) and as platform admin (16), all flags off and then
+all on: no console error, no failed API call, no failure text, one page load per role (client-side navigation).
+`actions.walk.ts`: the main actions with flags off. `flags.walk.ts`: each flag off (dark on the server) then on (its
+main path in the browser). `csp.walk.ts`: the production policy from `.htaccess` on a production build.
+
+**Results** (Chromium 1248 headless, 31 October 2026; screen x role x flag state)
+
+| Screen | Owner off/on | Manager off/on | Staff off/on | Admin off/on | Evidence |
+| ------ | ------------ | -------------- | ------------ | ------------ | -------- |
+| Every signed-in screen (first request after sign-in) | FIXED | FIXED | FIXED | FIXED | "We could not load your account": PHP 8.5 prints `curl_close()` E_DEPRECATED before the JSON of the first JWKS fetch. All six `curl_close` calls removed; the entrypoint sets `display_errors` off. Suite `001` (2 checks, failed first) |
+| Sidebar on every screen (nav badges, polled each minute) | PASS | PASS | FIXED | n/a | Staff got 403 `GET attention` every minute, reported as errors. On Supabase RLS scoped the count to the caller; now staff get their own counts. Suites `105` (+3), `110` (+2), failed first |
+| Support access banner on every screen | PASS | PASS | FIXED | n/a | Staff got 403 `GET support-sessions` every minute. The banner now asks only as owner or manager (the API's rule since S8a). vitest `SupportAccessBanner.test.tsx`, failed first. OPEN decision below |
+| Dashboard, Team, Locations, Departments, Rota, Set up, Schedule, Attendance, Clock, Timesheets, Availability, Leave, Swaps, Overtime, Open shifts, Compliance, Cover, Notifications, Help, Approvals, Reports | PASS | PASS | PASS (refusals where the role may not: own views or the app's "not for your role" notice, no failed call) | n/a | `screens.walk.ts` |
+| Announcements | PASS | PASS | FIXED | n/a | Staff caused one 403 per announcement (`GET announcements/{a}/reads`, probed then fallen back). The page now says whether the reader manages. vitest `announcementReads.test.ts`, failed first |
+| Settings: Organisation, Permissions, Roles, Policies, Document types, Notifications, Billing, Audit | PASS | PASS | PASS (staff sent to their account) | n/a | `screens.walk.ts` |
+| Settings: Integrations | PASS | FIXED | PASS | n/a | A manager got "Could not load SMTP settings" and a reported error: the page asked the owner-only `GET smtp` before checking the role (on Supabase RLS returned no row). vitest `SettingsIntegrationsPage.test.tsx`, failed first |
+| Account: Profile, Preferences, Security, Tokens, Activity, Your data | PASS | PASS | PASS | n/a | `screens.walk.ts` |
+| Console: Overview, Organisations, Users, Subscriptions, Billing, Support, Enquiries, Support access, Audit, Platform health, Incidents, Integrations, Notifications, Feature flags, GDPR | n/a | n/a | n/a | PASS | `screens.walk.ts` |
+| Console: Settings | n/a | n/a | n/a | FIXED | Every visit logged an error: the page asked for "my MFA status", which since S9 always rejects (MFA is Clerk's), and showed a Supabase-era second-factor switch. The panel now says two-step is set in the Clerk dashboard; the dead calls are gone |
+| Staff documents routes (flag off) | FIXED | FIXED | FIXED | n/a | The R2 gate said every slice is dark on the server while off; S10's routes answered with the flag off (only screens hid). Now 403 `feature_off` after membership, except `GET documents` (the pre-S10 read the rota builder, staff list and rota assistant use for expiring-document warnings with the flag off). Suite `230` (+4, failed first); `flags.walk.ts` |
+
+Actions (`actions.walk.ts`, flags off), all PASS: sign-in with the emailed code and sign-out from the account menu (and
+`/app` then sends to `/login`); the no-organisation screen (invitation sentence with the person's address); clock-in made
+offline waits ("Offline, 1 waiting"), nothing reaches the server, then it syncs ("Synced") and one event lands; taking an
+eligible open shift (confirm dialog, the shift is theirs in the database); staff asking for leave (201) and seeing it on
+Leave, refused Reports (the role notice) and refused a leave decision (403); the owner approving leave from Approvals;
+the timesheet CSV downloading as a `.csv`.
+
+Flags one at a time (`flags.walk.ts`), all PASS: each off answers 403 (`feature_off`) on its routes; on:
+`staff_documents` a person uploads a PDF in the Documents window, cannot approve their own (four eyes), the owner opens
+it from the review queue (a new tab on the signed `/api/document-files` link answers 200 `application/pdf`), approves it,
+and a tampered signature is refused; `scheduling_tools` the draft week's publish preview answers and the rota builder
+loads clean; `cover_tools` staff report they cannot work and the manager's board shows "1 cannot work";
+`timesheet_tools` `GET timesheets/export` answers `text/csv` as an attachment named
+`rotaflow-timesheets-demo-care-group-2026-10-19-2026-10-25.csv` with a byte-order mark and no cell starting `=Ivan`, and
+the in-app "Export payroll CSV" downloads the same name; `two_way_swaps` (with `cover_tools`) `GET swaps/options`
+answers; a platform `read_write` support session (consented by the owner) is refused 403 on documents, cover and the
+payroll export with the flags off and on, while `GET locations` still answers.
+
+CSP (`csp.walk.ts`), all PASS: the `.htaccess` policy, word for word except `https://clerk.rotaflow.space` replaced by
+the development Clerk host, added to every document response of the production build. No violation (the
+`securitypolicyviolation` event and the console) while signing in through Clerk, across eight owner screens with the
+flags off and on, and on five public pages. The check was shown to bite: with the Clerk host left out, clerk-js is
+refused. In dev (Vite) the policy is not served at all, and cannot be: Vite injects an inline script the production
+policy rightly refuses. Review of the production policy against what the app loads: the Clerk frontend API (script and
+connect), `cdn.protect.clerk.com` and Cloudflare's challenge (script and frame) for Clerk's bot protection, Clerk
+telemetry, Sentry's ingest host and `blob:` workers are all named; avatars from `img.clerk.com` fall under `img-src
+https:`; documents open in a new tab on the same origin, so no `frame-src 'self'` is needed; nothing else is fetched
+cross-origin. No change made to `.htaccess`.
+
+**OPEN (owner decisions)**
+
+- Staff and the support banner: on Supabase every member saw that RotaFlow support was inside their organisation; the
+  API has answered that list to owners and managers only since S8a (suite `150` asserts it), so staff no longer see the
+  banner. Either restore the member read (one line in `Console::orgSessions` and the `150` check) or keep it.
+- Required documents with `staff_documents` off: the open-shift claim's eligibility (always on, by decision) refuses a
+  person missing a required document. Document types only exist once the flag has been on; if it is turned off again
+  with required types defined, staff cannot upload but are still refused (the card shows "Missing or expired: ...").
+  Archive the types before turning the flag off, or make the documents check follow the flag.
+
+**Remaining owner checks (only possible live)**
+
+- Real Stripe: a test-mode checkout, the portal and the webhook at `https://rotaflow.space/api/stripe/webhook` (local
+  had no Stripe keys; the billing screens loaded on the seeded trial state only).
+- Web push on a real phone (no VAPID keys locally; nothing was sent).
+- GPS clock-in on a phone inside and outside a site's geofence (locally: the manual clock-in, and seeded GPS events).
+- Real email: invitations, notifications and SMTP test through the platform account and an organisation's own account.
+- Google sign-in (off on both Clerk instances; the walk used email codes only).
+- `.htaccess` behind Apache and Cloudflare: the `/api` pass-through with the Authorization header and the CSP as served
+  (locally the policy was injected by Playwright, and `/api` was proxied by Vite).
+- Download names and the CSV in Safari and Firefox and in the payroll importer; a real 10 MB document; PHP
+  `post_max_size` and `upload_max_filesize` on the host.
+
+**NOT TESTED**
+
+- Browsers other than Chromium; phone layouts; the PWA service worker and offline cache (the walk ran on Vite dev; the
+  existing `pwa-*` specs were not run).
+- Clerk's sign-up form (its bot protection never completed headless; the test users were created on the development
+  instance through Clerk's API). Invitation acceptance by email link.
+- Flows beyond the main path of each R2 module: S11 pattern generation across a clock change and the assign warnings as
+  you type; S12 offers, candidates, approve and assign, two people taking one shift at once; S12d accept, approve and the
+  void on a moved shift; S13 chips against the tolerance, the reopen with a reason, exporting twice.
+- Platform console actions other than opening a support session (pages loaded and were clean).
+- The AI assistant (no OpenRouter key locally), reminders and other cron jobs (cron was not run).
+- MariaDB 11.4 (the walk used 13.0.2), the live data move from Supabase.
+- One PHP test (`210-photos-templates`) prints a PHP 8.5 deprecation for `ReflectionMethod::setAccessible()`; test code
+  only, left alone.
+
+**Evidence**: the full walk, `pnpm run e2e:walk` from a fresh seed with the preview server up: **271 passed, 0 failed,
+0 skipped** in 6.1 minutes (actions 7, csp 4, flags 6, screens 254 = 37 screens x 3 roles + 16 console screens, each
+with the flags off and on). `pnpm run check` exit 0 on the final tree (PHP 2179 assertions, 0 failed). Each fix has a
+test that failed before it (named in the table) except the console Settings page, whose fix removes the calls.
