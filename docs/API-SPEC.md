@@ -441,7 +441,7 @@ Nothing about a unique index is exposed. A member reads only their own records o
 | `GET/POST /orgs/{o}/leave`, `POST .../{l}/review`, `.../{l}/cancel` | request: the person, or owner and manager for anyone; review: owner, manager | `{type?, start_date, end_date, starts_half?, ends_half?, reason?}`; `leave_overlap` 409; a pending request is decided once (`already_decided` 409); responses include `days` |
 | `GET/POST /orgs/{o}/overtime`, `POST .../{v}/review`, `.../{v}/cancel` | as leave; cancel: pending only | `{date, hours (0.25 to 24), note?}` |
 | `GET /orgs/{o}/overtime/evidence?staff_profile_id&date` | owner, manager, the person | `scheduled_minutes`, `worked_minutes`, `unpaired_events` |
-| `GET /orgs/{o}/attention` | owner, manager | `leave_pending`, `overtime_pending`, `swaps_pending` for the nav badges |
+| `GET /orgs/{o}/attention` | any member | `leave_pending`, `overtime_pending`, `swaps_pending` for the nav badges: the organisation's for an owner or manager; anyone else's own (their pending leave and overtime, and the waiting swaps `GET swaps` shows them), zeros with no staff record (local-live walk, 31 Oct 2026; was owner and manager only, a 403 every minute for staff) |
 | `GET /orgs/{o}/swaps[?status]`, `POST /orgs/{o}/swaps` | member (those involved, plus the open board); owner and manager see all | `{shift_id, target_staff_profile_id?, note?}`; the shift must be yours and not cancelled |
 | `POST .../swaps/{w}/respond` | the target | `{status: accepted|rejected}` while pending |
 | `POST .../swaps/{w}/claim` | any member except the requester | Take an open-board swap; `swap_unavailable` 409 if it has gone |
@@ -603,7 +603,10 @@ Staff documents arrived with S10, below; the screens stay behind the `staff_docu
 ### Slice S10 (R2): compliance
 
 Owners and managers include delegates (a staff member lent manager authority). A platform support session gets 403 on
-every route here. Writes refuse a suspended organisation (`org_not_active`). Dates are `YYYY-MM-DD` in the
+every route here. While the `staff_documents` flag is off for the organisation every route here answers **403
+`feature_off`** after the membership check (local-live walk, 31 Oct 2026; before, only the screens were hidden), except
+`GET /orgs/{o}/documents`: that is the read the documents table answered before S10, and the rota builder, the staff
+list and the rota assistant use it for their expiring-document warnings with the flag off. Writes refuse a suspended organisation (`org_not_active`). Dates are `YYYY-MM-DD` in the
 organisation's timezone; a document row carries `status` (computed: an approved or pending row past its expiry reads
 `expired`) and `stored_status`, never its storage path (`stored: true` instead).
 

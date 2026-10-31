@@ -38,6 +38,21 @@ foreach (['mark' => 'manager', 'mia' => 'manager', 'sam' => 'staff', 'pat' => 's
     $pdo->prepare("INSERT INTO memberships (id, org_id, user_id, role, status) SELECT ?, ?, id, ?, 'active' FROM users WHERE email = ?")->execute([Db::uuid(), $org, $r, "$n@example.test"]);
 }
 $uid = static fn (string $n): string => (string) $pdo->query("SELECT id FROM users WHERE email = '$n@example.test'")->fetchColumn();
+
+// Local-live walk (31 Oct 2026): the R2 gate says every slice is dark ON THE SERVER while its flag is off (403 feature_off after the
+// membership check), but these routes answered with the flag off; only the screens were hidden. Off, every organisation route here refuses.
+$compRoutes = [['GET', '/document-types'], ['POST', '/document-types'], ['POST', '/document-types/presets'], ['POST', '/documents'],
+    ['GET', '/documents/queue'], ['GET', '/compliance/me'], ['GET', '/compliance/summary']];
+$offCodes = [];
+foreach ($compRoutes as [$verb, $path]) {
+    [$st, $body] = call($api, 'olga', $verb, "/orgs/$org$path", $verb === 'POST' ? ['name' => 'x'] : []);
+    $offCodes[] = "$verb $path " . $st . ' ' . ($body['error']['code'] ?? '');
+}
+check('flag off: every compliance route but the plain read answers 403 feature_off', $offCodes === array_map(static fn (array $r): string => "{$r[0]} {$r[1]} 403 feature_off", $compRoutes), implode('; ', $offCodes));
+check('flag off: a stranger still gets 404, not the flag', call($api, 'zed', 'GET', "/orgs/$org/documents/queue")[0] === 404);
+// The plain read stays, as before S10: the rota builder and the staff list read it for expiring-document warnings with the flag off.
+check('flag off: GET documents still answers (the pre-S10 read the warnings use)', call($api, 'olga', 'GET', "/orgs/$org/documents")[0] === 200);
+$pdo->exec("UPDATE feature_flags SET enabled = 1, rollout = 100 WHERE flag_key = 'staff_documents'");
 $staff = ['olga' => RotaFlow\Scope::staffProfileId($pdo, $org, $uid('olga'))];
 foreach (['mark', 'sam', 'pat'] as $n) { // nora is a member with no staff record
     $staff[$n] = call($api, 'olga', 'POST', "/orgs/$org/staff", ['first_name' => ucfirst($n), 'last_name' => 'Smith', 'email' => "$n@example.test"])[1]['id'];
@@ -318,4 +333,6 @@ RotaFlow\Mod\Lifecycle::cron($ctx);
 check('erasure: cron then removes the files', !is_dir(test_private_root() . "/uploads/staff-documents/$org/{$staff['pat']}") && $store->exists(FileStore::DOCUMENTS, $path));
 [$s] = call($api, 'zed', 'POST', "/orgs/$other/delete", ['confirm_name' => 'Elsewhere']);
 check('deleting an organisation with types, documents and reminders works', $s === 200 && (int) $pdo->query("SELECT COUNT(*) FROM documents WHERE org_id = '$other'")->fetchColumn() === 0 && (int) $pdo->query("SELECT COUNT(*) FROM document_types WHERE org_id = '$other'")->fetchColumn() === 0, (string) $s);
-check('the flag ships off', (int) $pdo->query("SELECT enabled FROM feature_flags WHERE flag_key = 'staff_documents'")->fetchColumn() === 0 && !in_array('staff_documents', array_column(call($api, 'olga', 'GET', "/orgs/$org/features")[1]['features'], 'feature'), true));
+$pdo->exec("UPDATE feature_flags SET enabled = 0, rollout = 0 WHERE flag_key = 'staff_documents'");
+check('switched off again, the routes refuse at once', call($api, 'olga', 'GET', "/orgs/$org/documents/queue")[1]['error']['code'] === 'feature_off' && call($api, 'olga', 'GET', "/orgs/$org/documents")[0] === 200);
+check('the migration ships the flag off, and off the features list no longer offers it', str_contains((string) file_get_contents(dirname(__DIR__, 2) . '/migrations/015-compliance.sql'), "'staff_documents'") && (int) $pdo->query("SELECT enabled FROM feature_flags WHERE flag_key = 'staff_documents'")->fetchColumn() === 0 && !in_array('staff_documents', array_column(call($api, 'olga', 'GET', "/orgs/$org/features")[1]['features'], 'feature'), true));

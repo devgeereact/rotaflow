@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace RotaFlow\Mod;
 
-use RotaFlow\{Audit, ComplianceRules as R, Ctx, Db, FileStore, HttpError, Module, Notify, Scope, Str};
+use RotaFlow\{Audit, ComplianceRules as R, Ctx, Db, FileStore, Flags, HttpError, Module, Notify, Scope, Str};
 
 /**
  * Compliance (R2 slice S10, ported from SiteRelay's Compliance module): document types, staff documents and their review, the eligibility
@@ -21,6 +21,7 @@ use RotaFlow\{Audit, ComplianceRules as R, Ctx, Db, FileStore, HttpError, Module
  */
 final class Compliance implements Module
 {
+    public const FLAG = 'staff_documents';
     public const MAX_BYTES = 10485760;
     private const LINK_SECONDS = 60;
     private const TYPE_LIMIT = 100;
@@ -70,12 +71,21 @@ final class Compliance implements Module
 
     // ---- access ---------------------------------------------------------------------------------------------------------------------------
 
-    /** @return array<string,mixed> the membership; a support session is refused */
-    private function member(array $u, string $o): array
+    /**
+     * Every organisation route here comes through this. A stranger gets 404 (membership), a support session 403 forbidden, and while the
+     * `staff_documents` flag is off for the organisation everyone gets 403 feature_off: the slice is dark on the server, not only on screen.
+     * The one exception is the plain read of documents (`GET documents`, $whileOff): it is what the documents table answered before S10,
+     * and the rota builder, the staff list and the rota assistant read it for their expiring-document warnings with the flag off.
+     * @return array<string,mixed> the membership
+     */
+    private function member(array $u, string $o, bool $whileOff = false): array
     {
         $m = Scope::membership($this->pdo, $u['id'], $o);
         if (($m['support'] ?? null) !== null) {
             throw HttpError::forbidden('Platform support has no access to staff documents');
+        }
+        if (!$whileOff && !Flags::enabledForOrg($this->pdo, self::FLAG, $o)) {
+            throw new HttpError(403, 'feature_off', 'Staff documents are not switched on for this organisation yet.');
         }
         return $m;
     }
@@ -331,7 +341,7 @@ final class Compliance implements Module
     /** Owners and managers: one person's (?staff_profile_id=) or everyone's. Staff: their own only; asking for someone else's is 404. */
     private function listDocuments(array $u, array $in, string $ip, string $o): array
     {
-        $m = $this->member($u, $o);
+        $m = $this->member($u, $o, true);
         $want = $in['staff_profile_id'] ?? null;
         $mine = Scope::staffProfileId($this->pdo, $o, $u['id']);
         if (self::manages($m)) {
