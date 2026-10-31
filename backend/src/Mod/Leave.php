@@ -216,11 +216,30 @@ final class Leave implements Module
         return [200, ['scheduled_minutes' => (int) $sh->fetchColumn(), 'worked_minutes' => (int) round($worked), 'unpaired_events' => $unpaired]];
     }
 
-    /** Counts a manager's badges poll for: requests waiting for a decision. */
+    /**
+     * The sidebar's badge counts, polled on every page. A manager's are the organisation's requests waiting for a decision; anyone
+     * else's are their own (as RLS scoped the same count on Supabase): their pending leave and overtime, and the swaps they could act
+     * on (theirs, offered to them, or open to anyone), the same rows `GET swaps` shows them. No staff record: zeros.
+     */
     private function attention(array $user, array $in, string $ip, string $o): array
     {
-        $m = Scope::membership($this->ctx->pdo, $user['id'], $o);
-        Scope::require($m, Scope::MANAGERS);
+        [$m, $own] = $this->who($user, $o);
+        if (!in_array($m['effective_role'], Scope::MANAGERS, true)) {
+            if ($own === null) {
+                return [200, ['leave_pending' => 0, 'overtime_pending' => 0, 'swaps_pending' => 0]];
+            }
+            $mine = function (string $sql, int $times) use ($o, $own): int {
+                $q = $this->ctx->pdo->prepare($sql);
+                $q->execute([$o, ...array_fill(0, $times, $own)]);
+                return (int) $q->fetchColumn();
+            };
+            return [200, [
+                'leave_pending' => $mine("SELECT COUNT(*) FROM leave_requests WHERE org_id = ? AND staff_profile_id = ? AND status = 'pending'", 1),
+                'overtime_pending' => $mine("SELECT COUNT(*) FROM overtime_requests WHERE org_id = ? AND staff_profile_id = ? AND status = 'pending'", 1),
+                'swaps_pending' => $mine("SELECT COUNT(*) FROM shift_swaps WHERE org_id = ? AND status IN ('pending','accepted')
+                    AND (requested_by = ? OR target_staff_profile_id = ? OR (target_staff_profile_id IS NULL AND status = 'pending' AND requested_by <> ?))", 3),
+            ]];
+        }
         $count = function (string $sql) use ($o): int {
             $q = $this->ctx->pdo->prepare($sql);
             $q->execute([$o]);

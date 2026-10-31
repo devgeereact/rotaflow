@@ -100,4 +100,17 @@ check('a stranger gets 404 and a missing date is 422', call($api, 'zed', 'GET', 
 // ---- attention badges ----------------------------------------------------------------------------------------------------
 [, $r] = call($api, 'mark', 'GET', "/orgs/$org/attention");
 check('a manager\'s badge counts are the requests waiting', $r['leave_pending'] >= 3 && $r['overtime_pending'] === 1 && $r['swaps_pending'] === 0, json_encode($r));
-check('staff cannot read them', call($api, 'sam', 'GET', "/orgs/$org/attention")[0] === 403);
+// Local-live walk (31 Oct 2026): the sidebar polls this on every page for everyone. On Supabase RLS scoped the same count to the
+// caller ("your pending requests" for staff), so staff get their own counts, never a 403 and never the organisation's.
+$own = static function (string $sql, string $sid) use ($pdo, $org): int {
+    $q = $pdo->prepare($sql);
+    $q->execute([$org, $sid]);
+    return (int) $q->fetchColumn();
+};
+[$s, $r] = call($api, 'sam', 'GET', "/orgs/$org/attention");
+check('staff read their own badge counts, not the organisation\'s', $s === 200
+    && $r['leave_pending'] === $own("SELECT COUNT(*) FROM leave_requests WHERE org_id = ? AND staff_profile_id = ? AND status = 'pending'", $staff['sam'])
+    && $r['overtime_pending'] === $own("SELECT COUNT(*) FROM overtime_requests WHERE org_id = ? AND staff_profile_id = ? AND status = 'pending'", $staff['sam'])
+    && $r['leave_pending'] < (int) $pdo->query("SELECT COUNT(*) FROM leave_requests WHERE status = 'pending'")->fetchColumn(), json_encode($r));
+check('a member with no staff record reads zeros', call($api, 'nora', 'GET', "/orgs/$org/attention")[1] === ['leave_pending' => 0, 'overtime_pending' => 0, 'swaps_pending' => 0]);
+check('a stranger still gets 404', call($api, 'zed', 'GET', "/orgs/$org/attention")[0] === 404);

@@ -156,3 +156,9 @@ check('a stranger gets 404', call($api, 'zed', 'POST', "/orgs/$org/open-shifts/$
 check('a shift id from another organisation is 404', call($api, 'zed', 'POST', "/orgs/$other/open-shifts/$open2/claim")[0] === 404);
 check('the claim is audited', (int) $pdo->query("SELECT COUNT(*) FROM audit_logs WHERE org_id = '$org' AND action = 'shift.claimed'")->fetchColumn() === 1);
 check('the manager\'s badge counts the swaps still waiting', call($api, 'mark', 'GET', "/orgs/$org/attention")[1]['swaps_pending'] >= 1);
+// Local-live walk: staff read their own swap badge (the swaps `GET swaps` shows them that still wait), never a 403.
+foreach (['sam', 'dee'] as $who) {
+    $listed = count(array_filter(call($api, $who, 'GET', "/orgs/$org/swaps")[1]['swaps'], static fn (array $w): bool => in_array($w['status'], ['pending', 'accepted'], true)));
+    [$s, $r] = call($api, $who, 'GET', "/orgs/$org/attention");
+    check("$who's swap badge counts the waiting swaps their own list shows", $s === 200 && $r['swaps_pending'] === $listed, json_encode([$s, $r, $listed]));
+}

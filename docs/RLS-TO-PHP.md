@@ -156,7 +156,7 @@ status directly, the API exposes named actions instead, so the rule cannot be by
 | `open_shifts`, `claim_open_shift` | Future, unassigned, open shifts on a published rota; claiming checks started, overlap and who got there first | `Swaps::openShifts`, `claimOpenShift` | 110 | DONE |
 | `approve_timesheets` | Owner and manager; an array; a batch is one transaction; replaces the figure and bumps the version | `Timesheets::approve` (all or nothing; clears the recalculation flag) | 115 | DONE |
 | `overtime_evidence` | Scheduled minutes less breaks, worked minutes from paired in and out, forgotten clock-outs | `Leave::evidence`. **Tightened:** the old function answered any member about anyone; it is now owner, manager or the person | 105 | DONE |
-| Realtime badges (`useNavBadgeCounts`) | Counts of requests waiting | `GET /orgs/{o}/attention` (owner and manager) | 105, 110 | DONE |
+| Realtime badges (`useNavBadgeCounts`) | Counts of requests waiting, scoped to the caller by RLS ("your pending requests" for staff) | `GET /orgs/{o}/attention`: the organisation's counts for owner and manager, the caller's own for anyone else (local-live walk, 31 Oct 2026) | 105, 110 | DONE |
 | Review notification triggers (leave, swap, rota) | A message to the person | Notifications: S6 | none yet | PLANNED S6 |
 | `enforce_org_not_read_only` on these tables | Read-only organisations cannot write | Billing state: S7 | none yet | PLANNED S7 |
 
