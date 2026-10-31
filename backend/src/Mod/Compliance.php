@@ -133,6 +133,12 @@ final class Compliance implements Module
         if ($q->fetchColumn() === false || $date === null) {
             return ['ok' => false, 'missing' => []];
         }
+        // Owner decision (31 Oct 2026): the document check follows the staff_documents flag. With it off nobody can upload, so a
+        // missing document never blocks anyone (the claim, the open-shifts list's my_eligibility, cover candidates and approvals);
+        // every other eligibility check still applies. With it on, required documents are checked as before.
+        if (!Flags::enabledForOrg($pdo, self::FLAG, $o)) {
+            return ['ok' => true, 'missing' => []];
+        }
         $q = $pdo->prepare(
             "SELECT t.name FROM document_types t
               WHERE t.org_id = ? AND t.status = 'active' AND t.required = 1

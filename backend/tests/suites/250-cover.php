@@ -46,6 +46,10 @@ foreach (['olga', 'mark', 'sam', 'pat', 'dee', 'eve', 'gus'] as $who) {
     $pdo->prepare("INSERT INTO documents (id, org_id, staff_profile_id, document_type_id, type, name, file_url, status) VALUES (?, ?, ?, ?, 'DBS check', 'DBS', 'https://example.test/dbs.pdf', 'approved')")->execute([Db::uuid(), $org, $staff[$who], $dbs]);
 }
 $flag = static fn (bool $on) => $GLOBALS['pdo']->exec('UPDATE feature_flags SET enabled = ' . ($on ? 1 : 0) . ', rollout = ' . ($on ? 100 : 0) . " WHERE flag_key = 'cover_tools'");
+// Owner decision (31 Oct 2026): the document check follows staff_documents. It is on for this suite's document cases; the flag-off
+// cases below turn it off and back on.
+$docs = static fn (bool $on) => $GLOBALS['pdo']->exec('UPDATE feature_flags SET enabled = ' . ($on ? 1 : 0) . ', rollout = ' . ($on ? 100 : 0) . " WHERE flag_key = 'staff_documents'");
+$docs(true);
 $holder = static fn (string $id): ?string => $GLOBALS['pdo']->query("SELECT staff_profile_id FROM shifts WHERE id = '$id'")->fetchColumn() ?: null;
 $outbox = static fn (string $event): int => (int) $GLOBALS['pdo']->query("SELECT COUNT(*) FROM notification_outbox WHERE org_id = '{$GLOBALS['org']}' AND event_name = '$event'")->fetchColumn();
 $C = "/orgs/$org/cover";
@@ -58,7 +62,15 @@ check('off: a stranger 404 and nobody 401 (membership before the flag)', call($a
 [$s, $r] = call($api, 'dee', 'POST', "/orgs/$org/open-shifts/{$sh['O0']}/claim");
 check('off: the instant claim still checks eligibility (dee is on approved leave: 409 not_eligible, the shift stays open)', $s === 409 && $r['error']['code'] === 'not_eligible' && str_contains($r['error']['message'], 'holiday') && $holder($sh['O0']) === null, json_encode($r));
 [$s, $r] = call($api, 'fay', 'POST', "/orgs/$org/open-shifts/{$sh['O0']}/claim");
-check('off: a missing required document refuses the claim too', $s === 409 && $r['error']['code'] === 'not_eligible' && $holder($sh['O0']) === null, json_encode($r));
+check('off: a missing required document refuses the claim too (staff_documents on)', $s === 409 && $r['error']['code'] === 'not_eligible' && $holder($sh['O0']) === null, json_encode($r));
+$docs(false);
+[$s, $r] = call($api, 'fay', 'POST', "/orgs/$org/open-shifts/{$sh['O0']}/claim");
+check('off: with staff_documents off a missing document never blocks the claim', $s === 200 && $holder($sh['O0']) === $staff['fay'], json_encode($r));
+[$s, $r] = call($api, 'dee', 'POST', "/orgs/$org/open-shifts/{$sh['O0']}/claim");
+$pdo->exec("UPDATE shifts SET staff_profile_id = NULL, status = 'open' WHERE id = '{$sh['O0']}'");
+[$s2, $r2] = call($api, 'dee', 'POST', "/orgs/$org/open-shifts/{$sh['O0']}/claim");
+check('off: with staff_documents off the other checks still apply (leave)', $s2 === 409 && str_contains($r2['error']['message'], 'holiday') && $holder($sh['O0']) === null, json_encode($r2));
+$docs(true);
 $reqOff = Db::uuid();
 $pdo->prepare("INSERT INTO cover_requests (id, org_id, shift_id, status, open_shift_id) VALUES (?, ?, ?, 'open', ?)")->execute([$reqOff, $org, $sh['O0'], $sh['O0']]);
 [$s, $r] = call($api, 'gus', 'POST', "/orgs/$org/open-shifts/{$sh['O0']}/claim");
@@ -109,6 +121,10 @@ check('request: one open request per shift', call($api, 'mark', 'POST', "$C/requ
 $cand = array_column($r['candidates'], null, 'staff_profile_id');
 check('candidates: staff 403; a stranger 404', call($api, 'sam', 'GET', "$C/shifts/{$sh['A']}/candidates")[0] === 403 && call($api, 'zed', 'GET', "$C/shifts/{$sh['A']}/candidates")[0] === 404);
 check('candidates: the absentee, leave, unavailability and documents each carry their reason', array_column($cand[$staff['sam']]['reasons'], 'code') === ['absent'] && array_column($cand[$staff['dee']]['reasons'], 'code') === ['leave'] && array_column($cand[$staff['eve']]['reasons'], 'code') === ['unavailable'] && array_column($cand[$staff['fay']]['reasons'], 'code') === ['documents'] && $cand[$staff['fay']]['reasons'][0]['message'] === 'Missing or expired: DBS check', json_encode($r['candidates']));
+$docs(false);
+$candOff = array_column(call($api, 'mark', 'GET', "$C/shifts/{$sh['A']}/candidates")[1]['candidates'], null, 'staff_profile_id');
+check('candidates: with staff_documents off fay is eligible and the other reasons stay', $candOff[$staff['fay']]['eligible'] === true && $candOff[$staff['fay']]['reasons'] === [] && array_column($candOff[$staff['dee']]['reasons'], 'code') === ['leave'], json_encode($candOff[$staff['fay']] ?? null));
+$docs(true);
 check('candidates: eligible people come first', array_column(array_slice($r['candidates'], 0, 4), 'eligible') === [true, true, true, true] && $r['candidates'][4]['eligible'] === false);
 $open = array_column(call($api, 'dee', 'GET', "$C/open")[1]['shifts'], null, 'id');
 check('open: staff see the request with their own eligibility', isset($open[$sh['A']]) && $open[$sh['A']]['cover_request']['id'] === $reqA && $open[$sh['A']]['eligible'] === false && $open[$sh['A']]['reasons'][0]['code'] === 'leave' && call($api, 'pat', 'GET', "$C/open")[1]['shifts'][0]['eligible'] === true);

@@ -914,3 +914,14 @@ session disappears for staff while managers keep the history, another organisati
 `SupportAccessBanner.test.tsx` (owner, manager and staff each see it; the end button for the owner only). Mutation checks:
 dropping the live-only filter fails "an ended session disappears"; adding `admin_user_id`/`admin_email` to the staff
 shape fails "only what the banner shows".
+
+**2. The document check follows the `staff_documents` flag.** `Compliance::eligible` (used by the instant open-shift claim,
+`my_eligibility` on the open-shifts list, cover candidates, applications and approvals, and two-way swap eligibility) returns
+eligible with no missing documents while `staff_documents` is off for the organisation; with it on, required documents are
+checked as before. Every other check (inactive, absent, overlap, leave, unavailable) is unchanged and still always applies.
+This closes the walk's OPEN item "required documents with `staff_documents` off": turning the flag off no longer leaves staff
+refused for documents they cannot upload. Evidence: suite `250` (+3: a claim with staff_documents off succeeds for a person
+missing a required document; leave still refuses with it off; cover candidates show that person eligible with it off and the
+other reasons unchanged; the document cases now run with the flag on), suite `270` (+3: my_eligibility clean with it off,
+other reasons unchanged, then the document reason with it on). Mutation check: ignoring the flag fails 3 of those checks
+(250 x2, 270 x1).

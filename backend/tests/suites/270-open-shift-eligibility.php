@@ -55,6 +55,13 @@ check('an eligible person: every shift eligible, no reasons', count($b) === 5 &&
 $p = $board('pat');
 check('leave: pat cannot take the day-5 shift, in plain words; the others are open to her', $p[$O['O5']]['my_eligibility']['eligible'] === false && $codes($p[$O['O5']]) === ['leave'] && str_starts_with($p[$O['O5']]['my_eligibility']['reasons'][0]['message'], 'On approved ') && $p[$O['O6']]['my_eligibility']['eligible'] === true, json_encode($p[$O['O5']]['my_eligibility']));
 check('declared unavailable: eve, day 6 only', $codes($board('eve')[$O['O6']]) === ['unavailable'] && $board('eve')[$O['O5']]['my_eligibility']['eligible'] === true);
+// Owner decision (31 Oct 2026): the document check follows staff_documents (seeded off): with it off nobody can upload, so a
+// missing document shows nothing and blocks nothing; with it on the required document is checked as before.
+$docs = static fn (bool $on) => $GLOBALS['pdo']->exec('UPDATE feature_flags SET enabled = ' . ($on ? 1 : 0) . ', rollout = ' . ($on ? 100 : 0) . " WHERE flag_key = 'staff_documents'");
+$f = $board('fay');
+check('staff_documents off: fay is eligible on every shift, though a required type exists', count($f) === 5 && array_filter($f, static fn (array $r): bool => $r['my_eligibility'] !== ['eligible' => true, 'reasons' => []]) === [], json_encode(array_column($f, 'my_eligibility')));
+check('staff_documents off: the other reasons are unchanged (pat on leave)', $codes($board('pat')[$O['O5']]) === ['leave']);
+$docs(true);
 $f = $board('fay');
 check('a missing required document: fay, on every shift, naming the document', array_filter($f, static fn (array $r): bool => $r['my_eligibility']['reasons'] !== [['code' => 'documents', 'message' => 'Missing or expired: DBS check']]) === []);
 $sb = $board('sam');
