@@ -17,7 +17,7 @@ export function Breadcrumbs(): JSX.Element {
   const { pathname } = useLocation();
 
   const candidates = [
-    ...navItemsForRole(role, { compliance: true }),
+    ...navItemsForRole(role, { compliance: true, cover: true }),
     ...footerNavItemsForRole(role),
   ];
   const current = candidates

@@ -267,6 +267,7 @@ const CompliancePage = lazyPage(
   'CompliancePage',
   () => import('@/pages/app/CompliancePage'),
 );
+const CoverPage = lazyPage('CoverPage', () => import('@/pages/app/CoverPage'));
 const OvertimePage = lazyPage('OvertimePage', () => import('@/pages/app/OvertimePage'));
 const AnnouncementsPage = lazyPage(
   'AnnouncementsPage',
@@ -875,6 +876,7 @@ export function App({ renderRouter = browserRouter }: AppProps = {}): JSX.Elemen
                           {/* Every member: staff keep their own documents; owners and managers
                               also review. Behind the staff_documents flag inside the page. */}
                           <Route path="compliance" element={<CompliancePage />} />
+                          <Route path="cover" element={<CoverPage />} />
                           <Route path="announcements" element={<AnnouncementsPage />} />
                           <Route path="notifications" element={<NotificationsPage />} />
                           <Route path="help" element={<HelpPage />} />

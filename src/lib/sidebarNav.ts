@@ -20,6 +20,7 @@ import {
   Settings,
   UserCircle,
   LifeBuoy,
+  HandHelping,
   type LucideIcon,
 } from 'lucide-react';
 import type { WorkMode } from '@/lib/workMode';
@@ -57,6 +58,10 @@ export interface NavOptions {
    * module ships dark until the platform turns it on.
    */
   compliance?: boolean;
+  /**
+   * The `cover_tools` feature flag (cover, slice S12). Off, the row does not exist.
+   */
+  cover?: boolean;
 }
 
 /**
@@ -157,6 +162,10 @@ export function navItemsForRole(
   items.push({ label: 'Leave', icon: Umbrella, to: '/app/leave', badge: 'leave' });
   items.push({ label: 'Shift Swaps', icon: Repeat2, to: '/app/swaps', badge: 'swaps' });
   items.push({ label: 'Open Shifts', icon: CalendarPlus, to: '/app/open-shifts' });
+  if (options.cover) {
+    // Everyone: staff say when they cannot work and offer to cover; owners and managers decide.
+    items.push({ label: 'Cover', icon: HandHelping, to: '/app/cover' });
+  }
   items.push({ label: 'Overtime', icon: TimerReset, to: '/app/overtime' });
   if (options.compliance) {
     // Everyone: staff keep their own documents here; owners and managers also review.

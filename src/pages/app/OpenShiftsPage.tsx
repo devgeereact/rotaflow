@@ -25,6 +25,11 @@ import { EligibilityChip } from '@/components/staff/EligibilityChip';
 import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { myCompliance, STAFF_DOCUMENTS_FEATURE } from '@/services/documentService';
 import { eligibilityOn, type Requirement } from '@/lib/compliance';
+import {
+  COVER_FEATURE,
+  getCoverOpen,
+  type CoverOpenShift,
+} from '@/services/coverService';
 
 /**
  * `/app/open-shifts` — uncovered shifts anybody can take (CAP-010).
@@ -88,7 +93,13 @@ export function OpenShiftsPage(): JSX.Element {
   const [timezone, setTimezone] = useState<string>(FALLBACK_TIMEZONE);
   // The reader's own documents (compliance, S10), so each card can say whether they would be
   // cleared on that day. Informs only: the claim itself is checked by the API (S12 adds documents).
-  const documentsOn = useFeatureAccess().has(STAFF_DOCUMENTS_FEATURE);
+  const features = useFeatureAccess();
+  const documentsOn = features.has(STAFF_DOCUMENTS_FEATURE);
+  // Cover (S12): with the module on, the server checks eligibility on every claim, and a shift a
+  // manager opened a cover request for is offered on the Cover page instead. This reads the same
+  // facts so the card can say so before anyone presses the button.
+  const coverOn = features.has(COVER_FEATURE);
+  const [cover, setCover] = useState<Map<string, CoverOpenShift>>(new Map());
   const [requirements, setRequirements] = useState<Requirement[] | null>(null);
   useEffect(() => {
     if (!orgId || !documentsOn || !canClaim) {
@@ -134,6 +145,22 @@ export function OpenShiftsPage(): JSX.Element {
       active = false;
     };
   }, [orgId]);
+
+  useEffect(() => {
+    if (!orgId || !coverOn || !canClaim) {
+      setCover(new Map());
+      return;
+    }
+    let active = true;
+    void getCoverOpen(orgId)
+      .then((rows) => {
+        if (active) setCover(new Map(rows.map((r) => [r.id, r])));
+      })
+      .catch((err: unknown) => reportError(err, { area: 'open-shifts:cover' }));
+    return () => {
+      active = false;
+    };
+  }, [orgId, coverOn, canClaim, reloadKey]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -245,6 +272,11 @@ export function OpenShiftsPage(): JSX.Element {
           {shifts.map((shift) => {
             const start = new Date(shift.startsAt);
             const end = new Date(shift.endsAt);
+            const coverRow = cover.get(shift.shiftId);
+            const blockedBy =
+              coverRow && coverRow.eligible === false
+                ? (coverRow.reasons ?? []).map((r) => r.message).join('; ')
+                : null;
             return (
               <li key={shift.shiftId}>
                 <Card className="flex flex-wrap items-center gap-4">
@@ -297,6 +329,11 @@ export function OpenShiftsPage(): JSX.Element {
                         }
                       />
                     )}
+                    {blockedBy && (
+                      <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
+                        {blockedBy}
+                      </p>
+                    )}
                   </div>
 
                   {!canClaim ? (
@@ -307,6 +344,25 @@ export function OpenShiftsPage(): JSX.Element {
                        rather than "not you". The uncovered shift is the
                        information; the builder is the action. */
                     <Badge tone="warning">Needs cover</Badge>
+                  ) : coverRow?.cover_request ? (
+                    /* A manager is choosing who covers it: the claim would be refused
+                       (409 cover_request_open), so the card says where to go instead. */
+                    <>
+                      <Badge tone="info">Manager choosing cover</Badge>
+                      <Button
+                        variant="secondary"
+                        onClick={() => void navigate('/app/cover')}
+                      >
+                        Offer to cover
+                      </Button>
+                    </>
+                  ) : blockedBy ? (
+                    <>
+                      <Badge tone="warning">You cannot take this</Badge>
+                      <Button variant="secondary" disabled title={blockedBy}>
+                        Take it
+                      </Button>
+                    </>
                   ) : shift.clashesWithMine ? (
                     <>
                       <Badge tone="warning">Clashes with your rota</Badge>
