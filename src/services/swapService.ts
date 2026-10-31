@@ -3,7 +3,12 @@ import type { Shift, ShiftSwap, ShiftSwapInsert } from '@/types';
 
 export interface ShiftSwapWithShift extends ShiftSwap {
   shift: Shift | null;
+  /** Two-way swaps (S12d): the colleague's shift asked for in return. Absent on a one-way swap. */
+  take_shift?: Shift | null;
 }
+
+/** The `two_way_swaps` feature flag (S12d). It works only with `cover_tools` on as well. */
+export const TWO_WAY_SWAPS_FEATURE = 'two_way_swaps';
 
 /**
  * The insert path predates its screen (Phase 4). UseSyncQueue needed a real
@@ -16,6 +21,11 @@ type ApiSwap = ShiftSwap & {
   shift_ends_at?: string;
   shift_location_id?: string | null;
   shift_staff_profile_id?: string | null;
+  take_shift_id?: string;
+  take_starts_at?: string;
+  take_ends_at?: string;
+  take_location_id?: string | null;
+  take_staff_profile_id?: string | null;
 };
 
 /** The list carries the shift's times, site and holder; enough of the shift for every swap screen. */
@@ -25,6 +35,11 @@ function withShift(r: ApiSwap): ShiftSwapWithShift {
     shift_ends_at,
     shift_location_id,
     shift_staff_profile_id,
+    take_shift_id,
+    take_starts_at,
+    take_ends_at,
+    take_location_id,
+    take_staff_profile_id,
     ...swap
   } = r;
   const shift =
@@ -38,7 +53,19 @@ function withShift(r: ApiSwap): ShiftSwapWithShift {
           staff_profile_id: shift_staff_profile_id ?? null,
         } as Shift)
       : null;
-  return { ...swap, shift };
+  if (!take_shift_id) return { ...swap, shift };
+  const take_shift =
+    take_starts_at && take_ends_at
+      ? ({
+          id: take_shift_id,
+          org_id: swap.org_id,
+          starts_at: take_starts_at,
+          ends_at: take_ends_at,
+          location_id: take_location_id ?? null,
+          staff_profile_id: take_staff_profile_id ?? null,
+        } as Shift)
+      : null;
+  return { ...swap, shift, take_shift };
 }
 
 async function readSwaps(path: string): Promise<ShiftSwapWithShift[]> {
@@ -46,15 +73,35 @@ async function readSwaps(path: string): Promise<ShiftSwapWithShift[]> {
   return r.swaps.map(withShift);
 }
 
-export async function requestShiftSwap(input: ShiftSwapInsert): Promise<ShiftSwap> {
+export async function requestShiftSwap(
+  input: ShiftSwapInsert & { take_shift_id?: string },
+): Promise<ShiftSwap> {
   const r = await api.post<{ swap: ApiSwap }>(orgPath(input.org_id, '/swaps'), {
     shift_id: input.shift_id,
     requested_by: input.requested_by,
     target_staff_profile_id: input.target_staff_profile_id ?? null,
     note: input.note ?? null,
     client_event_id: input.client_event_id ?? null,
+    // Only a two-way swap sends it (S12d), so a one-way request is exactly as before.
+    ...(input.take_shift_id ? { take_shift_id: input.take_shift_id } : {}),
   });
   return withShift(r.swap);
+}
+
+export interface SwapOptions {
+  colleagues: { id: string; first_name: string; last_name: string }[];
+  shifts: {
+    id: string;
+    staff_profile_id: string;
+    starts_at: string;
+    ends_at: string;
+    location_id: string | null;
+  }[];
+}
+
+/** Colleagues' upcoming shifts that can be asked for in return (S12d; 403 `feature_off` with the flags off). */
+export async function listSwapOptions(orgId: string): Promise<SwapOptions> {
+  return api.get<SwapOptions>(orgPath(orgId, '/swaps/options'));
 }
 
 /** Swaps involving one person, as requester or target, newest first. */

@@ -124,6 +124,10 @@ export function toSwapRow(
   const location = shift?.location_id
     ? context.locationsById.get(shift.location_id)
     : undefined;
+  const take = swap.take_shift ?? null;
+  const takeLocation = take?.location_id
+    ? context.locationsById.get(take.location_id)
+    : undefined;
   const status = toDisplayStatus(swap.status, Boolean(swap.target_staff_profile_id));
 
   return {
@@ -154,6 +158,24 @@ export function toSwapRow(
           locationName: location?.name ?? null,
         }
       : null,
+    ...(swap.take_shift !== undefined
+      ? {
+          takeShift: take
+            ? {
+                dateLabel: format(
+                  shiftZoned(take.starts_at, takeLocation),
+                  'EEE d MMM yyyy',
+                ),
+                timeLabel: formatTimeRange(
+                  format(shiftZoned(take.starts_at, takeLocation), 'HH:mm'),
+                  format(shiftZoned(take.ends_at, takeLocation), 'HH:mm'),
+                  { overnight: 'compact' },
+                ),
+                locationName: takeLocation?.name ?? null,
+              }
+            : null,
+        }
+      : {}),
     requestedLabel: requestedLabel(swap.created_at),
     note: swap.note,
     status,

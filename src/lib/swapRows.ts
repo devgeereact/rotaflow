@@ -51,6 +51,11 @@ export interface SwapRow {
    * this one shift.
    */
   shift: SwapShiftSide | null;
+  /**
+   * Two-way swaps (S12d): the colleague's shift the requester takes in return. Absent on a
+   * one-way swap (every swap before S12d), so those rows are exactly as before.
+   */
+  takeShift?: SwapShiftSide | null;
   /** Pre-formatted, e.g. "Today, 09:15". */
   requestedLabel: string;
   note: string | null;

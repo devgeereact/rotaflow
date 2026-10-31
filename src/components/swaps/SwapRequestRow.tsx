@@ -62,6 +62,9 @@ export function SwapRequestRow({
         </div>
         <div className="flex gap-6">
           <SwapShiftSide side="giving" shift={row.shift} />
+          {row.takeShift !== undefined && (
+            <SwapShiftSide side="taking" shift={row.takeShift} />
+          )}
         </div>
         <div className="ml-auto text-right">
           <Badge tone={SWAP_STATUS_TONE[row.status]} dot>

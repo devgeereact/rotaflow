@@ -11,6 +11,16 @@ export interface OfferShiftDraft {
   shiftId: string;
   targetId: string;
   note: string;
+  /** Two-way swaps (S12d): one of the colleague's shifts asked for in return. Absent otherwise. */
+  takeShiftId?: string;
+}
+
+/** A colleague's shift that can be asked for in return (`GET swaps/options`). */
+export interface ExchangeOption {
+  id: string;
+  staff_profile_id: string;
+  starts_at: string;
+  ends_at: string;
 }
 
 interface OfferShiftModalProps {
@@ -21,6 +31,11 @@ interface OfferShiftModalProps {
   submitting: boolean;
   offline: boolean;
   onSubmit: (draft: OfferShiftDraft) => void;
+  /**
+   * Two-way swaps (S12d, `two_way_swaps` with `cover_tools`). Undefined with the flags off, so the
+   * dialog is exactly as before.
+   */
+  exchangeShifts?: ExchangeOption[];
 }
 
 /**
@@ -37,18 +52,25 @@ export function OfferShiftModal({
   submitting,
   offline,
   onSubmit,
+  exchangeShifts,
 }: OfferShiftModalProps): JSX.Element {
   const [shiftId, setShiftId] = useState('');
   const [targetId, setTargetId] = useState('');
   const [note, setNote] = useState('');
+  const [takeShiftId, setTakeShiftId] = useState('');
 
   useEffect(() => {
     if (open) {
       setShiftId('');
       setTargetId('');
       setNote('');
+      setTakeShiftId('');
     }
   }, [open]);
+
+  const theirShifts = (exchangeShifts ?? []).filter(
+    (x) => x.staff_profile_id === targetId,
+  );
 
   return (
     <Modal open={open} onClose={onClose} title="Offer a shift">
@@ -78,7 +100,10 @@ export function OfferShiftModal({
             <Select
               id="offer-target"
               value={targetId}
-              onChange={(e) => setTargetId(e.target.value)}
+              onChange={(e) => {
+                setTargetId(e.target.value);
+                setTakeShiftId('');
+              }}
             >
               <option value="">Anyone / manager decides</option>
               {colleagues.map((c) => (
@@ -88,6 +113,28 @@ export function OfferShiftModal({
               ))}
             </Select>
           </div>
+          {exchangeShifts && targetId && (
+            <div>
+              <Label htmlFor="offer-take">In return (optional)</Label>
+              <Select
+                id="offer-take"
+                value={takeShiftId}
+                onChange={(e) => setTakeShiftId(e.target.value)}
+              >
+                <option value="">Nothing, just take my shift</option>
+                {theirShifts.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {format(new Date(x.starts_at), 'EEE d MMM · HH:mm')}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+                {theirShifts.length === 0
+                  ? 'They have no upcoming shifts to swap back.'
+                  : 'Asking for one of their shifts makes it a swap both ways: when approved, you each take the other’s shift.'}
+              </p>
+            </div>
+          )}
           <div>
             <Label htmlFor="offer-reason">Reason</Label>
             <Input
@@ -110,7 +157,13 @@ export function OfferShiftModal({
             <Button
               size="sm"
               disabled={submitting || !shiftId}
-              onClick={() => onSubmit({ shiftId, targetId, note })}
+              onClick={() =>
+                onSubmit(
+                  takeShiftId && targetId
+                    ? { shiftId, targetId, note, takeShiftId }
+                    : { shiftId, targetId, note },
+                )
+              }
             >
               {submitting ? 'Submitting…' : 'Post to the swap board'}
             </Button>

@@ -19,8 +19,12 @@ import {
   listOrgShiftSwaps,
   requestShiftSwap,
   respondToShiftSwap,
+  listSwapOptions,
+  TWO_WAY_SWAPS_FEATURE,
   type ShiftSwapWithShift,
 } from '@/services/swapService';
+import { COVER_FEATURE } from '@/services/coverService';
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
 import { reportError } from '@/lib/sentry';
 import { sendOrQueue } from '@/lib/queuedWrite';
 import { classifyFailure } from '@/services/syncQueue';
@@ -29,7 +33,7 @@ import { DEFAULT_POLICIES, schedulingPolicies } from '@/lib/orgPreferences';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SwapsView } from '@/components/swaps/SwapsView';
-import type { OfferShiftDraft } from '@/components/swaps/OfferShiftModal';
+import type { ExchangeOption, OfferShiftDraft } from '@/components/swaps/OfferShiftModal';
 import type { SwapRule } from '@/components/swaps/SwapRulesCard';
 import type { SwapRow } from '@/lib/swapRows';
 import type { Location, Shift, StaffProfile } from '@/types';
@@ -67,6 +71,31 @@ export function SwapsPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // Two-way swaps (S12d): both flags on. Off, the options are never read and the dialog is as before.
+  const features = useFeatureAccess();
+  const twoWayOn = features.has(TWO_WAY_SWAPS_FEATURE) && features.has(COVER_FEATURE);
+  const [exchangeShifts, setExchangeShifts] = useState<ExchangeOption[] | undefined>(
+    undefined,
+  );
+  useEffect(() => {
+    if (!orgId || !twoWayOn) {
+      setExchangeShifts(undefined);
+      return;
+    }
+    let active = true;
+    void listSwapOptions(orgId)
+      .then((r) => {
+        if (active) setExchangeShifts(r.shifts);
+      })
+      .catch((err: unknown) => {
+        // The dialog still offers one-way swaps without the list.
+        reportError(err, { area: 'swaps:options' });
+        if (active) setExchangeShifts(undefined);
+      });
+    return () => {
+      active = false;
+    };
+  }, [orgId, twoWayOn, reloadKey]);
 
   useRealtimeRefresh({
     tables: ['shift_swaps', 'shifts'],
@@ -207,6 +236,7 @@ export function SwapsPage(): JSX.Element {
           requested_by: myProfile.id,
           target_staff_profile_id: draft.targetId || null,
           note: draft.note.trim() || null,
+          ...(draft.takeShiftId ? { take_shift_id: draft.takeShiftId } : {}),
           // Minted before the attempt, as clock-in does (BUG-046): a lost
           // response replays a row that already exists, and 0081's unique
           // index only recognises it as already-applied if the key was on
@@ -362,6 +392,7 @@ export function SwapsPage(): JSX.Element {
         className="mb-6"
       />
       <SwapsView
+        exchangeShifts={exchangeShifts}
         rows={rows}
         loading={loading}
         emptyMessage="No swap requests."

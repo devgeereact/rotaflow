@@ -9,6 +9,7 @@ import { SwapRequestRow } from '@/components/swaps/SwapRequestRow';
 import { SwapRulesCard, type SwapRule } from '@/components/swaps/SwapRulesCard';
 import {
   OfferShiftModal,
+  type ExchangeOption,
   type OfferShiftDraft,
 } from '@/components/swaps/OfferShiftModal';
 import { countSwapTiles } from '@/lib/swapRows';
@@ -31,6 +32,8 @@ export interface SwapsViewProps {
   onRequesterFinalize: (row: SwapRow, status: 'approved' | 'rejected') => Promise<void>;
   onClaim: (row: SwapRow) => Promise<void>;
   onWithdraw: (row: SwapRow) => Promise<void>;
+  /** Two-way swaps (S12d). Undefined with the flags off. */
+  exchangeShifts?: ExchangeOption[];
 }
 
 /**
@@ -55,6 +58,7 @@ export function SwapsView({
   onRequesterFinalize,
   onClaim,
   onWithdraw,
+  exchangeShifts,
 }: SwapsViewProps): JSX.Element {
   const [offerOpen, setOfferOpen] = useState(false);
   const [offerSubmitting, setOfferSubmitting] = useState(false);
@@ -138,6 +142,7 @@ export function SwapsView({
         colleagues={colleagues}
         submitting={offerSubmitting}
         offline={offline}
+        exchangeShifts={exchangeShifts}
         onSubmit={(draft) => {
           setOfferSubmitting(true);
           void onOfferShift(draft).finally(() => {
