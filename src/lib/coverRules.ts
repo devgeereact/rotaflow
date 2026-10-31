@@ -180,6 +180,49 @@ export function swapStaleReason(
   return startsAtMs <= nowMs ? 'shift_started' : null;
 }
 
+/**
+ * A two-way swap (S12d) goes ahead only while both shifts can: a change on either wins over a
+ * start on either. Each side is `swapStaleReason`'s own answer. Mirrors `CoverRules::exchangeStale`.
+ */
+export function exchangeStaleReason(
+  give: SwapVoidReason | null,
+  take: SwapVoidReason | null,
+): SwapVoidReason | null {
+  if (give === 'shift_changed' || take === 'shift_changed') return 'shift_changed';
+  return give ?? take;
+}
+
+export interface ExchangeShift {
+  id: string;
+  staff_profile_id: string | null;
+  status: string;
+  rota_status: string | null;
+  starts_at: string;
+}
+
+/** Why a shift cannot be asked for in return, or null. Mirrors `CoverRules::exchangeProblem`. */
+export function exchangeProblem(
+  give: ExchangeShift,
+  take: ExchangeShift,
+  requester: string,
+  target: string,
+  nowMs: number,
+): string | null {
+  if (take.id === give.id)
+    return 'Ask for a different shift from the one you are offering';
+  if (take.staff_profile_id !== target)
+    return "The shift asked for in return must be one of your colleague's shifts";
+  if (give.staff_profile_id !== requester)
+    return 'You can only offer a shift that is yours';
+  if (take.status === 'cancelled' || give.status === 'cancelled')
+    return 'A cancelled shift cannot be swapped';
+  if (take.rota_status !== 'published' || give.rota_status !== 'published')
+    return 'Both shifts must be on a published rota';
+  if (Date.parse(take.starts_at) <= nowMs || Date.parse(give.starts_at) <= nowMs)
+    return 'A shift that has started cannot be swapped';
+  return null;
+}
+
 export const SWAP_VOID_TEXT: Record<SwapVoidReason, string> = {
   shift_changed: 'Cancelled automatically: the shift changed after the swap was raised',
   shift_started: 'Cancelled automatically: the shift started before it was decided',

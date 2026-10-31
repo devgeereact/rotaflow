@@ -117,6 +117,36 @@ final class CoverRules
         return null;
     }
 
+    /**
+     * A two-way swap (S12d) can go ahead only while BOTH shifts can: 'shift_changed' on either wins over 'shift_started' on either, as for
+     * one shift. Each side is staleReason's own answer (null when that side is fine).
+     */
+    public static function exchangeStale(?string $give, ?string $take): ?string
+    {
+        if ($give === 'shift_changed' || $take === 'shift_changed') {
+            return 'shift_changed';
+        }
+        return $give ?? $take;
+    }
+
+    /**
+     * Why a shift cannot be asked for in return, or null. Pure, on the two shift rows as read under lock:
+     * @param array{id:string,staff_profile_id:?string,status:string,rota_status:?string,starts_at:string} $give the requester's shift
+     * @param array{id:string,staff_profile_id:?string,status:string,rota_status:?string,starts_at:string} $take the shift asked for
+     */
+    public static function exchangeProblem(array $give, array $take, string $requester, string $target, int $now): ?string
+    {
+        return match (true) {
+            $take['id'] === $give['id'] => 'Ask for a different shift from the one you are offering',
+            $take['staff_profile_id'] !== $target => 'The shift asked for in return must be one of your colleague\'s shifts',
+            $give['staff_profile_id'] !== $requester => 'You can only offer a shift that is yours',
+            $take['status'] === 'cancelled' || $give['status'] === 'cancelled' => 'A cancelled shift cannot be swapped',
+            $take['rota_status'] !== 'published' || $give['rota_status'] !== 'published' => 'Both shifts must be on a published rota',
+            SchedulingRules::ts($take['starts_at']) <= $now || SchedulingRules::ts($give['starts_at']) <= $now => 'A shift that has started cannot be swapped',
+            default => null,
+        };
+    }
+
     /** Checks a 'respond by' deadline: an instant in the future and no later than the shift's start. Null when absent; 422 otherwise. */
     public static function respondBy(mixed $v, int $startsAt, int $now): ?int
     {

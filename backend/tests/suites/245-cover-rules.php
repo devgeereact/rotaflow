@@ -76,3 +76,12 @@ expectError('respond by: after the shift starts is refused', static fn () => C::
 expectError('respond by: in the past is refused', static fn () => C::respondBy('2029-03-20T10:00:00Z', $t, $t - 60), 422);
 expectError('respond by: not a time is refused', static fn () => C::respondBy('tomorrow', $t, 0), 422);
 expectError('respond by: not a string is refused', static fn () => C::respondBy(['x'], $t, 0), 422);
+
+// ---- two-way swaps (S12d) --------------------------------------------------------------------------------------------------------------------
+check('exchange stale: both fine is fine; one side started is shift_started', C::exchangeStale(null, null) === null && C::exchangeStale('shift_started', null) === 'shift_started' && C::exchangeStale(null, 'shift_started') === 'shift_started');
+check('exchange stale: a change on either side wins over a start on the other', C::exchangeStale('shift_started', 'shift_changed') === 'shift_changed' && C::exchangeStale('shift_changed', 'shift_started') === 'shift_changed' && C::exchangeStale(null, 'shift_changed') === 'shift_changed');
+$g = ['id' => 'G', 'staff_profile_id' => 'sam', 'status' => 'assigned', 'rota_status' => 'published', 'starts_at' => '2029-03-21 09:00:00'];
+$tk = ['id' => 'T', 'staff_profile_id' => 'pat', 'status' => 'assigned', 'rota_status' => 'published', 'starts_at' => '2029-03-22 09:00:00'];
+$now = (int) strtotime('2029-03-20 09:00:00 UTC');
+check('exchange: a colleague\'s future published shift for one of yours is fine', C::exchangeProblem($g, $tk, 'sam', 'pat', $now) === null);
+check('exchange: the same shift, not the colleague\'s, not yours, cancelled, a draft rota, or started are each refused', C::exchangeProblem($g, ['id' => 'G'] + $tk, 'sam', 'pat', $now) !== null && C::exchangeProblem($g, ['staff_profile_id' => 'dee'] + $tk, 'sam', 'pat', $now) !== null && C::exchangeProblem(['staff_profile_id' => 'dee'] + $g, $tk, 'sam', 'pat', $now) !== null && C::exchangeProblem($g, ['status' => 'cancelled'] + $tk, 'sam', 'pat', $now) !== null && C::exchangeProblem($g, ['rota_status' => 'draft'] + $tk, 'sam', 'pat', $now) !== null && C::exchangeProblem($g, ['rota_status' => null] + $tk, 'sam', 'pat', $now) !== null && C::exchangeProblem($g, ['starts_at' => '2029-03-20 09:00:00'] + $tk, 'sam', 'pat', $now) !== null && C::exchangeProblem(['starts_at' => '2029-03-20 08:59:59'] + $g, $tk, 'sam', 'pat', $now) !== null);

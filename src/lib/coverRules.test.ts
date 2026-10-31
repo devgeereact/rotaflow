@@ -5,6 +5,8 @@ import {
   overlaps,
   rankCandidates,
   swapStaleReason,
+  exchangeProblem,
+  exchangeStaleReason,
   type CoverAssessment,
   type CoverPerson,
 } from '@/lib/coverRules';
@@ -228,5 +230,63 @@ describe('coverStatusLabel', () => {
     expect(coverStatusLabel('absence', 'dismissed')).toBe('Still on the shift');
     expect(coverStatusLabel('request', 'filled')).toBe('Filled');
     expect(coverStatusLabel('application', 'approved')).toBe('You are covering it');
+  });
+});
+
+// S12d two-way swaps. The same cases as suite 245.
+describe('exchangeStaleReason', () => {
+  it('both fine is fine; one side started is shift_started', () => {
+    expect(exchangeStaleReason(null, null)).toBeNull();
+    expect(exchangeStaleReason('shift_started', null)).toBe('shift_started');
+    expect(exchangeStaleReason(null, 'shift_started')).toBe('shift_started');
+  });
+  it('a change on either side wins over a start on the other', () => {
+    expect(exchangeStaleReason('shift_started', 'shift_changed')).toBe('shift_changed');
+    expect(exchangeStaleReason('shift_changed', 'shift_started')).toBe('shift_changed');
+    expect(exchangeStaleReason(null, 'shift_changed')).toBe('shift_changed');
+  });
+});
+
+describe('exchangeProblem', () => {
+  const g = {
+    id: 'G',
+    staff_profile_id: 'sam',
+    status: 'assigned',
+    rota_status: 'published',
+    starts_at: '2029-03-21T09:00:00Z',
+  };
+  const tk = {
+    ...g,
+    id: 'T',
+    staff_profile_id: 'pat',
+    starts_at: '2029-03-22T09:00:00Z',
+  };
+  const now = Date.parse('2029-03-20T09:00:00Z');
+  it("allows a colleague's future published shift for one of yours", () => {
+    expect(exchangeProblem(g, tk, 'sam', 'pat', now)).toBeNull();
+  });
+  it('refuses the same shift, the wrong holder, cancelled, draft and started', () => {
+    expect(exchangeProblem(g, { ...tk, id: 'G' }, 'sam', 'pat', now)).not.toBeNull();
+    expect(
+      exchangeProblem(g, { ...tk, staff_profile_id: 'dee' }, 'sam', 'pat', now),
+    ).not.toBeNull();
+    expect(
+      exchangeProblem({ ...g, staff_profile_id: 'dee' }, tk, 'sam', 'pat', now),
+    ).not.toBeNull();
+    expect(
+      exchangeProblem(g, { ...tk, status: 'cancelled' }, 'sam', 'pat', now),
+    ).not.toBeNull();
+    expect(
+      exchangeProblem(g, { ...tk, rota_status: 'draft' }, 'sam', 'pat', now),
+    ).not.toBeNull();
+    expect(
+      exchangeProblem(g, { ...tk, rota_status: null }, 'sam', 'pat', now),
+    ).not.toBeNull();
+    expect(
+      exchangeProblem(g, { ...tk, starts_at: '2029-03-20T09:00:00Z' }, 'sam', 'pat', now),
+    ).not.toBeNull();
+    expect(
+      exchangeProblem({ ...g, starts_at: '2029-03-20T08:59:59Z' }, tk, 'sam', 'pat', now),
+    ).not.toBeNull();
   });
 });
