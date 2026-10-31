@@ -3,7 +3,9 @@ import { api, currentOrgId, orgPath, seg } from '@/lib/api';
 /**
  * Open shifts: future, unassigned shifts on a published rota, soonest first. Claiming is first come, first served,
  * and the API refuses one that has started, is not on a published rota, was just taken (409 `shift_taken`) or
- * overlaps the person's own work (409 `already_working`).
+ * overlaps the person's own work (409 `already_working`), and (since the S12 owner decision, whatever the
+ * `cover_tools` flag says) refuses a person who is not eligible (409 `not_eligible`, the reasons in one sentence,
+ * which the page shows as is).
  */
 export interface OpenShift {
   shiftId: string;

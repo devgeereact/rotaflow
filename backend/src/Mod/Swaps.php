@@ -342,7 +342,13 @@ final class Swaps implements Module
         }, $q->fetchAll())]];
     }
 
-    /** First come, first served. Refused for a shift that has started, is not on a published rota, or overlaps the caller's own work. */
+    /**
+     * First come, first served. Refused for a shift that has started, is not on a published rota, or overlaps the caller's own work, and
+     * (owner decision, 31 Oct 2026; no longer tied to the cover_tools flag) for a person who is not eligible: inactive, double-booked,
+     * the absentee, on approved leave, declared unavailable, or missing a required document (Compliance::eligible, which only bites when
+     * the organisation has required document types). The organisation row is locked first, always, as every cover writer does. The 409
+     * cover_request_open refusal stays behind cover_tools: cover requests only exist while it is on.
+     */
     private function claimOpenShift(array $user, array $in, string $ip, string $o, string $h): array
     {
         $pdo = $this->ctx->pdo;
@@ -355,9 +361,7 @@ final class Swaps implements Module
         $cover = Cover::on($pdo, $o);
         $pdo->beginTransaction();
         try {
-            if ($cover) {
-                Cover::lockOrg($pdo, $o); // S12: the same first lock as a cover approval, so the two never both fill one shift
-            }
+            Cover::lockOrg($pdo, $o); // the same first lock as a cover approval, so the two never both fill one shift
             $q = $pdo->prepare('SELECT s.*, r.status AS rota_status FROM shifts s LEFT JOIN rotas r ON r.id = s.rota_id AND r.org_id = s.org_id WHERE s.id = ? AND s.org_id = ? FOR UPDATE');
             $q->execute([$h, $o]);
             $s = $q->fetch() ?: throw HttpError::notFound();
@@ -381,11 +385,11 @@ final class Swaps implements Module
                 if ($req->fetchColumn() !== false) {
                     throw HttpError::conflict('cover_request_open', 'A manager is choosing who covers this shift. Apply to cover it on the Cover page instead.');
                 }
-                $s['timezone'] = $this->zoneOf($o, $s['location_id']);
-                $why = Cover::assess($pdo, $o, $own, $s, true)['reasons'];
-                if ($why !== []) {
-                    throw HttpError::conflict('not_eligible', 'You cannot take this shift: ' . implode('; ', array_column($why, 'message')));
-                }
+            }
+            $s['timezone'] = $this->zoneOf($o, $s['location_id']);
+            $why = Cover::assess($pdo, $o, $own, $s, true)['reasons'];
+            if ($why !== []) {
+                throw HttpError::conflict('not_eligible', 'You cannot take this shift: ' . implode('; ', array_column($why, 'message')));
             }
             $pdo->prepare("UPDATE shifts SET staff_profile_id = ?, status = 'assigned' WHERE id = ?")->execute([$own, $h]);
             Audit::log($pdo, $o, $user['id'], 'shift.claimed', 'shifts', $h, ['staff_profile_id' => $own], 'info', 'org', $ip);

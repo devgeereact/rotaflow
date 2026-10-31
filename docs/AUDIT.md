@@ -481,3 +481,27 @@ platform admin with a support session)
   corrected after approval showing "Recalculation required".
 - Platform support session: the documents, cover and payroll export refusals.
 - Shapes: any screen whose request or response does not match the PHP handler (matched by reading, never in a browser).
+
+## 2026-10-31: S12 follow-ups (owner decisions), on branch `r2/s13-timesheets`
+
+The owner decided three S12 questions on 31 October 2026 (relayed by the coordinator). Each is its own commit on
+`r2/s13-timesheets`, after the S13 commits.
+
+**1. The instant open-shift claim checks eligibility whatever the `cover_tools` flag says.**
+
+- `Swaps::claimOpenShift` always takes the organisation lock first (the S12 order), then runs the existing checks,
+  then `Cover::assess` (active, not double-booked, not the absentee, approved leave, declared unavailability,
+  documents via `Compliance::eligible`, which only blocks when the organisation has required document types):
+  409 `not_eligible` with every reason in one sentence. `cover_request_open` stays behind the flag (cover requests
+  only exist while it is on).
+- Suite 250's flag-off cases now prove the new behaviour: with the flag off, a person on approved leave and a person
+  missing a required document are refused and the shift stays open; an eligible person takes it even with an open
+  cover request on it; at the end ("off again") the same; and a flag-off claim is shown waiting on the organisation
+  lock before it touches the shift row (a third connection can still lock the shift with `NOWAIT`). Suite 110 (open
+  shifts, S5) passes unchanged: nobody there is ineligible.
+- Mutation checks (each failed suite 250, then reverted): the eligibility check put back behind the flag; the
+  organisation lock put back behind the flag (caught only by the new flag-off wait test, which was added after it
+  first survived); `cover_request_open` taken out from behind the flag.
+- The Open shifts page shows the server's sentence on a refused claim (as it already did for `already_working`);
+  with the flag off it does not show the reasons before the click (that view reads the cover routes). NOT TESTED in a
+  browser.

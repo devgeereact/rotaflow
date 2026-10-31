@@ -131,7 +131,7 @@ $rows = array_map(static fn (string $l): array => str_getcsv($l, ',', '"', ''), 
 $head = array_shift($rows);
 $col = array_flip($head);
 check('export: the header is the documented column order', $head === T::COLUMNS, json_encode($head));
-check('export: approved periods wholly inside the range only (not submitted, not another week, not a fortnight that starts before, not another organisation)', count($rows) === 3 && !str_contains($body, '999') && !str_contains($body, '888') && !str_contains($body, '555') && !str_contains($body, '444') && !str_contains($body, 'Unapproved') && !str_contains($body, 'Zoe'), $body);
+check('export: approved periods wholly inside the range only (not submitted, not another week, not a fortnight that starts before, not another organisation)', count($rows) === 3 && array_column($rows, $col['Approved minutes']) === ['7', '61', '2430'] && !str_contains($body, 'Unapproved') && !str_contains($body, 'Zoe'), $body);
 check('export: sorted by last name (Aardvark, Patel, Smith)', array_column($rows, $col['Staff name']) === ['\'=HYPERLINK("http://evil.example") Aardvark', 'Pat Patel', 'Sam Smith'], json_encode(array_column($rows, 0)));
 $sam = $rows[2];
 check('export: exact minutes and hours from the approved figure (2430 = 40.50; 7 = 0.12; 61 = 1.02)', $sam[$col['Approved minutes']] === '2430' && $sam[$col['Approved hours']] === '40.50' && $rows[0][$col['Approved hours']] === '0.12' && $rows[1][$col['Approved minutes']] === '61' && $rows[1][$col['Approved hours']] === '1.02');

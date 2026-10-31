@@ -54,8 +54,16 @@ $C = "/orgs/$org/cover";
 check('migration 017 seeds the flag off', $pdo->query("SELECT CONCAT(enabled, rollout) FROM feature_flags WHERE flag_key = 'cover_tools'")->fetchColumn() === '00');
 check('off: every cover route answers 403 feature_off to a manager and to staff', call($api, 'mark', 'GET', "$C/overview")[1]['error']['code'] === 'feature_off' && call($api, 'sam', 'GET', "$C/mine")[1]['error']['code'] === 'feature_off' && call($api, 'sam', 'POST', "$C/absences", ['shift_id' => $sh['A'], 'reason' => 'Ill'])[1]['error']['code'] === 'feature_off' && call($api, 'mark', 'POST', "$C/requests", ['shift_id' => $sh['A']])[1]['error']['code'] === 'feature_off');
 check('off: a stranger 404 and nobody 401 (membership before the flag)', call($api, 'zed', 'GET', "$C/overview")[0] === 404 && call($api, '', 'GET', "$C/overview")[0] === 401);
+// Owner decision (31 Oct 2026): the claim's eligibility check no longer depends on the flag.
 [$s, $r] = call($api, 'dee', 'POST', "/orgs/$org/open-shifts/{$sh['O0']}/claim");
-check('off: the instant claim has no eligibility check (dee is on leave and still takes it, as before)', $s === 200 && $holder($sh['O0']) === $staff['dee'], json_encode($r));
+check('off: the instant claim still checks eligibility (dee is on approved leave: 409 not_eligible, the shift stays open)', $s === 409 && $r['error']['code'] === 'not_eligible' && str_contains($r['error']['message'], 'holiday') && $holder($sh['O0']) === null, json_encode($r));
+[$s, $r] = call($api, 'fay', 'POST', "/orgs/$org/open-shifts/{$sh['O0']}/claim");
+check('off: a missing required document refuses the claim too', $s === 409 && $r['error']['code'] === 'not_eligible' && $holder($sh['O0']) === null, json_encode($r));
+$reqOff = Db::uuid();
+$pdo->prepare("INSERT INTO cover_requests (id, org_id, shift_id, status, open_shift_id) VALUES (?, ?, ?, 'open', ?)")->execute([$reqOff, $org, $sh['O0'], $sh['O0']]);
+[$s, $r] = call($api, 'gus', 'POST', "/orgs/$org/open-shifts/{$sh['O0']}/claim");
+check('off: an eligible person takes it, and an open cover request does not block (cover_request_open stays behind the flag)', $s === 200 && $holder($sh['O0']) === $staff['gus'], json_encode($r));
+$pdo->prepare("UPDATE cover_requests SET status = 'cancelled', open_shift_id = NULL, closed_at = UTC_TIMESTAMP() WHERE id = ?")->execute([$reqOff]);
 $wOff = call($api, 'sam', 'POST', "/orgs/$org/swaps", ['shift_id' => $sh['G'], 'target_staff_profile_id' => $staff['pat']])[1]['swap'];
 check('off: a swap response carries no new keys', !array_key_exists('shift_fingerprint', $wOff) && !array_key_exists('void_reason', $wOff) && !array_key_exists('shift_fingerprint', call($api, 'mark', 'GET', "/orgs/$org/swaps")[1]['swaps'][0]));
 check('off: the fingerprint is still recorded, server side', strlen((string) $pdo->query("SELECT shift_fingerprint FROM shift_swaps WHERE id = '{$wOff['id']}'")->fetchColumn()) === 64);
@@ -260,6 +268,25 @@ $pdo->exec("UPDATE feature_flags SET enabled = 1, rollout = 100 WHERE flag_key =
 $pdo->prepare('INSERT INTO feature_flag_targets (flag_key, org_id) VALUES (?, ?)')->execute(['cover_tools', $other]);
 check('tenancy: with the module on there too, another organisation\'s ids are 404 through its own path', call($api, 'zed', 'POST', "/orgs/$other/cover/applications/$appPat/approve")[0] === 404 && call($api, 'zed', 'GET', "/orgs/$other/cover/shifts/{$sh['A']}/candidates")[0] === 404);
 $flag(false);
-check('off again: routes 403 feature_off, and the claim is as before (dee, on leave, takes it)', call($api, 'mark', 'GET', "$C/overview")[1]['error']['code'] === 'feature_off' && call($api, 'dee', 'POST', "/orgs/$org/open-shifts/{$sh['O1']}/claim")[0] === 409 && call($api, 'dee', 'POST', "/orgs/$org/open-shifts/{$sh['O8']}/claim")[0] === 200);
+check('off again: routes 403 feature_off; the claim still refuses dee (on leave) and lets an eligible person take it', call($api, 'mark', 'GET', "$C/overview")[1]['error']['code'] === 'feature_off' && call($api, 'dee', 'POST', "/orgs/$org/open-shifts/{$sh['O1']}/claim")[0] === 409 && call($api, 'dee', 'POST', "/orgs/$org/open-shifts/{$sh['O8']}/claim")[1]['error']['code'] === 'not_eligible' && call($api, 'pat', 'POST', "/orgs/$org/open-shifts/{$sh['O8']}/claim")[0] === 200);
+// With the flag off the claim still takes the organisation lock first (owner decision, 31 Oct 2026).
+$late = Db::uuid();
+$pdo->prepare("INSERT INTO shifts (id, org_id, rota_id, location_id, starts_at, ends_at, status) VALUES (?, ?, ?, ?, ?, ?, 'open')")->execute([$late, $org, $rota, $site, $db($at(20)), $db($at(20, '17:00'))]);
+$lock->beginTransaction();
+$lock->prepare('SELECT id FROM organisations WHERE id = ? FOR UPDATE')->execute([$org]);
+$h = $spawn('eve', 'POST', "/orgs/$org/open-shifts/$late/claim", microtime(true));
+usleep(2500000);
+$waiting = proc_get_status($h[0])['running'];
+$probe->beginTransaction();
+try {
+    $probe->query("SELECT id FROM shifts WHERE id = '$late' FOR UPDATE NOWAIT")->fetchAll();
+    $shiftFree = true;
+} catch (PDOException) {
+    $shiftFree = false;
+}
+$probe->rollBack();
+$lock->rollBack();
+$r = $collect($h);
+check('off: a claim still waits on the organisation lock before the shift, then goes through', $waiting && $shiftFree && $r[0] === 200 && $holder($late) === $staff['eve'], json_encode([$waiting, $shiftFree, $r]));
 $pdo->exec("DELETE FROM feature_flags WHERE flag_key = 'cover_tools'");
 check('a missing flag row reads as off (fails closed)', call($api, 'mark', 'GET', "$C/overview")[1]['error']['code'] === 'feature_off');
