@@ -1,0 +1,67 @@
+# Deploy: the same `scripts/release.mjs --go` as on the Mac, over SSH (no FTP). The kit's workflow, with two changes.
+#
+# PUSH-TO-DEPLOY IS OFF until the cutover is done and signed off (docs/CUTOVER.md, "After the cutover"). Today this runs
+# only when started by hand (workflow_dispatch), and the cutover itself is released from the owner's Mac, not from here.
+# To turn it on afterwards: merge release/cutover into main, set "branch": "main" in release.json, add the push trigger
+#   push:
+#     branches: [main]
+#     paths-ignore: ["docs/**", "**/*.md", ".agent/**"]
+# under `on:`, create the repository variables named in the Release step's env (all public values) and the two secrets
+# (~/Backups/scripts/setup-github-deploy.zsh), and enable Actions for this repository (owner decision; minutes are limited).
+#
+# Checks and build run first; any failure stops before upload. A failed smoke test restores the previous files
+# automatically (snapshot in ~/backups/<project>/releases on the server). A commit message with [skip ci] does not deploy.
+# Secrets: CPANEL_SSH_KEY, CPANEL_KNOWN_HOSTS.
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_mysql, curl, openssl, mbstring
+          coverage: none
+      - name: Install
+        # MariaDB for `pnpm run check` (check:php runs the PHP suites on a throwaway local database, scripts/test-db.sh).
+        run: pnpm install --frozen-lockfile && sudo apt-get update -q && sudo apt-get install -y -q mariadb-server && sudo systemctl stop mariadb
+      - name: SSH to cPanel
+        env:
+          CPANEL_SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+          CPANEL_KNOWN_HOSTS: ${{ secrets.CPANEL_KNOWN_HOSTS }}
+        run: |
+          test -n "$CPANEL_SSH_KEY" || { echo "CPANEL_SSH_KEY is not set: run setup-github-deploy.zsh"; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$CPANEL_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$CPANEL_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host cpanel\n  HostName premium17.web-hosting.com\n  Port 21098\n  User devgeereact\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
+      - name: Release
+        # The Mac build reads these from .env; here they come from repository variables (public values only).
+        env:
+          VITE_APP_NAME: ${{ vars.VITE_APP_NAME }}
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
+          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
+        run: node scripts/release.mjs --go
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

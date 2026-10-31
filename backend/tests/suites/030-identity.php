@@ -34,6 +34,20 @@ check('last_seen_at moves on after five minutes', $pdo->query("SELECT last_seen_
 Users::resolve($pdo, ['sub' => 'user_ann', 'email' => 'Ann@Example.test'], time() + 800);
 check('email is stored lower-case', $pdo->query("SELECT email FROM users WHERE id = '$annId'")->fetchColumn() === 'ann@example.test');
 
+// ---- linking a row moved from Supabase (docs/CUTOVER.md): verified, case-insensitive, one account per email --------
+$movedId = Db::uuid();
+$pdo->prepare("INSERT INTO users (id, email, full_name) VALUES (?, 'moved@example.test', 'Moved Person')")->execute([$movedId]);
+expectError('an email_verified claim of false is refused before the address is used', fn () => Users::resolve($pdo, ['sub' => 'user_thief', 'email' => 'moved@example.test', 'email_verified' => false]), 401);
+check('a refused unverified address links nothing', $pdo->query("SELECT clerk_user_id FROM users WHERE id = '$movedId'")->fetchColumn() === null);
+$u = Users::resolve($pdo, ['sub' => 'user_moved', 'email' => 'Moved@EXAMPLE.test', 'email_verified' => true]);
+check('a verified address links the moved row whatever its case', $u['id'] === $movedId && $pdo->query("SELECT clerk_user_id FROM users WHERE id = '$movedId'")->fetchColumn() === 'user_moved');
+expectError('a second Clerk identity with the same address is refused, not merged', fn () => Users::resolve($pdo, ['sub' => 'user_other', 'email' => 'MOVED@example.test']), 409);
+check('the refused identity creates no second account', (int) $pdo->query("SELECT COUNT(*) FROM users WHERE email = 'moved@example.test'")->fetchColumn() === 1);
+$ghost = Db::uuid();
+$pdo->prepare('INSERT INTO users (id, email) VALUES (?, ?)')->execute([$ghost, $ghost . '@removed.rotaflow.invalid']);
+$g = Users::resolve($pdo, ['sub' => 'user_ghost', 'email' => 'ghost@example.test']);
+check('a placeholder kept for a deleted person is never the account a new sign-in lands on', $g['id'] !== $ghost);
+
 // ---- organisations -----------------------------------------------------------------------------
 [$s, $r] = call($api, 'ann', 'POST', '/orgs', ['name' => 'Acme Care']);
 check('anyone signed in can create an organisation and becomes its owner', $s === 201 && $r['membership']['role'] === 'owner' && $r['org']['slug'] === 'acme-care', json_encode($r));

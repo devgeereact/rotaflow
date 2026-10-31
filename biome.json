@@ -11,6 +11,7 @@
       "!pnpm-lock.yaml",
       "!src/types/database.types.ts",
       "!supabase/functions",
+      "!scripts/release.mjs",
       "!!**/dist",
       "!!**/dev-dist",
       "!!**/coverage",

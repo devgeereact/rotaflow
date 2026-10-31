@@ -1,0 +1,33 @@
+{
+  "host": "cpanel",
+  "project": "rotaflow",
+  "url": "https://rotaflow.space",
+  "branch": "release/cutover",
+  "checks": ["pnpm run check"],
+  "build": "rm -rf dist && VITE_APP_URL=https://rotaflow.space VITE_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsucm90YWZsb3cuc3BhY2Uk pnpm run build && pnpm run check:bundle && grep -qF 'Y2xlcmsucm90YWZsb3cuc3BhY2Uk' -r dist/assets && { if grep -rlE 'supabase\\.co|imagekit\\.io|sk_(live|test)_' dist; then echo 'dist holds a retired service or a secret key: clean .env and rebuild'; exit 1; fi; }",
+  "parts": [
+    {
+      "from": "backend",
+      "to": "rotaflow-private/app",
+      "exclude": ["/tests/", "/public/", "/private/", "*.md"],
+      "allow": ["*.sql"]
+    },
+    {
+      "from": "backend/public/api",
+      "to": "rotaflow.space/api"
+    },
+    {
+      "from": "dist",
+      "to": "rotaflow.space",
+      "exclude": ["*.map", "/stats.html"],
+      "allow": [".well-known/"]
+    }
+  ],
+  "smoke": [
+    { "path": "/", "status": 200 },
+    { "path": "/api/health", "status": 200, "contains": "\"ok\":true" },
+    { "path": "/api/me", "status": 401, "contains": "\"error\"" },
+    { "path": "/app/dashboard", "status": 200, "contains": "<div id=\"root\">" },
+    { "path": "/no-such-page", "status": 404 }
+  ]
+}

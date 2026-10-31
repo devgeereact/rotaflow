@@ -24,6 +24,12 @@ final class Users
         if (!is_string($sub) || $sub === '' || strlen($sub) > 64 || filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 255) {
             throw HttpError::unauthorized('Session has no usable email');
         }
+        // The email links a pre-existing row (every person moved from Supabase) and matches invitations, so it must be one the
+        // person proved. With email-code sign-in Clerk's primary address always is; if the session token also carries
+        // email_verified (optional claim, docs/CUTOVER.md), anything but true is refused before the address is used.
+        if (array_key_exists('email_verified', $claims) && $claims['email_verified'] !== true && $claims['email_verified'] !== 'true') {
+            throw HttpError::unauthorized('Email address not verified');
+        }
         $when = gmdate('Y-m-d H:i:s', $now);
         $row = self::byClerk($pdo, $sub);
         if ($row === null) {
