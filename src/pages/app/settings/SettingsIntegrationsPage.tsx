@@ -75,7 +75,8 @@ export function SettingsIntegrationsPage(): JSX.Element {
   }, [orgId]);
 
   useEffect(() => {
-    if (!orgId) return;
+    // Owner-only on the server (403 for anyone else): a manager sees the notice below and nothing is asked.
+    if (!orgId || !canManageOrg) return;
     let active = true;
     setLoading(true);
     setLoadFailed(false);
@@ -103,7 +104,7 @@ export function SettingsIntegrationsPage(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [orgId, reloadKey, showError]);
+  }, [orgId, canManageOrg, reloadKey, showError]);
 
   const canSubmit =
     smtpHost.trim() &&
