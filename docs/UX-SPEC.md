@@ -207,6 +207,16 @@ No design reference; built in the existing components. Hidden while the flag is 
 | ✅ | Generate pattern | Rota builder, Week actions (a draft week) | Days of the week, or days on / days off from a start date; one to six time blocks (split shifts; an end before the start runs overnight); a person or open shifts; shift type, break, notes. Preview, then Create draft shifts; skipped shifts are counted by reason and warned shifts listed |
 | ✅ | Shifts to cover after leave | Leave and Approvals, after Approve | "Leave approved: shifts to cover" lists the person's shifts inside the leave (draft ones marked) and offers Open the rota. Nothing is changed automatically |
 
+## 7c. Cover (R2 slice S12), behind the `cover_tools` flag
+
+No design reference; built in the existing components. Hidden while the flag is off (the default). Swaps UI unchanged.
+
+| Status | Screen | Where | What it does |
+| ------ | ------ | ----- | ------------ |
+| ✅ | Cover (staff) | `/app/cover`, rail row "Cover" | Upcoming published shifts with "Cannot work it" (a reason for the manager; Withdraw while open), shifts a manager is finding cover for with "Offer to cover" or the reason the reader cannot, and what happened to recent reports and offers |
+| ✅ | Cover board (owners, managers) | `/app/cover` | Counts; who cannot work (Find cover, Keep on shift); requests with each offer's eligibility (Approve disabled with the reason when someone cannot take it; Turn down); unfilled shifts in the next 72 hours (Ask for cover); "Who could take it": ranked candidates with reasons, warnings, hours that week and Assign |
+| ✅ | Open shifts | `/app/open-shifts`, each card | A shift a manager opened for cover shows "Manager choosing cover" and Offer to cover (to the Cover page) instead of Take it; a shift the reader cannot take shows why beside a disabled Take it. The API refuses both regardless |
+
 ## 8. Tables with no UI
 
 **`platform_health_probes` and `rate_limit_events`. Both correctly so.**

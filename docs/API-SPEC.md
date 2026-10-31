@@ -647,3 +647,36 @@ off; `max_weekly_hours`, default 48), written by `POST /orgs/{o}/settings` (Sett
 | `POST /orgs/{o}/leave/{l}/review` (changed, flag on only) | owner, manager | The response gains `clashing_shifts[{id, rota_id, rota_status, location_id, starts_at, ends_at}]`: on approval, the person's live shifts (draft or published, never archived history) inside the leave dates; `[]` on a rejection |
 
 Copy-week stays RotaFlow's own `POST /orgs/{o}/rotas/{r}/repeat` (SiteRelay's copy-week and templates were not ported).
+
+### Slice S12 (R2): cover
+
+Behind the `cover_tools` feature flag, seeded **off** by migration 017: while it is off every route below answers
+**403 `feature_off`** after the membership check (a stranger still gets 404), and the open-shift claim, swaps and leave
+answer exactly as before. "Open" means on a **published** rota, status `open`, nobody on it, not started; writing to
+such a shift is the publish of that one shift (RotaFlow has no separate published copy). Any member with a staff record
+reports absence and applies (owners who work shifts included); owners and managers decide. Manager writes need a
+writable membership and an organisation that is not read-only for billing. A week with an open amendment is refused
+**409 `open_amendment`** (the amendment would undo the change when published). Eligibility reasons, in this order:
+`inactive`, `absent` (said they cannot work this shift), `overlap` (a committed shift: published rota or no rota),
+`leave` (approved), `unavailable` (declared), `documents` (`Compliance::eligible`); short rest and a long week are
+`warnings` and never block. Approval and assignment lock the organisation row first, then the shift, and re-check
+eligibility under the lock (**409 `not_eligible`** with every reason in one sentence).
+
+| Method and path | Who | Does |
+| --------------- | --- | ---- |
+| `GET /orgs/{o}/cover/overview` | owner, manager | `{counts{open_requests, unfilled_72h, pending_applications, open_absences}, requests[...+absent_name, shift, applicants[]], applications[...+name, eligible, reasons, warnings, shift], absences[...+name, shift], unfilled[shift+cover_request_id, applicants], history[{action, entity_type, entity_id, at}]}`; future shifts only; runs the sweep first if anything is stale |
+| `GET /orgs/{o}/cover/open` | any member | Open shifts in the next 28 days with `cover_request{id, note, respond_by}`; for a member with a staff record also `eligible`, `reasons`, `warnings`, `application{id, status}` |
+| `GET /orgs/{o}/cover/mine` | any member | `{upcoming[shift+absence_id], absences[...+shift], applications[...+shift]}` for the caller's staff record (empty without one); published shifts in the next 28 days; history 30 days |
+| `GET /orgs/{o}/cover/shifts/{s}/candidates` | owner, manager | `{shift, candidates[{staff_profile_id, name, eligible, reasons, warnings, application, hours_that_week}]}`: every active staff record (up to 300) except the holder, eligible first, then people who applied, then fewest hours that organisation-local week, then fewer reasons, then name |
+| `POST /orgs/{o}/cover/shifts/{s}/apply` `{note?}` | member with a staff record | 201 `{application}`. 404 for a shift not on a published rota; 409 `already_filled`, `shift_started`, `shift_cancelled`, `deadline_passed`, `already_applied`, `not_eligible`. Applying again after withdrawing reuses the row. Managers told |
+| `POST /orgs/{o}/cover/shifts/{s}/assign` `{staff_profile_id}` | owner, manager | Puts an eligible person straight on an open shift; records an approved application; fills any open request; turns down other offers. 422 for a record from elsewhere; 409 as for approval |
+| `POST /orgs/{o}/cover/requests` `{shift_id, absence_id?, note?, respond_by?}` | owner, manager | 201 `{request, offered}`. Takes the holder off the shift (it becomes `open` on the published rota), links and closes an open absence report on it (`covered`), offers it to up to 50 eligible people with a login. 409 `not_published`, `shift_cancelled`, `shift_started`, `already_requested`, `open_amendment`; 422 for a deadline after the start or in the past |
+| `POST /orgs/{o}/cover/requests/{r}/cancel` | owner, manager | Closes the request; the shift stays open and offers stay pending. 409 `not_open` |
+| `POST /orgs/{o}/cover/applications/{a}/withdraw` | the applicant | 404 for anyone else's; 409 `not_pending` |
+| `POST /orgs/{o}/cover/applications/{a}/approve` | owner, manager | One transaction: organisation lock, application lock, shift lock, open check, eligibility re-check; the shift becomes the applicant's (`assigned`), the request `filled`, other offers `rejected`; everyone told; audited `cover.filled`. 409 `not_pending`, `already_filled`, `not_eligible`, `open_amendment` |
+| `POST /orgs/{o}/cover/applications/{a}/reject` | owner, manager | The applicant is told. 409 `not_pending` |
+| `POST /orgs/{o}/cover/absences` `{shift_id, reason}` | member with a staff record | 201 `{absence}` for their own future shift on a published rota (404 otherwise); a reason of 3 to 500 characters; 409 `already_reported`, `shift_started`, `shift_cancelled`. Owners and managers told |
+| `POST /orgs/{o}/cover/absences/{a}/withdraw` | the reporter | While open; 404 for anyone else's |
+| `POST /orgs/{o}/cover/absences/{a}/dismiss` | owner, manager | The person stays on the shift and is told |
+| `POST /orgs/{o}/open-shifts/{h}/claim` (changed, flag on only) | as before | Takes the organisation lock first; refuses **409 `cover_request_open`** when a manager has opened a cover request for the shift (apply instead) and **409 `not_eligible`** for the reasons above (the existing `already_working`, `shift_taken`, `not_published`, `already_started` answer first) |
+| `POST /orgs/{o}/swaps/{w}/respond`, `/claim`, `/decide` (changed, flag on only) | as before | A pending or accepted swap whose shift changed since it was raised (times, site, holder, status, rota), was cancelled, sits on an archived rota or has started is cancelled (`status: cancelled`, `void_reason: shift_changed\|shift_started`) and the call answers **409 `swap_void`**; both people told. `decide` and `reassign` take the organisation lock first. `GET /swaps` rows carry `void_reason` only on a swap the module cancelled |

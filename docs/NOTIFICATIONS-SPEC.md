@@ -35,6 +35,16 @@ the most urgent stage due. The person is told if they have a login, and the owne
 login still alerts them, as `0093` did). Deactivated staff, archived types and replaced rows are skipped. No new cron line
 is needed: the existing one-minute `bin/cron.php` runs it.
 
+Cover (R2 slice S12, only while `cover_tools` is on) adds notices of type `swap`, so they follow the organisation's
+swap matrix: `cover/absence` (owners and managers, not the reporter: someone cannot work a shift), `cover/offered` (up to
+50 eligible people with a login when a manager opens a cover request), `cover/released` (the person taken off the shift),
+`cover/applied` (owners and managers), `cover/approved`, `cover/rejected`, `cover/filled` (an offer turned down because
+someone else was chosen), `cover/absence_dismissed` (the person stays on the shift), and `swap/voided` (both people on a
+swap the module cancelled because its shift changed or started). All are enqueued in the transaction that makes the
+change. `Cover::cron` runs in the same one-minute `bin/cron.php` (no new line): for each organisation with the flag on it
+closes cover requests whose shift started, was cancelled or was filled some other way, closes pending applications on
+shifts no longer open, and cancels stale swaps; it is idempotent.
+
 The billing notices (Stripe `trial_will_end`, `payment_failed`, and the free-trial reminder) are in PHP since S7: the first two are written by `Mod\StripeWebhook`, the third by `Notifications::trialEndingAlerts` in the same cron run. The daily and
 weekly email summary remains unbuilt, as before. Web push has never been seen arriving on a real device; that stays **NOT TESTED**.
 

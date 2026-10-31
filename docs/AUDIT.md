@@ -214,3 +214,108 @@ Spec: `docs/RESTRUCTURE-PLAN.md` section 4, "S11 Scheduling". Ported from SiteRe
   not been timed.
 - Two managers generating patterns into one rota at once (the rota row lock serialises them; no concurrency test).
 - Playwright.
+
+## 2026-10-31: S12 (R2), cover: absence reports, cover requests, eligibility on claim, swaps that void
+
+Branch `r2/s12-cover` from `r2/s11-scheduling` (df2adc0), local commits only. Nothing pushed or deployed.
+Spec: `docs/RESTRUCTURE-PLAN.md` section 4, "S12 Cover". Ported from SiteRelay's `Cover` module, `030-cover` and
+`095-workflow` suites (read only), re-made for RotaFlow's rotas, staff records and roles.
+
+**What changed**
+
+- Pure rules first (commit S12a): `backend/src/CoverRules.php` and `src/lib/coverRules.ts` (eligibility reasons,
+  candidate ranking, swap fingerprint and staleness), with mirrored cases in suite `245-cover-rules` and
+  `coverRules.test.ts`. Leave, availability, rest and weekly hours are S11's `SchedulingRules`, not a second copy.
+- Migration `backend/migrations/017-cover.sql` (additive): `cover_absences`, `cover_requests`, `cover_applications`;
+  `shift_swaps.shift_fingerprint` and `shift_swaps.void_reason`; the `cover_tools` flag seeded **off**.
+- `backend/src/Mod/Cover.php`: the 14 routes of the plan; `Cover::assess` (the eligibility service, which reads
+  `Compliance::eligible` for documents); `Cover::cron` (the sweep) in the existing one-minute runner.
+  `Swaps`: the claim's eligibility check and the swap voiding, both only while the flag is on. `Gdpr::eraseStaff`
+  removes what the person wrote in absence reports and applications.
+- Front end: `/app/cover` (staff view and the manager's cover board with candidates), the Open shifts card, and the
+  rail row. All of it only while the flag is on.
+
+**Decisions where the spec met the code (the safer option taken)**
+
+1. **The eligibility check on the instant open-shift claim is behind the flag.** It changes existing behaviour (a
+   person on approved leave, declared unavailable or without a required document could claim before). Off, the claim
+   is exactly as before, proved in suite 250 (a person on leave still takes a shift) and by a mutation that took the
+   check out from behind the flag. Making it unconditional is an owner decision.
+2. **Swaps did not auto-void in RotaFlow (verified first).** `Swaps::decide` only refused a shift no longer held by the
+   requester or on an archived rota; a change of time or site, a cancellation or a started shift went through. With the
+   flag on, a swap remembers a fingerprint of its shift (times, site, holder, status, rota) and is cancelled when that
+   changes, the shift is cancelled, its rota is archived or it starts: on respond, claim and decide (409 `swap_void`)
+   and by the sweep. A voided swap is `status: cancelled` with `void_reason`, not a new status value, so every
+   existing swap screen and filter keeps working. The fingerprint is recorded on every new swap (never returned), so
+   turning the flag on later protects swaps raised before; swaps from before migration 017 are judged on the rest.
+3. **"Only that shift is published."** RotaFlow has no separate published projection: a shift on a published rota is
+   what staff see, so a cover write changes that one row and nothing else on the rota (tested by comparing every other
+   shift before and after). SiteRelay's "unpublished changes" refusal becomes **409 `open_amendment`**: a published
+   week with an open amendment is not changed here, because publishing the amendment would silently undo the cover.
+4. **Leave and declared unavailability block cover** (the plan lists them in eligibility); short rest and a long week
+   stay warnings, as S11 decided that warnings never block. Candidates and offers show both.
+5. Overlap is read against committed shifts (published rotas and shifts with no rota), as S11 does. The claim keeps its
+   existing, broader `already_working` check first, so with the flag on a claim is never looser than before.
+6. **A shift with an open cover request cannot be instantly claimed** (409 `cover_request_open`): the manager asked to
+   choose. Open shifts with no request keep first come, first served (with eligibility).
+7. **Lock order.** Every cover writer, the claim (flag on), and swap decide/reassign/voiding (flag on) take the
+   organisation row first. A mutation removing it from approval produced a real deadlock (`1213`) under the two-approval
+   race, so the rule is load-bearing. Cover never locks rota rows (the person's shifts are locked by id only), because
+   publishing locks a rota first.
+8. Any member with a staff record may report absence and apply (an owner or manager who works shifts too); owners and
+   managers decide, as the plan says. A platform support session keeps its usual manager reach here (the plan names no
+   Super Admin exclusion, unlike S10); a `read` session cannot write.
+9. The documents check applies whenever the organisation has required document types, whatever the `staff_documents`
+   flag says; those types can only be created while that flag is on, so with it off nobody is blocked by documents.
+10. Manager writes respect the billing read-only state; staff reports and offers do not (as S10's uploads).
+11. Cover notices are type `swap`, so they follow the organisation's existing swap matrix (no new matrix key); offers
+    go to at most 50 eligible people with a login.
+12. Erasure keeps the cover records with the rota history but replaces absence reasons with `(removed)` and clears
+    application notes: a reason for not working can be about health.
+13. Not ported: SiteRelay's own two-way swaps (`take_shift`), its swap-options view and its published projection.
+    RotaFlow's swaps and claim stay, as the plan says; the swaps UI is unchanged.
+14. The plan's cron sweep runs in the existing `bin/cron.php` (no new line). It also closes pending applications on
+    shifts that are no longer open, and records `filled_elsewhere` when a shift with an open request was filled by
+    another route.
+
+**Evidence (local, 31 October 2026)**
+
+- `pnpm run check` exit 0 before each commit (ESLint, Biome, `tsc`, vitest, build, bundle, migration safety, doc
+  counts, export coverage, PHP lint and suites).
+- PHP: 1917 assertions, 0 failed (S11 ended at 1812; + 29 in `245-cover-rules`, + 76 in `250-cover`). `250` covers:
+  flag off (403 `feature_off`, stranger 404, nobody 401; the claim, a swap whose shift changed, a leave decision and
+  the cron job all exactly as before; no new keys in swap responses), absence reports (reason, own shift only, once
+  while open, withdraw, dismiss), requests (deadline, only that shift changes, the report closed, offers counted, one
+  per shift, draft rota refused, open amendment refused), candidates (each reason, eligible first), the open list,
+  applications (leave, absentee, documents refused; apply, withdraw, reapply on the same row), approval (filled,
+  others turned down, notices, audit, idempotent 409), eligibility re-checked at approval (leave added after applying),
+  assignment (overlap refused, unknown person 422, filled once), reject, cancel, the claim's new refusals, swap voiding
+  (changed, answered, claimed after start without a fingerprint, swept by cron, an unchanged swap still approves), the
+  sweep closing a started request and its offers, erasure, tenancy with the module on in both organisations, flag off
+  again, and a missing flag row reading as off. **Concurrency** (separate PHP processes on their own connections,
+  `backend/tests/concurrent-call.php`): three claims on one shift at the same instant (exactly one 200), two approvals
+  for one shift at the same instant (exactly one), and a claim and an approval each shown waiting on the organisation
+  lock BEFORE touching the shift row (a third connection can still lock the shift with `NOWAIT`), then going through.
+  The access sweep (`099`) covers every new route.
+- Mutation checks (each made a suite fail, then reverted): the claim without the organisation lock; the approval
+  without the organisation lock (deadlock and the wait test); the approval without the eligibility re-check; the claim
+  check taken out from behind the flag; swap staleness disabled; the PHP absentee reason removed; the TypeScript leave
+  reason demoted to a warning. One did not bite and is recorded as belt-and-braces: removing `staff_profile_id IS NULL`
+  from the fill's UPDATE, which the shift lock and the open check already guarantee.
+- vitest: 1742 tests (S11 ended at 1719): `coverRules.test.ts` 16, `CoverPage.test.tsx` 2 (dark while off; a report
+  becomes a request for that shift), `OpenShiftsCover.test.tsx` 3 (unchanged while off; a requested shift points to
+  Cover; an ineligible reader is told why), `coverNav.test.ts` 2. Bundle 728 KiB of 760 (was 723.4); the Cover page is
+  its own chunk.
+
+**NOT TESTED**
+
+- Any cover screen in a browser against a running API (shapes matched by reading the handlers). The staff half of the
+  Cover page and the candidates dialog have no component test.
+- Migration 017 and the concurrency cases on MariaDB 11.4 (the live version); only the local 13.0.2 test database ran
+  them. Lock waits and deadlock detection were observed there only.
+- A publish racing a cover approval (reasoned: cover never locks rota rows; no test).
+- Candidates on a large organisation (300 people cap, one documents query per person; not timed).
+- The `respond_by` deadline: applying after it is refused, but nothing closes the request at the deadline (it closes when
+  the shift starts).
+- Notices through real SMTP and a real device; the sweep under the host's cron.
+- Playwright.

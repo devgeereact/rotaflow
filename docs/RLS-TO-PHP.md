@@ -337,3 +337,19 @@ All of it only while the `scheduling_tools` flag is on; off, nothing here runs.
 | Pattern generation (new) | n/a | `Scheduling::generate`: owners and managers, `requireWritable`, `Billing::requireNotReadOnly`, the rota row lock (`FOR UPDATE`) like every shift write, draft only, every referenced id checked against the organisation; skips duplicates and double-bookings | 240, 099 | NEW |
 | `publish_rota` (overlap) | No overlap rule (the builder refused overlaps in the browser) | `Rotas::publish` refuses 409 `shift_overlap` when `Scheduling::overlaps` finds one person in two places at once | 240 incl. mutation | NEW (flag on only) |
 | Leave review (clashes) | n/a | `Leave::reviewLeave` adds `clashing_shifts` (the person's own shifts, not archived) after an approval by an owner or manager | 240 | NEW (flag on only) |
+
+## S12: cover (absences, requests, applications, eligibility on claim, swaps that void)
+
+New tables with no Postgres policy to map (cover did not exist in RotaFlow), plus new PHP checks on existing routes. All
+of it only while the `cover_tools` flag is on; off, every cover route answers 403 `feature_off` and nothing else runs.
+
+| Table or function | Postgres rule (final) | PHP check | Test | Status |
+| ----------------- | --------------------- | --------- | ---- | ------ |
+| `cover_absences` (new) | n/a | `Cover::reportAbsence`: membership, then the flag; only the caller's own staff record, own shift on a published rota (404 otherwise); `withdrawAbsence` the reporter only (404 for anyone else); `dismissAbsence` owners and managers | 250, 099 | NEW |
+| `cover_requests` (new) | n/a | `Cover::createRequest`, `cancelRequest`: owners and managers, `requireWritable`, `Billing::requireNotReadOnly`, organisation lock then shift lock, published rota, no open amendment, one open request per shift (unique key) | 250, 099 | NEW |
+| `cover_applications` (new) | n/a | `Cover::apply` (member with a staff record, eligibility under the locks), `withdrawApplication` (the applicant only, 404 otherwise), `approveApplication`, `assign`, `rejectApplication` (owners and managers) | 250, 099 incl. mutation | NEW |
+| Approval (new) | n/a | `Cover::fill`: inside a transaction holding the organisation lock FIRST, then the shift row; re-checks open and eligibility (`Cover::assess`: active, absent, overlap with committed shifts, approved leave, declared unavailability via `SchedulingRules`, documents via `Compliance::eligible`); writes only that shift | 250 incl. concurrency and mutation | NEW |
+| `claim_open_shift` (eligibility) | First come, first served; no eligibility beyond overlap | `Swaps::claimOpenShift` with the flag on: organisation lock first, then the existing checks, then 409 `cover_request_open` and the same eligibility as approval | 250 incl. mutation; 110 unchanged | NEW (flag on only) |
+| `decide_shift_swap` (staleness) | Refused a shift no longer the requester's; nothing else | `Swaps::decide`, `respond`, `claim` with the flag on: a swap whose shift changed (fingerprint), was cancelled, sits on an archived rota or has started is cancelled (`void_reason`) and answers 409 `swap_void`; `Cover::cron` sweeps the rest | 250 incl. mutation | NEW (flag on only) |
+| Candidates, overview, open, mine (new) | n/a | Membership first (stranger 404), flag, then role: candidates and overview owners and managers; open and mine any member, own staff record only | 250, 099 | NEW |
+

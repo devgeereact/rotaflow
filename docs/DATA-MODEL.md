@@ -567,6 +567,33 @@ same rules in the browser (`src/lib/schedulingRules.ts`).
 - **Flag**: `feature_flags.scheduling_tools` is seeded **off**. Off, the two new routes answer 403 `feature_off` and
   publishing and leave decisions behave exactly as before.
 
+### 4.18 Cover (MariaDB `backend/migrations/017-cover.sql`, R2 slice S12)
+
+Ported from SiteRelay's `030-cover` and re-made for staff records. Every table carries `org_id` with composite foreign
+keys to `shifts (org_id, id)` and `staff_profiles (org_id, id)` (cascade), user columns `SET NULL`. `open_shift_id`
+equals `shift_id` while the record is open and is NULL once closed (a CHECK keeps it so), so a unique key allows at
+most one open absence report and one open cover request per shift. Rules: `backend/src/CoverRules.php` and
+`backend/src/Mod/Cover.php`; the same rules in the browser in `src/lib/coverRules.ts`.
+
+- **`cover_absences`**: `shift_id`, `staff_profile_id`, `reason` (3 to 500 characters), `status` (`open`,
+  `covered`, `dismissed`, `withdrawn`), `open_shift_id`, `resolved_by`, `created_at`, `resolved_at`.
+- **`cover_requests`**: `shift_id`, `absence_id`, `absent_staff_profile_id` (who was taken off), `status` (`open`,
+  `filled`, `cancelled`), `open_shift_id`, `note`, `respond_by`, `offered_count`, `filled_staff_profile_id`,
+  `created_by`, `closed_by`, `close_reason` (`filled`, `cancelled`, `shift_started`, `shift_cancelled`,
+  `filled_elsewhere`), `created_at`, `closed_at`.
+- **`cover_applications`**: one row per person per shift (unique `org_id, shift_id, staff_profile_id`; applying again
+  reuses it), `cover_request_id`, `status` (`pending`, `withdrawn`, `approved`, `rejected`), `note` (300),
+  `decided_by`, `decided_at`.
+- **`shift_swaps`** (altered, additive): `shift_fingerprint` (SHA-256 of the shift's times, site, holder, status and
+  rota when the swap was raised; recorded on every new swap, never returned, read only while the flag is on) and
+  `void_reason` (`shift_changed`, `shift_started`; set only when the cover module cancels a stale swap).
+- **Flag**: `feature_flags.cover_tools` is seeded **off**.
+- **Deletion**: erasing a person replaces their absence reasons with `(removed)` and clears their application notes
+  (the records stay with the rota history); deleting a shift or organisation cascades. Not in the organisation export
+  yet (the PHP export is not built; S10's documents are in the same position).
+- **Not copied from SiteRelay**: its `shift_swaps` (RotaFlow's own swaps stay, with the two columns above) and its
+  published-shift projection (`published_shifts`).
+
 ## 5. Row Level Security
 
 RLS is **enabled on every table**. Policies use `security definer` helper functions

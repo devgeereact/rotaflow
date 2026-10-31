@@ -324,7 +324,7 @@ precisely because they cannot be, and "it works" throughout this document means
 | Status                | Count |
 | --------------------- | ----- |
 | 🟢 Complete           | 113   |
-| 🟡 Partial            | 7     |
+| 🟡 Partial            | 8     |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -520,6 +520,14 @@ itself: a restore, a real charge, and a phone.
       shown and flagged rather than filtered — a board that silently hides rows leaves somebody
       staring at "nothing to cover" while a colleague sees four
       `supabase/migrations/0103_open_shift_claims.sql` · 11 pgTAP assertions
+- [ ] CAP-010b 🟡 Cover (R2 slice S12) — staff report that they cannot work a shift and offer to cover; owners and
+      managers open a cover request (the person comes off the published shift, eligible people are told), see ranked
+      candidates with reasons, and approve or assign in one transaction with the organisation locked first and
+      eligibility re-checked (active, no overlap, not the absentee, approved leave, declared unavailability, documents);
+      the instant open-shift claim gains the same check; swaps cancel themselves when their shift changes or starts.
+      **Built on the branch `r2/s12-cover`, behind the `cover_tools` flag (seeded off), not released.** Becomes 🟢 when
+      the owner turns the flag on after a local-live walk-through. `backend/migrations/017-cover.sql` ·
+      `backend/src/Mod/Cover.php` · suites `245-cover-rules`, `250-cover` · `src/lib/coverRules.test.ts`
 - [x] CAP-011 🟢 Clock in/out — GPS and manual, offline outbox, geofence recorded, duplicates refused server-side
       `src/pages/app/ClockInPage.tsx`, `supabase/migrations/0115_clock_event_sequence_guard.sql` · GAP-040 closed #281 · 6 pgTAP assertions
 - [x] CAP-012 🟢 Offline clock-in honesty — a queued write is labelled "Saved on this device, not sent yet"
