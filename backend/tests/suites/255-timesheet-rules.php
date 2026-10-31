@@ -113,4 +113,9 @@ foreach (['=1+1' => "'=1+1", '+44 7700' => "'+44 7700", '-2+3' => "'-2+3", '@SUM
 }
 check('csv cell: integers we computed stay numbers (no apostrophe, even negative); null is empty', T::csvCell(-5) === '-5' && T::csvCell(0) === '0' && T::csvCell(2430) === '2430' && T::csvCell(null) === '');
 check('csv: UTF-8 BOM and CRLF line endings', T::csv([['a', 1], ['b', 2]]) === "\xEF\xBB\xBFa,1\r\nb,2\r\n");
+// exportFilename (mirrored by payrollFilename in timesheetRules.test.ts): safe ASCII, the slug cleaned, a fallback, a length cap.
+check('export file name: rotaflow-timesheets-<slug>-<start>-<end>.csv', T::exportFilename('payroll-org', '2026-10-19', '2026-10-25') === 'rotaflow-timesheets-payroll-org-2026-10-19-2026-10-25.csv');
+check('export file name: a slug is lower-cased and anything but a-z, 0-9 and - becomes one -', T::exportFilename('../Café & "Co";x=1', '2026-10-19', '2026-10-25') === 'rotaflow-timesheets-caf-co-x-1-2026-10-19-2026-10-25.csv', T::exportFilename('../Café & "Co";x=1', '2026-10-19', '2026-10-25'));
+check('export file name: no slug (or nothing left of it) reads as organisation', T::exportFilename(null, '2026-10-19', '2026-10-25') === 'rotaflow-timesheets-organisation-2026-10-19-2026-10-25.csv' && T::exportFilename('---', '2026-10-19', '2026-10-25') === 'rotaflow-timesheets-organisation-2026-10-19-2026-10-25.csv');
+check('export file name: the slug is cut to 60 characters, never ending on a dash', T::exportFilename(str_repeat('a', 59) . '-bbbb', '2026-10-19', '2026-10-25') === 'rotaflow-timesheets-' . str_repeat('a', 59) . '-2026-10-19-2026-10-25.csv' && preg_match('/^[a-z0-9.-]+$/', T::exportFilename(str_repeat('Ü', 80), '2026-10-19', '2026-10-25')) === 1);
 check('csv: the columns are fixed, sixteen of them, staff name first and time zone last', count(T::COLUMNS) === 16 && T::COLUMNS[0] === 'Staff name' && T::COLUMNS[5] === 'Approved minutes' && T::COLUMNS[6] === 'Approved hours' && T::COLUMNS[15] === 'Time zone');

@@ -36,6 +36,7 @@ export const api: ApiClient = {
     normaliseApiDates(await raw.post<T>(path, body)),
   // A file is passed through untouched: its bytes are not JSON and carry no dates to normalise.
   getFile: (path, query) => raw.getFile(path, query),
+  postFile: (path, body) => raw.postFile(path, body),
 };
 
 let activeOrgId: string | null = null;

@@ -5,8 +5,13 @@ declare(strict_types=1);
 // late / early finish / overtime flags beyond the tolerance (the week of the October 2026 clock change, draft and cancelled shifts left
 // out, a person sees only their own), and the payroll CSV of approved periods (BOM, fixed columns, exact minutes and hours, local times,
 // formula-injection safe, recalculation flag, audited, read-only, owners and managers only, never platform support). Ports SiteRelay's
-// 081-timesheets endpoint cases to RotaFlow's period approvals. The pure rules are suite 255-timesheet-rules.
-use RotaFlow\{Db, TimesheetRules as T};
+// 081-timesheets endpoint cases to RotaFlow's period approvals. The pure rules are suite 255-timesheet-rules. Owner follow-ups (31 Oct 2026):
+// the file is an attachment named by organisation and dates, and POST timesheets/export marks the included approved periods exported in one
+// transaction with the organisation lock first (idempotent, two at once mark once, the GET stays read-only).
+use RotaFlow\{Api, Db, TimesheetRules as T};
+
+// The test database, taken before the fixtures below reuse $name and $user as loop variables (the concurrency cases open their own connections).
+$dbConf = ['dsn' => "mysql:host=$host;port=$port;dbname=$name;charset=utf8mb4", 'user' => $user, 'password' => $pass];
 
 $api = test_api($pdo);
 $org = call($api, 'olga', 'POST', '/orgs', ['name' => 'Payroll Org'])[1]['org']['id'];
@@ -71,6 +76,8 @@ check('migration 018 seeds the flag off', $pdo->query("SELECT CONCAT(enabled, ro
 check('off: the list answers only timesheets, no lines and no tolerance', $s === 200 && array_keys($r) === ['timesheets'], json_encode(array_keys($r)));
 check('off: the export answers 403 feature_off to a manager and to staff', call($api, 'mark', 'GET', "$TS/export$week")[1]['error']['code'] === 'feature_off' && call($api, 'sam', 'GET', "$TS/export$week")[1]['error']['code'] === 'feature_off');
 check('off: a stranger 404 and nobody 401 (membership before the flag)', call($api, 'zed', 'GET', "$TS/export$week")[0] === 404 && call($api, '', 'GET', "$TS/export$week")[0] === 401);
+$wk = ['period_start' => '2026-10-19', 'period_end' => '2026-10-25'];
+check('off: the marking export (POST) answers 403 feature_off too; a stranger 404, nobody 401', call($api, 'mark', 'POST', "$TS/export", $wk)[1]['error']['code'] === 'feature_off' && call($api, 'zed', 'POST', "$TS/export", $wk)[0] === 404 && call($api, '', 'POST', "$TS/export", $wk)[0] === 401);
 check('off: approving still works exactly as before', call($api, 'mark', 'POST', "$TS/approve", ['period_start' => '2026-10-19', 'period_end' => '2026-10-25', 'approvals' => [['staff_profile_id' => $staff['pat'], 'total_minutes' => 61]]])[0] === 200);
 
 // ---- the tolerance setting ------------------------------------------------------------------------------------------------------------------------------
@@ -125,7 +132,12 @@ call($api, 'mark', 'POST', "/orgs/$org/clock-events/$corr/correct", ['reason' =>
 [$s, $r] = call($api, 'mark', 'GET', "$TS/export$week");
 $raw = $r['__raw'] ?? [];
 $body = (string) ($raw['body'] ?? '');
-check('export: a CSV download with a dated file name and no caching', $s === 200 && $raw['mime'] === 'text/csv; charset=utf-8' && $raw['filename'] === 'rotaflow-payroll-2026-10-19-to-2026-10-25.csv' && $raw['cache'] === 'no-store', json_encode($r));
+check('export: a CSV download named by organisation and dates, no caching', $s === 200 && $raw['mime'] === 'text/csv; charset=utf-8' && $raw['filename'] === 'rotaflow-timesheets-payroll-org-2026-10-19-2026-10-25.csv' && $raw['cache'] === 'no-store', json_encode(array_diff_key($raw, ['body' => 1])));
+// What the entrypoint sends (backend/public/api/index.php writes exactly Api::rawHeaders): an attachment, so a direct link downloads.
+check('export: the response headers say attachment with the safe ASCII file name (owner decision)', Api::rawHeaders($raw) === ['Content-Type: text/csv; charset=utf-8', 'Cache-Control: no-store', 'Content-Disposition: attachment; filename="rotaflow-timesheets-payroll-org-2026-10-19-2026-10-25.csv"'], json_encode(Api::rawHeaders($raw)));
+check('export: the organisation slug in the name is the stored one', $pdo->query("SELECT slug FROM organisations WHERE id = '$org'")->fetchColumn() === 'payroll-org');
+check('raw files other than the export keep inline, as before (the calendar feed, a photo)', Api::rawHeaders(['mime' => 'text/calendar; charset=utf-8', 'cache' => 'private, max-age=900', 'filename' => 'rotaflow.ics'])[2] === 'Content-Disposition: inline; filename="rotaflow.ics"' && Api::rawHeaders(['mime' => 'image/jpeg', 'filename' => 'photo.jpg'])[1] === 'Cache-Control: no-store');
+check('raw headers: a file name cannot break out of its quotes, and only plain X-RotaFlow- extras are sent', Api::rawHeaders(['mime' => 'text/csv', 'disposition' => 'attachment', 'filename' => "a\"b\r\nSet-Cookie: x=1;é.csv", 'headers' => ['X-RotaFlow-Marked-Exported' => '3', 'Set-Cookie' => 'x=1', 'X-RotaFlow-Bad' => "1\r\nSet-Cookie: y", 'X-Other' => '1']]) === ['Content-Type: text/csv', 'Cache-Control: no-store', 'Content-Disposition: attachment; filename="a_b__Set-Cookie_ x_1___.csv"', 'X-RotaFlow-Marked-Exported: 3']);
 check('export: starts with the UTF-8 BOM and every line ends CRLF', str_starts_with($body, "\xEF\xBB\xBF") && substr_count($body, "\r\n") === 4 && str_ends_with($body, "\r\n") && substr_count($body, "\n") === 4);
 $rows = array_map(static fn (string $l): array => str_getcsv($l, ',', '"', ''), explode("\r\n", rtrim(substr($body, 3), "\r\n")));
 $head = array_shift($rows);
@@ -165,11 +177,83 @@ call($api, 'mark', 'POST', "$TS/approve", ['period_start' => '2026-10-26', 'peri
 $two = array_map(static fn (string $l): array => str_getcsv($l, ',', '"', ''), explode("\r\n", rtrim(substr((string) call($api, 'mark', 'GET', "$TS/export?period_start=2026-10-19&period_end=2026-11-01")[1]['__raw']['body'], 3), "\r\n")));
 $samRows = array_values(array_filter($two, static fn (array $r): bool => $r[0] === 'Sam Smith'));
 check('export: two periods for one person each count only their own lines', count($samRows) === 2 && $samRows[0][12] === '1' && $samRows[0][14] === '1' && $samRows[1][3] === '2026-10-26' && $samRows[1][12] === '0' && $samRows[1][13] === '0' && $samRows[1][14] === '0', json_encode($samRows));
+// ---- the marking export: POST timesheets/export (owner decision, 31 Oct 2026) -----------------------------------------------------------------------
+$status = static fn (string $who, string $from): string => (string) $GLOBALS['pdo']->query("SELECT status FROM timesheets WHERE org_id = '{$GLOBALS['org']}' AND staff_profile_id = '$who' AND period_start = '$from'")->fetchColumn();
+$audits = static fn (): int => (int) $GLOBALS['pdo']->query("SELECT COUNT(*) FROM audit_logs WHERE org_id = '{$GLOBALS['org']}' AND action = 'timesheet.exported'")->fetchColumn();
+$csvRows = static fn (string $b): array => array_map(static fn (string $l): array => str_getcsv($l, ',', '"', ''), explode("\r\n", rtrim(substr($b, 3), "\r\n")));
+check('mark: staff 403, a stranger 404, nobody 401', call($api, 'sam', 'POST', "$TS/export", $wk)[0] === 403 && call($api, 'zed', 'POST', "$TS/export", $wk)[0] === 404 && call($api, '', 'POST', "$TS/export", $wk)[0] === 401);
+check('mark: the same range rules (no dates, 32 days, to before from: 422) and nothing is marked by a refusal', call($api, 'mark', 'POST', "$TS/export", [])[0] === 422 && call($api, 'mark', 'POST', "$TS/export", ['period_start' => '2026-10-01', 'period_end' => '2026-11-01'])[0] === 422 && call($api, 'mark', 'POST', "$TS/export", ['period_start' => '2026-10-25', 'period_end' => '2026-10-19'])[0] === 422 && $status($staff['sam'], '2026-10-19') === 'approved');
+check('mark: the GET is still read-only (Sam and the evil row stay approved after another GET)', call($api, 'mark', 'GET', "$TS/export$week")[0] === 200 && $status($staff['sam'], '2026-10-19') === 'approved' && $status($evil, '2026-10-19') === 'approved');
+$before = (string) call($api, 'mark', 'GET', "$TS/export$week")[1]['__raw']['body'];
+$a0 = $audits();
+[$s, $r] = call($api, 'mark', 'POST', "$TS/export", $wk);
+$mraw = $r['__raw'] ?? [];
+check('mark: 200, the same file the GET gave a moment before (the Status column says what each period was when the export began)', $s === 200 && ($mraw['body'] ?? null) === $before, json_encode(array_diff_key($mraw, ['body' => 1])));
+$mrows = $csvRows((string) $mraw['body']);
+check('mark: Status shows approved for the two marked now and exported for the one sent before', array_column(array_slice($mrows, 1), 7) === ['approved', 'exported', 'approved'], json_encode(array_column($mrows, 7)));
+check('mark: an attachment with the counts in headers (2 marked, 1 already exported)', Api::rawHeaders($mraw) === ['Content-Type: text/csv; charset=utf-8', 'Cache-Control: no-store', 'Content-Disposition: attachment; filename="rotaflow-timesheets-payroll-org-2026-10-19-2026-10-25.csv"', 'X-RotaFlow-Marked-Exported: 2', 'X-RotaFlow-Already-Exported: 1'], json_encode(Api::rawHeaders($mraw)));
+check('mark: exactly the included approved periods are now exported', $status($staff['sam'], '2026-10-19') === 'exported' && $status($evil, '2026-10-19') === 'exported' && $status($staff['pat'], '2026-10-19') === 'exported');
+check('mark: nothing outside the file changes (the fortnight starting before, the next weeks, a submitted period, another organisation)', $status($staff['pat'], '2026-10-12') === 'approved' && $status($staff['sam'], '2026-11-02') === 'approved' && $status($staff['sam'], '2026-10-26') === 'approved' && $status($staff['mark'], '2026-10-19') === 'submitted' && $pdo->query("SELECT status FROM timesheets WHERE org_id = '$other'")->fetchColumn() === 'approved');
+check('mark: the figures, versions and approvals are untouched', $pdo->query("SELECT CONCAT(total_minutes, '/', version, '/', approved_by IS NOT NULL) FROM timesheets WHERE staff_profile_id = '{$staff['sam']}' AND period_start = '2026-10-19'")->fetchColumn() === '2430/1/1');
+$metas = array_values(array_filter(array_map(static fn (string $j): mixed => json_decode($j, true), $pdo->query("SELECT metadata FROM audit_logs WHERE org_id = '$org' AND action = 'timesheet.exported'")->fetchAll(PDO::FETCH_COLUMN)), static fn (mixed $m): bool => is_array($m) && array_key_exists('marked', $m)));
+$meta = count($metas) === 1 ? $metas[0] : $metas;
+check('mark: audited once, with dates and counts only (no names, no staff ids)', $audits() === $a0 + 1 && $meta === ['period_start' => '2026-10-19', 'period_end' => '2026-10-25', 'rows' => 3, 'marked' => 2, 'already_exported' => 1], json_encode($meta));
+[$s, $r] = call($api, 'mark', 'POST', "$TS/export", $wk);
+check('mark: idempotent: again marks nothing, every row says exported, the counts say so', $s === 200 && array_column(array_slice($csvRows((string) $r['__raw']['body']), 1), 7) === ['exported', 'exported', 'exported'] && ($r['__raw']['headers'] ?? null) === ['X-RotaFlow-Marked-Exported' => '0', 'X-RotaFlow-Already-Exported' => '3'] && $audits() === $a0 + 2);
+check('mark: an exported period stays locked against a new submission', call($api, 'sam', 'POST', "$TS/submit", ['period_start' => '2026-10-19', 'period_end' => '2026-10-25', 'total_minutes' => 1])[1]['error']['code'] === 'timesheet_locked');
+check('mark: the owner may too; the GET afterwards shows them exported', call($api, 'olga', 'POST', "$TS/export", ['period_start' => '2026-10-26', 'period_end' => '2026-11-01'])[1]['__raw']['headers']['X-RotaFlow-Marked-Exported'] === '1' && $status($staff['sam'], '2026-10-26') === 'exported' && str_contains((string) call($api, 'mark', 'GET', "$TS/export?period_start=2026-10-26&period_end=2026-11-01")[1]['__raw']['body'], ',exported,'));
+check('mark: an empty range marks nothing and is just the header', call($api, 'mark', 'POST', "$TS/export", ['period_start' => '2027-01-04', 'period_end' => '2027-01-10'])[1]['__raw']['headers'] === ['X-RotaFlow-Marked-Exported' => '0', 'X-RotaFlow-Already-Exported' => '0']);
+
+// Two exports of one range at the same instant, on their own connections: both answer the file, exactly one marks.
+call($api, 'mark', 'POST', "$TS/approve", ['period_start' => '2026-11-09', 'period_end' => '2026-11-15', 'approvals' => [['staff_profile_id' => $staff['sam'], 'total_minutes' => 120], ['staff_profile_id' => $staff['pat'], 'total_minutes' => 240]]]);
+$spawn = static function (string $who, string $method, string $path, float $start, array $body = []): array {
+    $p = proc_open([PHP_BINARY, dirname(__DIR__) . '/concurrent-call.php', $who, $method, $path, sprintf('%.6f', $start), json_encode($body ?: new stdClass())], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    return [$p, $pipes];
+};
+$collect = static function (array $h): array {
+    $out = stream_get_contents($h[1][1]);
+    $err = stream_get_contents($h[1][2]);
+    proc_close($h[0]);
+    return json_decode(trim((string) $out), true) ?: [0, ['crash' => $out . $err]];
+};
+$nov = ['period_start' => '2026-11-09', 'period_end' => '2026-11-15'];
+$a0 = $audits();
+$t0 = microtime(true) + 1.5;
+$res = array_map($collect, [$spawn('mark', 'POST', "$TS/export", $t0, $nov), $spawn('olga', 'POST', "$TS/export", $t0, $nov)]);
+$marks = array_map(static fn (array $x): string => (string) ($x[1]['__raw']['headers']['X-RotaFlow-Marked-Exported'] ?? 'x'), $res);
+sort($marks);
+check('concurrency: two marking exports at once both answer 200 with both periods; one marks 2, the other 0; both periods exported once; two audits', array_map(static fn (array $x): int => (int) $x[0], $res) === [200, 200] && $marks === ['0', '2'] && count($csvRows((string) $res[0][1]['__raw']['body'])) === 3 && count($csvRows((string) $res[1][1]['__raw']['body'])) === 3 && $status($staff['sam'], '2026-11-09') === 'exported' && $status($staff['pat'], '2026-11-09') === 'exported' && $audits() === $a0 + 2, json_encode(array_map(static fn (array $x): array => [$x[0], $x[1]['__raw']['headers'] ?? $x[1]], $res)));
+// The organisation row is the first lock: while another connection holds it, the export waits BEFORE it locks any timesheet row.
+call($api, 'mark', 'POST', "$TS/approve", ['period_start' => '2026-11-16', 'period_end' => '2026-11-22', 'approvals' => [['staff_profile_id' => $staff['sam'], 'total_minutes' => 60]]]);
+$tsRow = (string) $pdo->query("SELECT id FROM timesheets WHERE staff_profile_id = '{$staff['sam']}' AND period_start = '2026-11-16'")->fetchColumn();
+$lock = Db::connect($dbConf);
+$lock->beginTransaction();
+$lock->prepare('SELECT id FROM organisations WHERE id = ? FOR UPDATE')->execute([$org]);
+$h = $spawn('mark', 'POST', "$TS/export", microtime(true), ['period_start' => '2026-11-16', 'period_end' => '2026-11-22']);
+usleep(2500000);
+$waiting = proc_get_status($h[0])['running'];
+$probe = Db::connect($dbConf);
+$probe->beginTransaction();
+try {
+    $probe->query("SELECT id FROM timesheets WHERE id = '$tsRow' FOR UPDATE NOWAIT")->fetchAll();
+    $rowFree = true;
+} catch (PDOException) {
+    $rowFree = false;
+}
+$probe->rollBack();
+$stillApproved = $status($staff['sam'], '2026-11-16') === 'approved';
+$lock->rollBack();
+$r = $collect($h);
+check('concurrency: the marking export waits on the organisation lock before it locks the period, then marks it', $waiting && $rowFree && $stillApproved && $r[0] === 200 && ($r[1]['__raw']['headers']['X-RotaFlow-Marked-Exported'] ?? '') === '1' && $status($staff['sam'], '2026-11-16') === 'exported', json_encode([$waiting, $rowFree, $stillApproved, $r[0], $r[1]['__raw']['headers'] ?? $r[1]]));
+
 $uid = static fn (string $n): string => (string) $GLOBALS['pdo']->query("SELECT id FROM users WHERE email = '$n@example.test'")->fetchColumn();
 call($api, 'sue', 'GET', '/me');
 $pdo->prepare("INSERT INTO platform_admins (user_id, role) VALUES (?, 'platform_support')")->execute([$uid('sue')]);
 $pdo->prepare('UPDATE organisations SET support_access_allowed = 1 WHERE id = ?')->execute([$org]);
 $pdo->prepare("INSERT INTO support_access_sessions (id, org_id, admin_user_id, reason, case_ref, scope, expires_at) VALUES (?, ?, ?, 'The customer asked for help with payroll', 'CASE-4121', 'read_write', DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 HOUR))")->execute([Db::uuid(), $org, $uid('sue')]);
 check('support: a live support session reads timesheets but cannot export payroll (403)', call($api, 'sue', 'GET', $TS . $week)[0] === 200 && call($api, 'sue', 'GET', "$TS/export$week")[0] === 403);
+call($api, 'mark', 'POST', "$TS/approve", ['period_start' => '2026-11-23', 'period_end' => '2026-11-29', 'approvals' => [['staff_profile_id' => $staff['sam'], 'total_minutes' => 60]]]);
+check('support: nor mark payroll exported (403 forbidden, nothing marked)', call($api, 'sue', 'POST', "$TS/export", ['period_start' => '2026-11-23', 'period_end' => '2026-11-29'])[1]['error']['code'] === 'forbidden' && $status($staff['sam'], '2026-11-23') === 'approved');
 $flag(false);
 check('off again: the export is refused and the list loses its lines', call($api, 'mark', 'GET', "$TS/export$week")[1]['error']['code'] === 'feature_off' && array_keys(call($api, 'mark', 'GET', $TS . $week)[1]) === ['timesheets']);
+check('off again: the marking export is refused and marks nothing', call($api, 'mark', 'POST', "$TS/export", ['period_start' => '2026-11-23', 'period_end' => '2026-11-29'])[1]['error']['code'] === 'feature_off' && $status($staff['sam'], '2026-11-23') === 'approved');

@@ -56,12 +56,13 @@ try {
     $api = new Api($pdo, static fn (string $t): array => Users::resolve($pdo, $jwt->verify($t)), $limits, Modules::all($ctx));
     [$status, $payload] = $api->handle($method, $path, $headers, (string) file_get_contents('php://input'), $ip, $_GET);
     if ($status === 200 && isset($payload['__raw']) && is_array($payload['__raw'])) {
-        // A non-JSON body built by a module (the calendar feed). The module sets its own type and cache policy.
+        // A non-JSON body built by a module (the calendar feed, a file, the payroll CSV). The module sets its own type, cache policy and
+        // disposition; Api::rawHeaders builds the header lines (tested in the suites, which never reach this file).
         $r = $payload['__raw'];
         header_remove('Content-Type');
-        header('Content-Type: ' . $r['mime']);
-        header('Cache-Control: ' . ($r['cache'] ?? 'no-store'));
-        header('Content-Disposition: inline; filename="' . preg_replace('/[^\w .()-]/', '_', (string) ($r['filename'] ?? 'file')) . '"');
+        foreach (Api::rawHeaders($r) as $line) {
+            header($line);
+        }
         echo $r['body'];
         exit;
     }

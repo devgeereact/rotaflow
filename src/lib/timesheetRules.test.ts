@@ -181,9 +181,24 @@ describe('toleranceFrom and payrollFilename', () => {
     expect(toleranceFrom({ timesheet_tolerance_minutes: '15' })).toBe(10);
   });
 
-  it('names the download after its dates', () => {
-    expect(payrollFilename('2026-10-19', '2026-10-25')).toBe(
-      'rotaflow-payroll-2026-10-19-to-2026-10-25.csv',
+  it('names the download after the organisation and its dates (mirrors suite 255)', () => {
+    expect(payrollFilename('payroll-org', '2026-10-19', '2026-10-25')).toBe(
+      'rotaflow-timesheets-payroll-org-2026-10-19-2026-10-25.csv',
+    );
+    expect(payrollFilename('../Café & "Co";x=1', '2026-10-19', '2026-10-25')).toBe(
+      'rotaflow-timesheets-caf-co-x-1-2026-10-19-2026-10-25.csv',
+    );
+    expect(payrollFilename(null, '2026-10-19', '2026-10-25')).toBe(
+      'rotaflow-timesheets-organisation-2026-10-19-2026-10-25.csv',
+    );
+    expect(payrollFilename('---', '2026-10-19', '2026-10-25')).toBe(
+      'rotaflow-timesheets-organisation-2026-10-19-2026-10-25.csv',
+    );
+    expect(payrollFilename(`${'a'.repeat(59)}-bbbb`, '2026-10-19', '2026-10-25')).toBe(
+      `rotaflow-timesheets-${'a'.repeat(59)}-2026-10-19-2026-10-25.csv`,
+    );
+    expect(payrollFilename('Ü'.repeat(80), '2026-10-19', '2026-10-25')).toMatch(
+      /^[a-z0-9.-]+$/,
     );
   });
 });

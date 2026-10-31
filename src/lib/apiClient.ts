@@ -40,11 +40,18 @@ export interface ApiClient {
    * throw `ApiError`, exactly as `get` does. `filename` is read from Content-Disposition when the API sends one.
    */
   getFile: (path: string, query?: Query) => Promise<ApiFile>;
+  /**
+   * The same for a POST with a JSON body: a write that answers a file (the payroll export that marks the
+   * periods it contains as exported). Errors as `post`.
+   */
+  postFile: (path: string, body?: unknown) => Promise<ApiFile>;
 }
 
 export interface ApiFile {
   body: Blob;
   filename: string | null;
+  /** A response header (`X-RotaFlow-Marked-Exported`, say), or null when the API did not send it. */
+  header: (name: string) => string | null;
 }
 
 type Query = Record<string, string | number | boolean | undefined>;
@@ -112,15 +119,21 @@ export function createApiClient(opts: ApiClientOptions): ApiClient {
     return payload as T;
   }
 
-  async function getFile(path: string, query?: Query): Promise<ApiFile> {
+  async function fetchFile(
+    method: 'GET' | 'POST',
+    path: string,
+    body?: unknown,
+  ): Promise<ApiFile> {
     const token = await opts.getToken();
     const headers: Record<string, string> = { Accept: '*/*' };
     if (token) headers.Authorization = `Bearer ${token}`;
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
     let res: Response;
     try {
-      res = await doFetch(`${opts.baseUrl}${withQuery(path, query)}`, {
-        method: 'GET',
+      res = await doFetch(`${opts.baseUrl}${path}`, {
+        method,
         headers,
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         credentials: 'omit',
       });
     } catch {
@@ -141,11 +154,16 @@ export function createApiClient(opts: ApiClientOptions): ApiClient {
     }
     const disposition = res.headers.get('Content-Disposition') ?? '';
     const name = /filename="([^"]+)"/.exec(disposition)?.[1] ?? null;
-    return { body: await res.blob(), filename: name };
+    return {
+      body: await res.blob(),
+      filename: name,
+      header: (n: string) => res.headers.get(n),
+    };
   }
 
   return {
-    getFile,
+    getFile: (path: string, query?: Query) => fetchFile('GET', withQuery(path, query)),
+    postFile: (path: string, body?: unknown) => fetchFile('POST', path, body ?? {}),
     get: <T>(path: string, query?: Query) => request<T>('GET', withQuery(path, query)),
     post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
   };

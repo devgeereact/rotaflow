@@ -136,17 +136,56 @@ export async function listTimesheetLines(
 }
 
 /**
- * The payroll CSV of approved periods inside the range, downloaded as the server wrote it
- * (UTF-8 with a BOM, formula-safe cells). Nothing is rebuilt in the browser.
+ * Whether a period is signed off: `approved`, or `exported` (approved and sent to payroll by
+ * the marking export). Either way it is not offered for approval again.
  */
-export async function downloadPayrollCsv(
+export function isSignedOff(status: TimesheetStatus): boolean {
+  return status === 'approved' || status === 'exported';
+}
+
+export interface PayrollExportResult {
+  /** Approved periods this export moved to `exported`. */
+  marked: number;
+  /** Periods in the file that had been exported before (payroll may already have them). */
+  alreadyExported: number;
+}
+
+function count(v: string | null): number {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 ? n : 0;
+}
+
+/**
+ * The payroll CSV of approved periods inside the range, downloaded as the server wrote it
+ * (UTF-8 with a BOM, formula-safe cells; nothing is rebuilt in the browser), through the
+ * marking route (owner decision, 31 Oct 2026): `POST timesheets/export` moves the approved
+ * periods in the file to `exported` in the same transaction, so a second export shows them as
+ * already sent instead of quietly paying them again. The counts come from the response headers.
+ */
+export async function exportPayrollCsv(
   orgId: string,
   periodStart: string,
   periodEnd: string,
-): Promise<void> {
-  const file = await api.getFile(orgPath(orgId, '/timesheets/export'), {
+): Promise<PayrollExportResult> {
+  const file = await api.postFile(orgPath(orgId, '/timesheets/export'), {
     period_start: periodStart,
     period_end: periodEnd,
   });
-  downloadBlob(file.filename ?? payrollFilename(periodStart, periodEnd), file.body);
+  downloadBlob(file.filename ?? payrollFilename(null, periodStart, periodEnd), file.body);
+  return {
+    marked: count(file.header('X-RotaFlow-Marked-Exported')),
+    alreadyExported: count(file.header('X-RotaFlow-Already-Exported')),
+  };
+}
+
+/** What the page tells the person after a payroll export. */
+export function payrollExportMessage(r: PayrollExportResult): string {
+  const periods = (n: number): string => `${n} ${n === 1 ? 'period' : 'periods'}`;
+  const marked =
+    r.marked === 0
+      ? 'Payroll CSV downloaded. No new periods were marked as exported.'
+      : `Payroll CSV downloaded. ${periods(r.marked)} marked as exported.`;
+  return r.alreadyExported > 0
+    ? `${marked} ${periods(r.alreadyExported)} in the file had been exported before.`
+    : marked;
 }

@@ -96,9 +96,21 @@ export function exportRangeProblem(from: string, to: string): string | null {
   return null;
 }
 
-/** The download's file name. */
-export function payrollFilename(from: string, to: string): string {
-  return `rotaflow-payroll-${from}-to-${to}.csv`;
+/**
+ * The download's file name, `rotaflow-timesheets-<org slug>-<start>-<end>.csv` in safe ASCII,
+ * exactly as `TimesheetRules::exportFilename` (the server's Content-Disposition, which the
+ * download uses when present). The slug is lower-cased, anything but a-z, 0-9 and '-' becomes
+ * '-', runs collapse, ends are trimmed, at most 60 characters; empty reads as 'organisation'.
+ */
+export function payrollFilename(slug: string | null, from: string, to: string): string {
+  const cleaned = (slug ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+    .replace(/-+$/, '');
+  return `rotaflow-timesheets-${cleaned === '' ? 'organisation' : cleaned}-${from}-${to}.csv`;
 }
 
 /** Minutes as decimal hours with two places, by integer rounding (half up), exactly as the CSV. */

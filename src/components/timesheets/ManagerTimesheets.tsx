@@ -268,6 +268,11 @@ function PayrollExportModal({
         over (by more than {toleranceMinutes} minutes). A period that lies partly outside
         these dates is left out. At most {TIMESHEET_MAX_DAYS} days.
       </p>
+      <p className="mt-2 text-sm text-content-muted dark:text-content-muted-dark">
+        Downloading marks the approved periods in the file as exported, so they are not
+        sent to payroll twice. Periods exported before are still included, and their
+        Status column says exported.
+      </p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="payroll-from">From</Label>

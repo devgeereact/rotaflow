@@ -261,6 +261,18 @@ final class TimesheetRules
         return preg_match('/[",\r\n]/', $v) === 1 || $v !== trim($v) ? '"' . str_replace('"', '""', $v) . '"' : $v;
     }
 
+    /**
+     * The payroll download's file name: rotaflow-timesheets-<org slug>-<start>-<end>.csv in safe ASCII. The slug is lower-cased, anything
+     * but a-z, 0-9 and '-' becomes '-', runs of '-' collapse, ends are trimmed, at most 60 characters; empty reads as 'organisation'. The
+     * dates are the validated range. Mirrored by payrollFilename in src/lib/timesheetRules.ts.
+     */
+    public static function exportFilename(?string $slug, string $from, string $to): string
+    {
+        $s = trim((string) preg_replace('/-+/', '-', (string) preg_replace('/[^a-z0-9-]/', '-', strtolower((string) $slug))), '-');
+        $s = rtrim(substr($s, 0, 60), '-');
+        return 'rotaflow-timesheets-' . ($s === '' ? 'organisation' : $s) . "-$from-$to.csv";
+    }
+
     /** UTF-8 with a byte-order mark (so spreadsheet programs read names correctly) and CRLF line ends. @param list<list<string|int|null>> $rows */
     public static function csv(array $rows): string
     {

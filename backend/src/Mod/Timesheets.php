@@ -15,6 +15,8 @@ use RotaFlow\{Audit, Ctx, Db, Flags, HttpError, Input, Module, SchedulingRules, 
  *    the late / early finish / overtime flags beyond the organisation's tolerance) and `tolerance_minutes`. Pure rules: TimesheetRules.
  *  - GET timesheets/export answers the payroll CSV of APPROVED (or exported) periods inside the range, owners and managers only, never a
  *    platform support session. Reading it changes nothing (it does not mark periods exported).
+ *  - POST timesheets/export answers the same file and marks the included approved periods `exported`, in one transaction with the
+ *    organisation lock first (owner decision, 31 Oct 2026), so a period is not sent to payroll twice without anyone seeing it.
  * With it off the list answers exactly what it did and the export answers 403 feature_off (after membership, so a stranger gets 404).
  */
 final class Timesheets implements Module
@@ -43,6 +45,7 @@ final class Timesheets implements Module
         return [
             ['GET', '/orgs/{o}/timesheets', $this->list(...)],
             ['GET', '/orgs/{o}/timesheets/export', $this->export(...)],
+            ['POST', '/orgs/{o}/timesheets/export', $this->exportAndMark(...)],
             ['POST', '/orgs/{o}/timesheets/submit', $this->submit(...)],
             ['POST', '/orgs/{o}/timesheets/approve', $this->approve(...)],
             ['POST', '/orgs/{o}/timesheets/{t}/reopen', $this->reopen(...)],
@@ -94,9 +97,28 @@ final class Timesheets implements Module
      * The payroll CSV (owners and managers; never a platform support session, since it is pay data leaving the product). Approved and
      * exported periods that lie wholly inside period_start..period_end (at most 31 days), one row per person per period, in the fixed
      * column order of TimesheetRules::COLUMNS. The figure is the APPROVED total_minutes, not a recalculation; a period whose clock events
-     * were corrected after approval says so in "Recalculation required". UTF-8 with a BOM; every text cell formula-safe.
+     * were corrected after approval says so in "Recalculation required". UTF-8 with a BOM; every text cell formula-safe. Sent as an
+     * attachment named rotaflow-timesheets-<org slug>-<start>-<end>.csv. GET only reads: nothing is marked (see exportAndMark).
      */
     private function export(array $user, array $in, string $ip, string $o): array
+    {
+        return $this->payroll($user, $in, $ip, $o, false);
+    }
+
+    /**
+     * POST timesheets/export {period_start, period_end} (owner decision, 31 Oct 2026: exporting marks, so payroll is not paid twice). The
+     * same file as the GET, and in ONE transaction, the organisation row locked first (the R2 lock order), then the included periods: every
+     * included `approved` period becomes `exported`. Periods already `exported` stay so and are still in the file. The Status column says
+     * what each period was when this export began, so `approved` is new in this file and `exported` was sent before; the response headers
+     * X-RotaFlow-Marked-Exported and X-RotaFlow-Already-Exported give the counts. Two exports at once: the second waits on the lock and
+     * then marks nothing. Needs a writable membership; not refused for read-only billing (staff still have to be paid).
+     */
+    private function exportAndMark(array $user, array $in, string $ip, string $o): array
+    {
+        return $this->payroll($user, $in, $ip, $o, true);
+    }
+
+    private function payroll(array $user, array $in, string $ip, string $o, bool $mark): array
     {
         $pdo = $this->ctx->pdo;
         $m = Scope::membership($pdo, $user['id'], $o);
@@ -107,14 +129,56 @@ final class Timesheets implements Module
         if (($m['support'] ?? null) !== null) {
             throw HttpError::forbidden('Platform support cannot export payroll');
         }
+        if ($mark) {
+            Scope::requireWritable($m);
+        }
         $range = R::range($in['period_start'] ?? null, $in['period_end'] ?? null);
         if (is_string($range)) {
             throw HttpError::invalid($range);
         }
         [$from, $to] = $range;
+        $slug = $pdo->prepare('SELECT slug FROM organisations WHERE id = ?');
+        $slug->execute([$o]);
+        $file = ['mime' => 'text/csv; charset=utf-8', 'cache' => 'no-store', 'disposition' => 'attachment', 'filename' => R::exportFilename((string) $slug->fetchColumn(), $from, $to)];
+        if (!$mark) {
+            [$body, $periods] = $this->payrollCsv($o, $from, $to);
+            Audit::log($pdo, $o, $user['id'], 'timesheet.exported', 'timesheets', null, ['period_start' => $from, 'period_end' => $to, 'rows' => count($periods)], 'info', 'org', $ip);
+            return [200, ['__raw' => $file + ['body' => $body]]];
+        }
+        $pdo->beginTransaction();
+        try {
+            Cover::lockOrg($pdo, $o); // first, as every R2 writer: two exports of one range never both mark, and never deadlock
+            $lk = $pdo->prepare("SELECT id FROM timesheets WHERE org_id = ? AND status IN ('approved','exported') AND period_start >= ? AND period_end <= ? ORDER BY id FOR UPDATE");
+            $lk->execute([$o, $from, $to]);
+            $lk->fetchAll();
+            [$body, $periods] = $this->payrollCsv($o, $from, $to);
+            $ids = array_values(array_map(static fn (array $p): string => (string) $p['id'], array_filter($periods, static fn (array $p): bool => $p['status'] === 'approved')));
+            $marked = 0;
+            foreach (array_chunk($ids, 500) as $chunk) {
+                $u = $pdo->prepare("UPDATE timesheets SET status = 'exported' WHERE org_id = ? AND status = 'approved' AND id IN (" . implode(',', array_fill(0, count($chunk), '?')) . ')');
+                $u->execute([$o, ...$chunk]);
+                $marked += $u->rowCount();
+            }
+            $already = count($periods) - count($ids);
+            Audit::log($pdo, $o, $user['id'], 'timesheet.exported', 'timesheets', null, ['period_start' => $from, 'period_end' => $to, 'rows' => count($periods), 'marked' => $marked, 'already_exported' => $already], 'info', 'org', $ip);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+        return [200, ['__raw' => $file + ['body' => $body, 'headers' => ['X-RotaFlow-Marked-Exported' => (string) $marked, 'X-RotaFlow-Already-Exported' => (string) $already]]]];
+    }
+
+    /**
+     * The CSV body and the periods in it (each with its id and its status as read now).
+     * @return array{0:string,1:list<array<string,mixed>>}
+     */
+    private function payrollCsv(string $o, string $from, string $to): array
+    {
+        $pdo = $this->ctx->pdo;
         $tz = Compliance::tz($pdo, $o);
         $q = $pdo->prepare(
-            "SELECT t.staff_profile_id, t.period_start, t.period_end, t.total_minutes, t.status, t.version, t.approved_at, t.recalculation_required_at,
+            "SELECT t.id, t.staff_profile_id, t.period_start, t.period_end, t.total_minutes, t.status, t.version, t.approved_at, t.recalculation_required_at,
                     sp.first_name, sp.last_name, sp.payroll_id,
                     COALESCE(NULLIF(TRIM(CONCAT(ap.first_name, ' ', ap.last_name)), ''), NULLIF(TRIM(u.full_name), ''), u.email) AS approver
                FROM timesheets t
@@ -153,8 +217,7 @@ final class Timesheets implements Module
                 $count['late'], $count['early_finish'], $count['overtime'], $tz,
             ];
         }
-        Audit::log($pdo, $o, $user['id'], 'timesheet.exported', 'timesheets', null, ['period_start' => $from, 'period_end' => $to, 'rows' => count($periods)], 'info', 'org', $ip);
-        return [200, ['__raw' => ['mime' => 'text/csv; charset=utf-8', 'body' => R::csv($rows), 'cache' => 'no-store', 'filename' => "rotaflow-payroll-$from-to-$to.csv"]]];
+        return [R::csv($rows), $periods];
     }
 
     /**

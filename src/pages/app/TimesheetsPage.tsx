@@ -15,9 +15,11 @@ import {
 } from '@/services/clockService';
 import {
   approveTimesheets,
-  downloadPayrollCsv,
+  exportPayrollCsv,
+  isSignedOff,
   listTimesheetLines,
   listTimesheets,
+  payrollExportMessage,
   TIMESHEET_FEATURE,
   type Timesheet,
 } from '@/services/timesheetService';
@@ -325,7 +327,9 @@ export function TimesheetsPage(): JSX.Element {
       weekTimesheets
         .filter(
           (t) =>
-            t.status === 'approved' &&
+            // `exported` is approved and sent to payroll (S13 follow-up): still signed off,
+            // never offered for approval again.
+            isSignedOff(t.status) &&
             t.period_start === weekStart &&
             t.period_end === weekEnd,
         )
@@ -434,14 +438,17 @@ export function TimesheetsPage(): JSX.Element {
     async (from: string, to: string): Promise<void> => {
       if (!orgId) return;
       try {
-        await downloadPayrollCsv(orgId, from, to);
-        showSuccess('Payroll CSV downloaded.');
+        // The marking route (owner decision, 31 Oct 2026): the approved periods in the file
+        // become `exported` on the server, and the person is told how many.
+        const result = await exportPayrollCsv(orgId, from, to);
+        showSuccess(payrollExportMessage(result));
+        if (result.marked > 0) void load();
       } catch (err) {
         reportError(err, { area: 'timesheets:payroll-export' });
         showError('Could not export payroll. Please try again.');
       }
     },
-    [orgId, showSuccess, showError],
+    [orgId, showSuccess, showError, load],
   );
 
   const approveForStaff = useCallback(

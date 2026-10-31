@@ -176,4 +176,57 @@ describe('getFile', () => {
     );
     expect(onUnauthorized).toHaveBeenCalledOnce();
   });
+
+  it('sends no body and no Content-Type on a GET, as before', async () => {
+    const { fetchImpl, calls } = stub(() => new Response('x', { status: 200 }));
+    await client(fetchImpl).getFile('/x');
+    expect(calls[0]?.[1].method).toBe('GET');
+    expect('body' in (calls[0]?.[1] ?? {})).toBe(false);
+    expect(headersOf(calls[0])['Content-Type']).toBeUndefined();
+  });
+});
+
+describe('postFile', () => {
+  it('POSTs the JSON body and returns the bytes, the file name and the headers', async () => {
+    const { fetchImpl, calls } = stub(
+      () =>
+        new Response('﻿Staff name\r\n', {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition':
+              'attachment; filename="rotaflow-timesheets-acme-2026-10-19-2026-10-25.csv"',
+            'X-RotaFlow-Marked-Exported': '2',
+          },
+        }),
+    );
+    const file = await client(fetchImpl).postFile('/orgs/o1/timesheets/export', {
+      period_start: '2026-10-19',
+      period_end: '2026-10-25',
+    });
+    expect(calls[0]?.[0]).toBe('/api/orgs/o1/timesheets/export');
+    expect(calls[0]?.[1].method).toBe('POST');
+    expect(calls[0]?.[1].body).toBe(
+      '{"period_start":"2026-10-19","period_end":"2026-10-25"}',
+    );
+    expect(headersOf(calls[0])['Content-Type']).toBe('application/json');
+    expect(headersOf(calls[0]).Authorization).toBe('Bearer tok_123');
+    expect(calls[0]?.[1].credentials).toBe('omit');
+    expect(file.filename).toBe('rotaflow-timesheets-acme-2026-10-19-2026-10-25.csv');
+    expect(file.header('X-RotaFlow-Marked-Exported')).toBe('2');
+    expect(file.header('X-RotaFlow-Already-Exported')).toBeNull();
+    expect(await file.body.text()).toContain('Staff name');
+  });
+
+  it('turns the JSON error shape into ApiError', async () => {
+    const { fetchImpl } = stub(() =>
+      reply(403, {
+        error: { code: 'forbidden', message: 'Platform support cannot export payroll' },
+      }),
+    );
+    await expect(client(fetchImpl).postFile('/x', {})).rejects.toMatchObject({
+      status: 403,
+      code: 'forbidden',
+    });
+  });
 });

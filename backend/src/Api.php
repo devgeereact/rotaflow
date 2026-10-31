@@ -99,6 +99,30 @@ final class Api
         }
     }
 
+    /**
+     * The response headers for a non-JSON body a module built (`__raw`): its type, its cache policy and its Content-Disposition, which is
+     * `inline` unless the module asks for `disposition: attachment` (so a direct link downloads, as the payroll CSV does). The file name
+     * keeps only ASCII letters, digits, `_`, space, `.`, `(`, `)` and `-` (anything else becomes `_`), so it can never break out of the
+     * quotes. Extra `headers` are sent only when the name is `X-RotaFlow-...` and the value plain ASCII (no CR or LF), else dropped.
+     * @param array<string,mixed> $raw
+     * @return list<string>
+     */
+    public static function rawHeaders(array $raw): array
+    {
+        $name = (string) preg_replace('/[^A-Za-z0-9_ .()-]/', '_', (string) ($raw['filename'] ?? 'file'));
+        $out = [
+            'Content-Type: ' . (string) $raw['mime'],
+            'Cache-Control: ' . (string) ($raw['cache'] ?? 'no-store'),
+            'Content-Disposition: ' . (($raw['disposition'] ?? null) === 'attachment' ? 'attachment' : 'inline') . '; filename="' . $name . '"',
+        ];
+        foreach (is_array($raw['headers'] ?? null) ? $raw['headers'] : [] as $k => $v) {
+            if (is_string($k) && preg_match('/^X-RotaFlow-[A-Za-z-]{1,40}$/', $k) === 1 && is_scalar($v) && preg_match('/^[ -~]{0,200}$/', (string) $v) === 1) {
+                $out[] = "$k: $v";
+            }
+        }
+        return $out;
+    }
+
     /** @param array<string,string> $headers @return array<string,mixed> */
     private function principal(array $headers): array
     {
