@@ -46,7 +46,7 @@ foreach ($routes as $r) {
         [$s, $res] = call($api, $who, $method, $path, $body);
         if ($s >= 500) { $bad[] = "$label $method $tpl -> $s"; }
         if ($orgScoped && $s !== 404) { $bad[] = "$label $method $tpl -> $s (want 404)"; }
-        if ($orgScoped && isset($res['org']) || ($orgScoped && isset($res['members'])) || ($orgScoped && isset($res['invites']))) { $bad[] = "$label $method $tpl leaked data"; }
+        if ($orgScoped && isset($res['org']) || ($orgScoped && isset($res['members'])) || ($orgScoped && isset($res['invites'])) || ($orgScoped && isset($res['open_shifts']))) { $bad[] = "$label $method $tpl leaked data"; }
     }
     // a member with random ids in every position
     [$s] = call($api, 'olga', $method, $subst($tpl, $org), $body);
@@ -93,5 +93,22 @@ foreach ($routes as $r) {
 check("support: every cover, documents, compliance and payroll-export route refuses a support session with 403 forbidden ($guarded routes): " . ($leaks === [] ? 'all refused' : implode('; ', array_slice($leaks, 0, 8))), $leaks === [] && $guarded >= 20, count($leaks) . ' leaks');
 $pdo->exec("UPDATE feature_flags SET enabled = 0, rollout = 0 WHERE flag_key = 'cover_tools'");
 check('support: cover refuses the session with the flag off too (403 forbidden, not feature_off)', call($api, 'sue', 'GET', "/orgs/$org/cover/overview")[1]['error']['code'] === 'forbidden');
+
+// The open-shifts list's own eligibility (owner decision, 31 Oct 2026): it is about the caller only. A stranger and a no-organisation user
+// were refused above with no `open_shifts`; a live support session (no staff record here) sees the board but no eligibility (null on every
+// row), and a member with a staff record sees exactly one person's reasons: their own.
+$sweepSite = call($api, 'olga', 'POST', "/orgs/$org/locations", ['name' => 'Sweep House', 'timezone' => 'Europe/London'])[1]['id'];
+$sweepDay = gmdate('Y-m-d', time() + 5 * 86400);
+$sweepRota = call($api, 'olga', 'POST', "/orgs/$org/rotas", ['name' => 'Sweep week', 'period_start' => $sweepDay, 'period_end' => $sweepDay, 'location_id' => $sweepSite])[1]['rota']['id'];
+call($api, 'olga', 'POST', "/orgs/$org/shifts", ['rota_id' => $sweepRota, 'location_id' => $sweepSite, 'staff_profile_id' => null, 'starts_at' => $sweepDay . 'T09:00:00Z', 'ends_at' => $sweepDay . 'T17:00:00Z', 'status' => 'open']);
+call($api, 'olga', 'POST', "/orgs/$org/rotas/$sweepRota/publish");
+[$s, $res] = call($api, 'sue', 'GET', "/orgs/$org/open-shifts");
+check('open shifts: a support session sees the board with no eligibility (null on every row, no reasons about anyone)', $s === 200 && count($res['open_shifts'] ?? []) === 1 && array_map(static fn (array $r): mixed => array_key_exists('my_eligibility', $r) ? $r['my_eligibility'] : 'missing', $res['open_shifts']) === [null], json_encode($res));
+[$s, $res] = call($api, 'olga', 'GET', "/orgs/$org/open-shifts");
+check('open shifts: the owner with a staff record sees only their own eligibility object', $s === 200 && count($res['open_shifts']) === 1 && array_keys($res['open_shifts'][0]['my_eligibility'] ?? []) === ['eligible', 'reasons'], json_encode($res));
+foreach (['zed' => 404, 'nobody1' => 404, '' => 401] as $who => $want) {
+    [$s, $res] = call($api, $who, 'GET', "/orgs/$org/open-shifts");
+    check("open shifts: " . ($who === '' ? 'nobody' : $who) . " gets $want and no rows", $s === $want && !isset($res['open_shifts']));
+}
 
 check('no route in the sweep reached Stripe', $stripeReached === 0, "calls=$stripeReached");

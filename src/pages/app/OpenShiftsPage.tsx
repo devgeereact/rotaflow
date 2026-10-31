@@ -11,6 +11,7 @@ import {
   listOpenShifts,
   type OpenShift,
 } from '@/services/openShiftService';
+import { ownBlockReason } from '@/lib/openShiftBlock';
 import { reportError } from '@/lib/sentry';
 import { FALLBACK_TIMEZONE, resolveReportingTimezone } from '@/lib/operationalDay';
 import { listLocations } from '@/services/locationService';
@@ -273,10 +274,13 @@ export function OpenShiftsPage(): JSX.Element {
             const start = new Date(shift.startsAt);
             const end = new Date(shift.endsAt);
             const coverRow = cover.get(shift.shiftId);
+            // The reader's own eligibility from the list itself (owner decision, 31 Oct 2026),
+            // whatever the cover flag says: the claim refuses for these reasons either way, so
+            // the card says so before the click. With cover on its own row still wins.
             const blockedBy =
               coverRow && coverRow.eligible === false
                 ? (coverRow.reasons ?? []).map((r) => r.message).join('; ')
-                : null;
+                : ownBlockReason(shift);
             return (
               <li key={shift.shiftId}>
                 <Card className="flex flex-wrap items-center gap-4">

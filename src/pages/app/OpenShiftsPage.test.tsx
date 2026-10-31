@@ -60,6 +60,7 @@ const shift: OpenShift = {
   shiftType: 'Early',
   notes: null,
   clashesWithMine: false,
+  myEligibility: null,
 };
 
 // The page's first import is cold and pulls a large module graph. On a busy

@@ -513,7 +513,12 @@ final class Swaps implements Module
 
     // ---- open shifts -----------------------------------------------------------------------------------
 
-    /** Future, unassigned, open shifts on a PUBLISHED rota, soonest first; clashes_with_mine says whether it overlaps something the caller already works. */
+    /**
+     * Future, unassigned, open shifts on a PUBLISHED rota, soonest first; clashes_with_mine says whether it overlaps something the caller
+     * already works. my_eligibility (owner decision, 31 Oct 2026, whatever cover_tools says, as the claim's check): the CALLER's own
+     * eligibility for each shift, {eligible, reasons[{code, message}]}, the same reasons the claim would refuse with (Cover::assessShifts
+     * reads only the caller's records); null for a member with no staff record. The clash stays its own field (409 already_working).
+     */
     private function openShifts(array $user, array $in, string $ip, string $o): array
     {
         $pdo = $this->ctx->pdo;
@@ -521,7 +526,8 @@ final class Swaps implements Module
         $own = Scope::staffProfileId($pdo, $o, $user['id']);
         $q = $pdo->prepare(
             "SELECT s.id AS shift_id, s.starts_at, s.ends_at, s.break_minutes, s.notes, st.name AS shift_type, l.name AS location_name,
-                    (? IS NOT NULL AND EXISTS (SELECT 1 FROM shifts mine WHERE mine.org_id = s.org_id AND mine.staff_profile_id = ? AND mine.status <> 'cancelled' AND mine.starts_at < s.ends_at AND mine.ends_at > s.starts_at)) AS clashes_with_mine
+                    (? IS NOT NULL AND EXISTS (SELECT 1 FROM shifts mine WHERE mine.org_id = s.org_id AND mine.staff_profile_id = ? AND mine.status <> 'cancelled' AND mine.starts_at < s.ends_at AND mine.ends_at > s.starts_at)) AS clashes_with_mine,
+                    l.timezone AS location_timezone
                FROM shifts s JOIN rotas r ON r.id = s.rota_id AND r.org_id = s.org_id
                LEFT JOIN shift_types st ON st.id = s.shift_type_id AND st.org_id = s.org_id
                LEFT JOIN locations l ON l.id = s.location_id AND l.org_id = s.org_id
@@ -529,12 +535,20 @@ final class Swaps implements Module
               ORDER BY s.starts_at LIMIT 500"
         );
         $q->execute([$own, $own, $o]);
-        return [200, ['open_shifts' => array_map(static function (array $r): array {
+        $rows = $q->fetchAll();
+        $why = $own === null ? [] : Cover::assessShifts($pdo, $o, $own, array_map(static fn (array $r): array => [
+            'id' => $r['shift_id'], 'starts_at' => $r['starts_at'], 'ends_at' => $r['ends_at'], 'break_minutes' => (int) $r['break_minutes'],
+            'timezone' => SchedulingRules::validZone($r['location_timezone']) ? (string) $r['location_timezone'] : null,
+        ], $rows));
+        return [200, ['open_shifts' => array_map(static function (array $r) use ($own, $why): array {
             $r['starts_at'] = Time::iso($r['starts_at']);
             $r['ends_at'] = Time::iso($r['ends_at']);
             $r['clashes_with_mine'] = (bool) $r['clashes_with_mine'];
+            unset($r['location_timezone']);
+            $reasons = $why[$r['shift_id']] ?? [];
+            $r['my_eligibility'] = $own === null ? null : ['eligible' => $reasons === [], 'reasons' => $reasons];
             return $r;
-        }, $q->fetchAll())]];
+        }, $rows)]];
     }
 
     /**

@@ -59,6 +59,7 @@ const shift: OpenShift = {
   shiftType: 'Early',
   notes: null,
   clashesWithMine: false,
+  myEligibility: null,
 };
 const coverRow = (o: Partial<CoverOpenShift>): CoverOpenShift => ({
   id: 'shift-1',
@@ -122,6 +123,62 @@ describe('the open shifts board with cover', () => {
     await screen.findByText('Manager choosing cover');
     expect(screen.getByRole('button', { name: 'Offer to cover' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Take it' })).toBeNull();
+  });
+
+  it("cover off: the list's own eligibility says why before the click and disables Take it", async () => {
+    listOpenShifts.mockResolvedValue([
+      {
+        ...shift,
+        myEligibility: {
+          eligible: false,
+          reasons: [
+            { code: 'leave', message: 'On approved holiday (Wed 12 Sep)' },
+            { code: 'documents', message: 'Missing or expired: DBS check' },
+          ],
+        },
+      },
+    ]);
+    await renderPage();
+    await screen.findByText(
+      'On approved holiday (Wed 12 Sep); Missing or expired: DBS check',
+    );
+    const take = screen.getByRole<HTMLButtonElement>('button', { name: 'Take it' });
+    expect(take.disabled).toBe(true);
+    expect(take.title).toBe(
+      'On approved holiday (Wed 12 Sep); Missing or expired: DBS check',
+    );
+    expect(screen.getByText('You cannot take this')).toBeTruthy();
+    expect(getCoverOpen).not.toHaveBeenCalled();
+  });
+
+  it('cover off: an eligible reader is offered the claim as before', async () => {
+    listOpenShifts.mockResolvedValue([
+      { ...shift, myEligibility: { eligible: true, reasons: [] } },
+    ]);
+    await renderPage();
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Take it' }).disabled,
+    ).toBe(false);
+    expect(screen.queryByText('You cannot take this')).toBeNull();
+  });
+
+  it('cover off: a shift that only clashes keeps the clash badge, as before', async () => {
+    listOpenShifts.mockResolvedValue([
+      {
+        ...shift,
+        clashesWithMine: true,
+        myEligibility: {
+          eligible: false,
+          reasons: [{ code: 'overlap', message: 'Already working at this time' }],
+        },
+      },
+    ]);
+    await renderPage();
+    await screen.findByText('Clashes with your rota');
+    expect(screen.queryByText('You cannot take this')).toBeNull();
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Take it' }).disabled,
+    ).toBe(true);
   });
 
   it('says why a reader cannot take a shift, and does not offer the claim', async () => {

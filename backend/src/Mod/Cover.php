@@ -581,6 +581,64 @@ final class Cover implements Module
         return self::assessFor($pdo, $o, $sh, [$staff], $lock, $ignore)[$staff];
     }
 
+    /**
+     * One person against many shifts at once (the open-shifts list's own eligibility, owner decision 31 Oct 2026): the same reasons
+     * assess() gives for each shift, read with one query per kind of fact instead of one round per shift. Only that person's records
+     * are read, so nothing about anyone else can appear. Never locks (it informs; the claim re-checks under its locks).
+     * @param list<array<string,mixed>> $shifts shift rows with id, starts_at, ends_at, break_minutes and timezone
+     * @return array<string, list<array{code:string,message:string}>> reasons by shift id
+     */
+    public static function assessShifts(\PDO $pdo, string $o, string $staff, array $shifts): array
+    {
+        if ($shifts === []) {
+            return [];
+        }
+        $orgTz = Compliance::tz($pdo, $o);
+        $settings = $pdo->prepare('SELECT settings FROM organisations WHERE id = ?');
+        $settings->execute([$o]);
+        [$minRest, $maxWeek] = R::limits((string) $settings->fetchColumn());
+        $span = 8 * 86400;
+        $starts = array_map(static fn (array $s): int => R::ts((string) $s['starts_at']), $shifts);
+        $ends = array_map(static fn (array $s): int => R::ts((string) $s['ends_at']), $shifts);
+        $q = $pdo->prepare(
+            "SELECT s.id, s.staff_profile_id, s.starts_at, s.ends_at, s.break_minutes, s.status FROM shifts s LEFT JOIN rotas x ON x.id = s.rota_id AND x.org_id = s.org_id
+              WHERE s.org_id = ? AND s.staff_profile_id = ? AND s.status <> 'cancelled' AND s.starts_at < ? AND s.ends_at > ?
+                AND (s.rota_id IS NULL OR x.status = 'published') LIMIT 20000"
+        );
+        $q->execute([$o, $staff, gmdate('Y-m-d H:i:s', max($ends) + $span), gmdate('Y-m-d H:i:s', min($starts) - $span)]);
+        $mine = $q->fetchAll();
+        $l = $pdo->prepare("SELECT staff_profile_id, start_date, end_date, status, type FROM leave_requests WHERE org_id = ? AND status = 'approved' AND staff_profile_id = ?");
+        $l->execute([$o, $staff]);
+        $leave = $l->fetchAll();
+        $a = $pdo->prepare("SELECT staff_profile_id, weekday, date, start_time, end_time, status, recurring FROM availability WHERE org_id = ? AND status = 'unavailable' AND staff_profile_id = ?");
+        $a->execute([$o, $staff]);
+        $avail = $a->fetchAll();
+        $act = $pdo->prepare('SELECT active FROM staff_profiles WHERE org_id = ? AND id = ?');
+        $act->execute([$o, $staff]);
+        $isActive = (int) $act->fetchColumn() === 1;
+        $ids = array_map(static fn (array $s): string => (string) $s['id'], $shifts);
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $ab = $pdo->prepare("SELECT shift_id FROM cover_absences WHERE org_id = ? AND staff_profile_id = ? AND status IN ('open','covered') AND shift_id IN ($in)
+                             UNION SELECT shift_id FROM cover_requests WHERE org_id = ? AND absent_staff_profile_id = ? AND status = 'open' AND shift_id IN ($in)");
+        $ab->execute([$o, $staff, ...$ids, $o, $staff, ...$ids]);
+        $absent = array_flip(array_map('strval', $ab->fetchAll(\PDO::FETCH_COLUMN)));
+        $docsOn = [];
+        $out = [];
+        foreach ($shifts as $i => $sh) {
+            $id = (string) $sh['id'];
+            $at = gmdate('Y-m-d\TH:i:s\Z', $starts[$i]);
+            $docs = null;
+            if ($isActive) {
+                // Compliance::eligible reads the organisation-local date of the instant; one read per date.
+                $day = \RotaFlow\ComplianceRules::localDate($orgTz, $at) ?? $at;
+                $docs = $docsOn[$day] ??= Compliance::eligible($pdo, $o, $staff, $at);
+            }
+            $near = array_values(array_filter($mine, static fn (array $x): bool => (string) $x['id'] !== $id && R::ts((string) $x['starts_at']) < $ends[$i] + $span && R::ts((string) $x['ends_at']) > $starts[$i] - $span));
+            $out[$id] = C::assess($staff, $sh, ['active' => $isActive, 'absent' => isset($absent[$id]), 'documents' => $docs], $near, $leave, $avail, $minRest, $maxWeek, $orgTz)['reasons'];
+        }
+        return $out;
+    }
+
     /** @param list<string> $people @param list<string> $ignore @return array<string, array{reasons:list<array>, warnings:list<array>}> */
     private static function assessFor(\PDO $pdo, string $o, array $sh, array $people, bool $lock, array $ignore = []): array
     {
