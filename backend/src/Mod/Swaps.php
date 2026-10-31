@@ -16,8 +16,9 @@ use RotaFlow\{Audit, CoverRules, Ctx, Db, HttpError, Input, Module, Notify, Scop
  * With the cover module on (S12, flag cover_tools; off, all of this is exactly as before):
  *  - a pending or accepted swap whose shift changed (times, site, holder, status, rota), was cancelled, sits on an archived rota or has
  *    started is cancelled automatically (void_reason) when anyone touches it, and by the cover sweep in cron;
- *  - the instant open-shift claim takes the organisation lock first and gains the cover eligibility check (leave, availability, documents,
- *    not the absentee), and a shift a manager has opened a cover request for is applied for on the Cover page instead.
+ *  - a shift a manager has opened a cover request for is applied for on the Cover page instead of being claimed.
+ * Whatever the flag (owner decision, 31 Oct 2026), the instant open-shift claim takes the organisation lock first and checks the cover
+ * eligibility (leave, availability, documents, not the absentee, overlap).
  */
 final class Swaps implements Module
 {

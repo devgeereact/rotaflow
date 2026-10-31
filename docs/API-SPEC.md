@@ -660,7 +660,9 @@ writable membership and an organisation that is not read-only for billing. A wee
 `inactive`, `absent` (said they cannot work this shift), `overlap` (a committed shift: published rota or no rota),
 `leave` (approved), `unavailable` (declared), `documents` (`Compliance::eligible`); short rest and a long week are
 `warnings` and never block. Approval and assignment lock the organisation row first, then the shift, and re-check
-eligibility under the lock (**409 `not_eligible`** with every reason in one sentence).
+eligibility under the lock (**409 `not_eligible`** with every reason in one sentence). A platform support session is
+refused on every cover route, reads and writes, flag on or off (**403 `forbidden`**, as staff documents in S10; owner
+decision 31 Oct 2026: absence reasons can be health data).
 
 | Method and path | Who | Does |
 | --------------- | --- | ---- |

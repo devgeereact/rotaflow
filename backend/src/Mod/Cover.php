@@ -703,10 +703,17 @@ final class Cover implements Module
 
     // ---- helpers -------------------------------------------------------------------------------------------------------------------------
 
-    /** Membership first (a stranger gets 404), then the flag, then the role. */
+    /**
+     * Membership first (a stranger gets 404), then a platform support session is refused (owner decision, 31 Oct 2026: absence reasons
+     * can be health data; the same 403 `forbidden` as staff documents in S10, on every cover route, reads and writes, flag on or off),
+     * then the flag, then the role.
+     */
     private function access(array $u, string $o, bool $manager): array
     {
         $m = Scope::membership($this->pdo, $u['id'], $o);
+        if (($m['support'] ?? null) !== null) {
+            throw HttpError::forbidden('Platform support has no access to cover or absence records');
+        }
         if (!self::on($this->pdo, $o)) {
             throw new HttpError(403, 'feature_off', 'Cover is not switched on for this organisation yet.');
         }

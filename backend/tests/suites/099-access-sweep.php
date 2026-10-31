@@ -66,4 +66,32 @@ foreach ([['name' => ['a']], ['name' => 5], ['token' => ['x']], ['email' => ['x'
 }
 check('wrong-typed inputs never produce a 500', true);
 
+// A live platform support session (consent given, read_write) is refused on every route that can carry health or pay data, reads and
+// writes alike: cover (absence reasons; owner decision 31 Oct 2026), staff documents (S10) and the payroll export (S13). The flags are on so
+// the refusal is not just feature_off; the refusal comes before the flag anyway.
+use RotaFlow\Db;
+call($api, 'sue', 'GET', '/me');
+$sueId = (string) $pdo->query("SELECT id FROM users WHERE email = 'sue@example.test'")->fetchColumn();
+$pdo->prepare("INSERT INTO platform_admins (user_id, role) VALUES (?, 'platform_support')")->execute([$sueId]);
+$pdo->prepare('UPDATE organisations SET support_access_allowed = 1 WHERE id = ?')->execute([$org]);
+$pdo->prepare("INSERT INTO support_access_sessions (id, org_id, admin_user_id, reason, case_ref, scope, expires_at) VALUES (?, ?, ?, 'Sweep: the customer asked for help', 'CASE-4199', 'read_write', DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 HOUR))")->execute([Db::uuid(), $org, $sueId]);
+$pdo->exec("UPDATE feature_flags SET enabled = 1, rollout = 100 WHERE flag_key IN ('cover_tools', 'staff_documents', 'timesheet_tools')");
+check('support: the session is live (it reads an ordinary route)', call($api, 'sue', 'GET', "/orgs/$org/locations")[0] === 200);
+$guarded = 0;
+$leaks = [];
+foreach ($routes as $r) {
+    [$method, $tpl] = $r;
+    if (!str_contains($tpl, '{o}') || preg_match('#/(cover|documents|compliance)(/|$)|/timesheets/export$#', $tpl) !== 1) {
+        continue;
+    }
+    $guarded++;
+    [$s, $res] = call($api, 'sue', $method, $subst($tpl, $org), $method === 'POST' ? ['x' => 1] : []);
+    if ($s !== 403 || ($res['error']['code'] ?? '') !== 'forbidden') {
+        $leaks[] = "$method $tpl -> $s " . ($res['error']['code'] ?? '');
+    }
+}
+check("support: every cover, documents, compliance and payroll-export route refuses a support session with 403 forbidden ($guarded routes): " . ($leaks === [] ? 'all refused' : implode('; ', array_slice($leaks, 0, 8))), $leaks === [] && $guarded >= 20, count($leaks) . ' leaks');
+$pdo->exec("UPDATE feature_flags SET enabled = 0, rollout = 0 WHERE flag_key = 'cover_tools'");
+check('support: cover refuses the session with the flag off too (403 forbidden, not feature_off)', call($api, 'sue', 'GET', "/orgs/$org/cover/overview")[1]['error']['code'] === 'forbidden');
+
 check('no route in the sweep reached Stripe', $stripeReached === 0, "calls=$stripeReached");

@@ -505,3 +505,15 @@ The owner decided three S12 questions on 31 October 2026 (relayed by the coordin
 - The Open shifts page shows the server's sentence on a refused claim (as it already did for `already_working`);
   with the flag off it does not show the reasons before the click (that view reads the cover routes). NOT TESTED in a
   browser.
+
+**2. Platform support sessions are refused on every cover route.**
+
+- `Cover::access` (which every one of the 14 cover routes goes through, reads and writes) refuses a support session
+  with **403 `forbidden`** right after the membership check and before the flag, so it holds with the flag on or off.
+  Same code as S10's staff documents; the sentence names cover ("Platform support has no access to cover or absence
+  records") rather than repeating S10's "staff documents", which would mislead the reader. A support session still
+  reaches ordinary routes (the sweep checks `GET locations` answers 200 in the same session).
+- Access sweep (`099`) rows: with a live `read_write` support session and the flags on, every org route under
+  `/cover`, `/documents`, `/compliance` and `/timesheets/export` (24 routes) answers 403 `forbidden`; with
+  `cover_tools` off, cover still answers `forbidden`, not `feature_off`.
+- Mutation checks (each failed suite 099, then reverted): the refusal removed; the refusal moved after the flag.
