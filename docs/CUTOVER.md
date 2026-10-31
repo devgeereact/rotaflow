@@ -274,7 +274,7 @@ Rollback of the cron line: remove it (restore the backup).
 
 - Keep the Supabase project frozen, not deleted, until you are satisfied (suggested: two weeks, one payroll cycle). Rolling
   back after people have written to the new site loses those writes on the old one: decide before unfreezing it.
-- Delete `~/rotaflow-cutover/private/config/*.php` and the two secrets files; kill the tunnel (`pkill -f "13306:localhost:3306"`).
+- Delete `~/rotaflow-cutover/private/config/*.php` and the two secrets files; kill the tunnel (`pkill -f "13306:127.0.0.1:3306"`).
 - Push-to-deploy (later, your decision): merge `release/cutover` into `main`, set `"branch": "main"` in `release.json`, add
   the `push:` trigger written in `.github/workflows/deploy.yml`, create the repository variables named there and the
   `CPANEL_SSH_KEY` / `CPANEL_KNOWN_HOSTS` secrets, enable Actions for the repository. Until then `pnpm release` from the Mac.
