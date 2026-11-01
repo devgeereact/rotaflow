@@ -8,7 +8,10 @@ namespace RotaFlow\DataMove;
  * each group; groups are applied in the order listed, one transaction each. Every source SELECT names its columns exactly
  * as the target table does; columns starting with "_" are helpers for transform() and the report, never written.
  * Macros, expanded by Mover: {ts:expr} formats a timestamptz as a UTC "YYYY-MM-DD HH:MM:SS.ffffff" string, {org:expr} is
- * the --exclude-org filter (true when the organisation is moved).
+ * the --exclude-org filter (true when the organisation is moved), {src:table.column;expr;default} is expr when the source
+ * has that table or column and default when it does not (SourceSchema: production stopped at 0156, the repo is at 0164).
+ * A mapped table the source does not have at all (storage_deletions before 0159, account_deletions before 0162) is left out
+ * of the plan with one warning.
  *
  * Every public table of the source is either mapped here (via 'source') or listed in SKIPPED with the reason, and every
  * source column of a mapped table is either named in its SELECT or listed in 'dropped' with the reason: Mover checks both
@@ -50,7 +53,10 @@ final class Map
                     (p.id IS NOT NULL) AS _has_profile, {ts:u.deleted_at} AS _deleted_at, (u.email_confirmed_at IS NOT NULL) AS _confirmed,
                     (u.banned_until IS NOT NULL AND u.banned_until > now()) AS _banned, coalesce(u.is_anonymous, false) AS _anonymous,
                     lower(btrim(p.email)) AS _profile_email, coalesce(p.is_platform_admin, false) AS _legacy_admin,
-                    EXISTS (SELECT 1 FROM public.account_deletions d WHERE d.user_id = u.id AND d.status <> 'done') AS _pending_erasure,
+                    {src:account_deletions;EXISTS (SELECT 1 FROM public.account_deletions d WHERE d.user_id = u.id AND d.status <> 'done');false} AS _pending_erasure,
+                    EXISTS (SELECT 1 FROM public.gdpr_requests g WHERE g.kind = 'erasure' AND g.status = 'completed'
+                      AND lower(btrim(g.subject_email)) = lower(btrim(u.email)) AND u.created_at < coalesce(g.closed_at, g.updated_at)) AS _erasure_closed,
+                    EXISTS (SELECT 1 FROM public.memberships m WHERE m.user_id = u.id AND m.role = 'owner' AND m.status = 'active') AS _owner,
                     EXISTS (SELECT 1 FROM public.platform_admins pa WHERE pa.user_id = u.id) AS _platform_admin,
                     (SELECT string_agg(DISTINCT i.provider, ',' ORDER BY i.provider) FROM auth.identities i WHERE i.user_id = u.id) AS _providers
                   FROM auth.users u LEFT JOIN public.profiles p ON p.id = u.id
@@ -79,7 +85,9 @@ final class Map
             self::plain('role_delegations', 'identity', 'r', 'id, org_id, from_user_id, to_user_id, {ts:starts_at}, {ts:ends_at}, {ts:revoked_at}, note, {ts:created_at}'),
             [
                 'table' => 'app_settings', 'group' => 'identity', 'key' => ['user_id'], 'source' => 'app_settings',
-                'sql' => "SELECT s.user_id::text AS user_id, s.theme, s.time_format, s.week_start, s.digest_frequency, s.notifications_enabled,
+                'sql' => "SELECT s.user_id::text AS user_id, s.theme, {src:app_settings.time_format;s.time_format;'24h'::text} AS time_format,
+                    {src:app_settings.week_start;s.week_start;'monday'::text} AS week_start,
+                    {src:app_settings.digest_frequency;s.digest_frequency;'immediate'::text} AS digest_frequency, s.notifications_enabled,
                     {ts:s.updated_at} AS updated_at FROM public.app_settings s",
                 'order' => 's.user_id', 'dropped' => ['id' => 'the target keys app_settings by user_id', 'created_at' => 'not kept by the target'],
             ],
@@ -106,7 +114,7 @@ final class Map
                 'sql' => "SELECT s.id::text AS id, s.org_id::text AS org_id, s.user_id::text AS user_id, s.email, s.first_name, s.last_name, s.job_title,
                     s.job_title_id::text AS job_title_id, s.department_id::text AS department_id, s.contract_type, s.weekly_hours::text AS weekly_hours,
                     s.holiday_allowance::text AS holiday_allowance, to_json(s.skills)::text AS skills, s.payroll_id, s.start_date::text AS start_date,
-                    s.phone, s.photo_url, s.photo_path, s.active, {ts:s.created_at} AS created_at, {ts:s.updated_at} AS updated_at
+                    s.phone, s.photo_url, {src:staff_profiles.photo_path;s.photo_path;NULL::text} AS photo_path, s.active, {ts:s.created_at} AS created_at, {ts:s.updated_at} AS updated_at
                   FROM public.staff_profiles s WHERE {org:s.org_id}",
                 'order' => 's.id', 'dropped' => [],
             ],
@@ -123,7 +131,8 @@ final class Map
                   FROM public.staff_pay_rates r WHERE {org:r.org_id}",
                 'order' => 'r.id', 'dropped' => ['note' => 'LOSSY: the target keeps no note on a pay rate (counted in the report)', 'created_by' => 'LOSSY: who entered a rate is in the audit trail only'],
             ],
-            self::plain('emergency_contacts', 'places', 'e', 'id, org_id, staff_profile_id, name, relationship, phone, secondary_phone, {ts:created_at}, {ts:updated_at}'),
+            self::plain('emergency_contacts', 'places', 'e', 'id, org_id, staff_profile_id, name, relationship, phone, secondary_phone, {ts:created_at}, {ts:updated_at}',
+                ['medical_notes' => 'NEVER moved: Article 9 data about someone with no rights channel here; 0164 purges it on Supabase (decision D5, docs/AUDIT.md A-DM-2). Present only at a source before 0164; the plan counts the non-blank ones']),
             // ---- the rota ----
             self::plain('shift_types', 'rota', 't', 'id, org_id, name, colour, default_start, default_end, is_paid, category, {ts:created_at}, {ts:updated_at}'),
             [
@@ -172,7 +181,8 @@ final class Map
             [
                 'table' => 'documents', 'group' => 'compliance', 'key' => ['id'], 'source' => 'documents', 'transform' => 'documents',
                 'sql' => "SELECT d.id::text AS id, d.org_id::text AS org_id, d.staff_profile_id::text AS staff_profile_id, d.type, d.name, d.file_url,
-                    d.storage_path, (SELECT o.metadata->>'mimetype' FROM storage.objects o WHERE o.bucket_id = 'staff-documents' AND o.name = d.storage_path) AS mime,
+                    {src:documents.storage_path;d.storage_path;NULL::text} AS storage_path,
+                    (SELECT o.metadata->>'mimetype' FROM storage.objects o WHERE o.bucket_id = 'staff-documents' AND o.name = {src:documents.storage_path;d.storage_path;NULL::text}) AS mime,
                     d.issued_at::text AS issued_at, d.expires_at::text AS expires_at, 'approved' AS status, {ts:d.created_at} AS created_at, {ts:d.updated_at} AS updated_at
                   FROM public.documents d WHERE {org:d.org_id}",
                 'order' => 'd.id', 'dropped' => [],

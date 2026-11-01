@@ -3,9 +3,10 @@ declare(strict_types=1);
 
 // The Supabase -> MariaDB data move (bin/datamove.php), the parts that need no PostgreSQL: value conversion against the
 // target's own column metadata, safe storage paths, the URI parser that never echoes a secret, and the map checked against
-// the migrated schema (every target table and key exists, foreign-key order holds). The end-to-end run against a real
-// PostgreSQL built from supabase/migrations is scripts/datamove-test.sh all (backend/tests/datamove/run.php).
-use RotaFlow\DataMove\{Convert, Map};
+// the migrated schema (every target table and key exists, foreign-key order holds), and the source-version handling
+// (SourceSchema: production stopped at 0156, the repo is at 0164). The end-to-end runs against a real PostgreSQL built
+// from supabase/migrations are scripts/datamove-test.sh all (backend/tests/datamove/run.php and run-live.php).
+use RotaFlow\DataMove\{Convert, Map, SourceSchema};
 
 $col = static fn (string $type, array $extra = []): array => $extra + ['type' => $type, 'len' => null, 'bytes' => null, 'precision' => null, 'scale' => null, 'dtp' => null, 'unsigned' => false, 'enum' => null, 'nullable' => true];
 
@@ -98,3 +99,51 @@ foreach ($pdo->query('SELECT TABLE_NAME, REFERENCED_TABLE_NAME FROM information_
 check('every parent table is written before its children (foreign-key order)', $late === [], implode('; ', array_unique($late)));
 $groups = array_values(array_unique(array_map(static fn (array $d): string => $d['group'], Map::tables())));
 check('groups appear in the order they are applied', $groups === array_values(array_intersect(Map::GROUPS, $groups)));
+
+// ---- the source version (production stopped at 0156; the repo is at 0164) ----
+$mig = array_map('basename', glob(dirname(__DIR__, 3) . '/supabase/migrations/*.sql') ?: []);
+check('SourceSchema knows the repo\'s newest Supabase migration', $mig !== [] && str_starts_with((string) end($mig), SourceSchema::REPO_LATEST . '_'), (string) end($mig));
+$feat = [];
+foreach (SourceSchema::FEATURES + SourceSchema::PURGED as $k => [$since]) {
+    $file = array_values(preg_grep('/^' . $since . '_/', $mig) ?: [])[0] ?? '';
+    $sql = $file !== '' ? strtolower((string) file_get_contents(dirname(__DIR__, 3) . '/supabase/migrations/' . $file)) : '';
+    $name = str_contains($k, '.') ? explode('.', $k)[1] : $k;
+    if ($sql === '' || !str_contains($sql, $name)) {
+        $feat[] = "$k: not in migration $since";
+    }
+}
+check('every optional table or column is named by the migration said to add (or purge) it', $feat === [], implode('; ', $feat));
+$opt = [];
+foreach (Map::tables() as $d) {
+    preg_match_all('/\{src:([\w.]+);/', $d['sql'], $m);
+    foreach ($m[1] as $k) {
+        if (!isset(SourceSchema::FEATURES[$k])) {
+            $opt[] = "{$d['table']}: $k";
+        }
+    }
+    if (in_array($d['source'], ['account_deletions', 'storage_deletions'], true) && !isset(SourceSchema::FEATURES[$d['source']])) {
+        $opt[] = "{$d['source']} is mapped but not listed as optional";
+    }
+}
+check('every {src:...} in the map names a listed feature', $opt === [], implode('; ', $opt));
+$at156 = SourceSchema::fixed(['app_settings', 'app_settings.theme', 'emergency_contacts', 'emergency_contacts.medical_notes', 'documents', 'documents.file_url'], '0156');
+$at164 = SourceSchema::fixed(['app_settings', 'app_settings.time_format', 'app_settings.week_start', 'app_settings.digest_frequency', 'documents', 'documents.storage_path',
+    'staff_profiles.photo_path', 'storage_deletions', 'account_deletions', 'emergency_contacts'], '0164');
+$appSql = implode(' ', array_column(array_filter(Map::tables(), static fn ($d) => $d['table'] === 'app_settings'), 'sql'));
+check('at 0156 the preferences read as the defaults; at 0164 as the columns', str_contains($at156->expand($appSql), "'24h'::text AS time_format") && !str_contains($at156->expand($appSql), 's.time_format')
+    && str_contains($at164->expand($appSql), 's.time_format AS time_format'));
+$usersSql = implode(' ', array_column(array_filter(Map::tables(), static fn ($d) => $d['table'] === 'users'), 'sql'));
+check('at 0156 nothing reads account_deletions, and a completed erasure case is still read', !str_contains($at156->expand($usersSql), 'account_deletions') && str_contains($at156->expand($usersSql), "g.kind = 'erasure'"));
+$p156 = $at156->problems(static fn (string $sql): int => 0);
+$w = array_column($p156, 'what');
+check('at 0156: one warning per missing feature and one for the medical notes, all plain warnings',
+    count($p156) === 6 && array_unique(array_column($p156, 'level')) === ['warning'] && count(array_filter($w, static fn ($x) => str_starts_with($x, 'source at 0156: ') && str_contains($x, 'not present, nothing to move'))) === 5
+    && count(array_filter($w, static fn ($x) => str_contains($x, 'medical notes') && str_contains($x, 'never moved'))) === 1, json_encode($w));
+check('at 0164: nothing to say', $at164->problems(static fn (string $sql): int => 0) === [] && $at164->inferred() === '0164');
+$counted = $at156->problems(static fn (string $sql): int => str_contains($sql, 'medical_notes') ? 3 : 0);
+check('medical notes still at the source are counted, never read, and left behind', (bool) array_filter(array_column($counted, 'what'), static fn ($x) => str_contains($x, 'never moved: 3 rows hold a note; the move leaves them behind')));
+check('a source older than 0156 is refused; one newer than the repo is a warning',
+    in_array('error', array_column(SourceSchema::fixed([], '0150')->problems(static fn () => 0), 'level'), true)
+    && in_array('warning', array_column(SourceSchema::fixed(['emergency_contacts'], '0170')->problems(static fn () => 0), 'level'), true));
+check('a source with no migration record is read from its schema', str_contains(SourceSchema::fixed(['emergency_contacts.medical_notes', 'storage_deletions'])->label(), '0159 (read from the schema'));
+check('a record that disagrees with the schema is reported, and the schema wins', (bool) array_filter(array_column(SourceSchema::fixed(['emergency_contacts.medical_notes'], '0162')->problems(static fn () => 0), 'what'), static fn ($x) => str_contains($x, 'the move follows the schema')));

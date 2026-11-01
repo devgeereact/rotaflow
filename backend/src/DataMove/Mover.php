@@ -41,6 +41,8 @@ final class Mover
     private bool $planned = false;
     /** @var array<string,array<string,true>> */
     private array $parentCache = [];
+    /** What the source has: production is at 0156, the repo at 0164 (read inside the snapshot). */
+    private SourceSchema $schema;
 
     /**
      * @param array<string,mixed> $config the API's private config (secret_key encrypts SMTP passwords)
@@ -52,6 +54,7 @@ final class Mover
         $this->src->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
         $this->src->exec("SET TIME ZONE 'UTC'");
         $this->src->exec('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+        $this->schema = SourceSchema::detect($this->src);
         $ex = array_values(array_unique(array_map('strtolower', $opts['exclude_orgs'] ?? [])));
         if (!empty($opts['exclude_demo'])) {
             $ex = array_values(array_unique([...$ex, ...$this->src->query('SELECT id::text FROM public.organisations WHERE is_demo')->fetchAll(\PDO::FETCH_COLUMN)]));
@@ -67,6 +70,9 @@ final class Mover
     public function plan(): void
     {
         $this->checkTargetVersion();
+        foreach ($this->schema->problems(fn (string $sql): int => (int) $this->src->query($sql)->fetchColumn()) as $p) {
+            $this->problem($p['level'], $p['table'], '-', $p['what']);
+        }
         $this->checkCoverage();
         $this->targetFlags = $this->dst->query('SELECT flag_key FROM feature_flags')->fetchAll(\PDO::FETCH_COLUMN);
         $order = [];
@@ -188,6 +194,14 @@ final class Mover
         $why = null;
         if ($r['_pending_erasure']) {
             $why = 'erasure pending on Supabase';
+        } elseif ($r['_erasure_closed']) {
+            // 0162's rule, applied whatever the source version: a completed erasure case removes the subject's login. Before
+            // 0162 (production is at 0156) closing the case left the login, so the account is still there to be moved.
+            $why = 'erasure case completed on Supabase while the login stayed (the 0162 rule)';
+            if ($r['_owner'] || $r['_platform_admin']) {
+                $this->problem('warning', 'users', $r['id'], 'erasure case completed but the person still ' . ($r['_owner'] ? 'owns an organisation' : 'holds a platform role')
+                    . ' (0162 would have refused to close it): moved unlinkable, so that role has nobody who can sign in; give it to someone else after the move');
+            }
         } elseif ($r['_deleted_at'] !== null) {
             $why = 'deleted on Supabase';
         } elseif (!$r['_has_profile']) {
@@ -905,11 +919,13 @@ final class Mover
     private function defs(): array
     {
         $only = $this->opts['only'] ?? [];
-        return array_values(array_filter(Map::tables(), static fn (array $d): bool => $only === [] || in_array($d['table'], $only, true)));
+        // A table a later migration added and this source lacks has nothing to move (reported once by SourceSchema).
+        return array_values(array_filter(Map::tables(), fn (array $d): bool => ($only === [] || in_array($d['table'], $only, true)) && $this->schema->has($d['source'])));
     }
 
     private function expand(string $sql): string
     {
+        $sql = $this->schema->expand($sql);
         $sql = (string) preg_replace_callback('/\{ts:([^{}]+)\}/', static fn (array $m): string => "to_char(({$m[1]}) AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US')", $sql);
         return (string) preg_replace_callback('/\{org:([^{}]+)\}/', static fn (array $m): string => "(({$m[1]}) IS NULL OR NOT (({$m[1]}) = ANY (current_setting('rotaflow.excluded_orgs')::uuid[])))", $sql);
     }
@@ -944,14 +960,22 @@ final class Mover
     /** @return array{counts:array<string,array<string,mixed>>,problems:list<array<string,string>>,notes:array<string,array<string,int>>,excluded_orgs:list<string>} */
     public function result(): array
     {
-        return ['counts' => $this->counts, 'problems' => $this->problems, 'notes' => $this->notes, 'excluded_orgs' => $this->excluded];
+        return ['counts' => $this->counts, 'problems' => $this->problems, 'notes' => $this->notes, 'excluded_orgs' => $this->excluded,
+            'source_schema' => ['label' => $this->schema->label()] + $this->schema->summary()];
+    }
+
+    public function schema(): SourceSchema
+    {
+        return $this->schema;
     }
 
     /** The source paths the files step must not copy: objects queued for deletion, and those of excluded organisations. @return array<string,true> */
     public function blockedObjects(): array
     {
         $out = [];
-        foreach ($this->src->query("SELECT bucket, path, is_folder FROM public.storage_deletions WHERE status <> 'done'")->fetchAll() as $r) {
+        $queued = $this->schema->has('storage_deletions') // the queue exists from 0159
+            ? $this->src->query("SELECT bucket, path, is_folder FROM public.storage_deletions WHERE status <> 'done'")->fetchAll() : [];
+        foreach ($queued as $r) {
             $out[$r['bucket'] . '/' . $r['path'] . ($r['is_folder'] ? '/' : '')] = true;
         }
         foreach ($this->excluded as $o) {

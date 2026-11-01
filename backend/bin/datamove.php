@@ -13,7 +13,10 @@ declare(strict_types=1);
 //
 // Source (read-only: one REPEATABLE READ READ ONLY transaction): --source-uri-file=PATH (a file of mode 0600 holding the
 // postgres:// URI) or the SUPABASE_DB_URL environment variable. A pg_dump is restored first into a local database
-// (scripts/datamove-test.sh restore-dump) and named the same way. The URI is never printed.
+// (scripts/datamove-test.sh restore-dump) and named the same way. The URI is never printed. Any source from Supabase
+// migration 0156 (production, 1 Nov 2026) to 0164 (the repo) is read: the version comes from the source's own
+// supabase_migrations record, and what a later migration added and the source lacks is a warning, never an error
+// (DataMove/SourceSchema.php; docs/CUTOVER.md "Source version").
 // Target: the API's private config, ROTAFLOW_PRIVATE_ROOT/config/$ROTAFLOW_CONFIG_FILE (default config.php, the runtime user).
 // Files: SUPABASE_URL (or --supabase-url=) and the service key from --service-key-file=PATH (0600) or SUPABASE_SERVICE_ROLE_KEY.
 // Options: --resume, --exclude-org=<uuid>[,<uuid>], --exclude-demo-orgs, --sample=N (default 25), --report=PATH, --only=table[,table]
@@ -170,5 +173,6 @@ foreach ($r['counts'] as $t => $c) {
 foreach ($r['files'] ?? [] as $k => $v) {
     printf("  files %-28s %s\n", $k, $v);
 }
+echo '  ' . ($r['source_schema']['label'] ?? 'source version unknown') . "\n";
 echo "$cmd: {$meta['result']} ($errors errors, $warnings warnings)\nreport: $path\n";
 exit($ok ? 0 : 1);

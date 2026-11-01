@@ -38,8 +38,17 @@ final class Files
     public function run(bool $apply): bool
     {
         $refs = [];
-        foreach ($this->src->query("SELECT 'staff-documents/' || storage_path FROM public.documents WHERE storage_path IS NOT NULL
-            UNION ALL SELECT 'staff-photos/' || photo_path FROM public.staff_profiles WHERE photo_path IS NOT NULL")->fetchAll(\PDO::FETCH_COLUMN) as $r) {
+        // documents.storage_path is from 0159 and staff_profiles.photo_path from 0162: before them (production is at 0156)
+        // nothing in the database points at a stored object, so every object in these buckets is reported as an orphan.
+        $schema = SourceSchema::detect($this->src);
+        $sel = [];
+        if ($schema->has('documents.storage_path')) {
+            $sel[] = "SELECT 'staff-documents/' || storage_path FROM public.documents WHERE storage_path IS NOT NULL";
+        }
+        if ($schema->has('staff_profiles.photo_path')) {
+            $sel[] = "SELECT 'staff-photos/' || photo_path FROM public.staff_profiles WHERE photo_path IS NOT NULL";
+        }
+        foreach ($sel === [] ? [] : $this->src->query(implode(' UNION ALL ', $sel))->fetchAll(\PDO::FETCH_COLUMN) as $r) {
             $refs[$r] = true;
         }
         $q = $this->src->query("SELECT bucket_id, name, metadata->>'size' AS size, metadata->>'eTag' AS etag FROM storage.objects ORDER BY bucket_id, name");

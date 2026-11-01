@@ -31,6 +31,11 @@ final class Report
         $m = $data['meta'] ?? [];
         $out = ["# RotaFlow data move: $command", '', 'When (UTC): ' . ($m['utc'] ?? gmdate('c')), 'Source: ' . ($m['source'] ?? '?') . ' (read-only snapshot)',
             'Target: ' . ($m['target'] ?? '?'), 'Result: **' . ($m['result'] ?? '?') . '**'];
+        if (!empty($data['source_schema'])) {
+            $s = $data['source_schema'];
+            $out[] = 'Source schema: ' . $s['label'] . ' (' . ($s['recorded'] !== null ? $s['recorded_migrations'] . ' migrations recorded; ' : '') . 'the schema reads as ' . $s['inferred']
+                . ($s['absent'] !== [] ? '; not present: ' . implode(', ', $s['absent']) : '') . ($s['purged_present'] !== [] ? '; still present, never moved: ' . implode(', ', $s['purged_present']) : '') . ')';
+        }
         if (!empty($data['excluded_orgs'])) {
             $out[] = 'Organisations left behind (--exclude-org / --exclude-demo-orgs): ' . implode(', ', $data['excluded_orgs']);
         }
