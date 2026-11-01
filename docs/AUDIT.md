@@ -1255,3 +1255,21 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
 - Not changed: anything asserting a transfer assessment (Cloudflare stays an open question, as before). Not legal advice:
   the owner may want the Privacy Notice reviewed before launch.
 
+## 2026-11-01: Released `cf25f72` to rotaflow.space; `main` now carries the cPanel stack
+
+- Owner: "deploy now and send to main"; everything is demo data, no notice or backup needed.
+- `main` fast-forwarded to `release/cutover` (`cf25f72`); the old `main` is tag `live-supabase-2026-11-01`.
+- Found already done by the cutover session: migrations, the data move (`apply: OK`, `verify: OK`, source at 0156, the
+  six expected warnings; reports in `~/rotaflow-cutover/private/datamove/`), the first release (`59daade`, 18:28Z) and
+  the server cron (`bin/cron.php` every minute).
+- Released `cf25f72` (design phases and the legal update) with `scripts/release.mjs --go` from a clean worktree on
+  `main` (settings copy with `branch: main`), snapshot `~/backups/rotaflow/releases/20261101T201418Z`, 5 smoke checks
+  passed. Backend unchanged; site 17 changed, 103 new files.
+- Gate before release: full `pnpm run check` including **`check:php` 2238 passed, 0 failed** on an isolated test
+  database (port 3318). The earlier "socket" failures were macOS's 104-character socket-path limit in deep worktrees,
+  not the sandbox: run the suite from a short path.
+- After release, on https://rotaflow.space: `/`, `/pricing`, `/login`, `/legal/trust`, `/legal/cookies`,
+  `/app/dashboard`, `/api/health` all 200; Trust says the United Kingdom; Pricing has no Postgres claim; axe and
+  overflow clean on six public pages at 1440 and 390.
+- Rollback: `pnpm release --rollback --go` restores the snapshot.
+
