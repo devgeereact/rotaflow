@@ -1226,3 +1226,18 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   unit test rather than a screenshot.
 - `pnpm run check` to `check:php`, plus 3 new tests.
 
+## 2026-11-01: Design gaps merged into `release/cutover`; server location evidence for the legal pages
+
+- Owner approved merge, push and deploy. `design/gap-fixes` was merged with the latest `release/cutover` (clean, no
+  conflicts), `pnpm run check` passed to `check:php` (sandbox socket; `backend/` is identical to the release tip), and
+  `release/cutover` on origin was fast-forwarded to it. **Local checkouts of `release/cutover` need
+  `git pull --ff-only`.**
+- Not deployed: deploying `release/cutover` is the production cutover in `docs/CUTOVER.md` (status PREPARED, NOT RUN),
+  which needs the go/no-go list, the owner's typed credentials, a day's notice to users and a 60 to 90 minute window.
+  The design fixes go live with that cutover.
+- Server location, for the cutover privacy work (Trust, Privacy, `src/lib/subprocessors.ts`, `src/lib/legalFacts.ts`):
+  `premium17.web-hosting.com` resolves to `185.61.152.45`, in Namecheap's netblock `UK-NC-NET1`, country `GB` (whois,
+  1 Nov 2026): the UK data centre. `rotaflow.space` is served through Cloudflare. ASSUMPTION until the owner confirms
+  it in the Namecheap account. Those pages still name Supabase (eu-west-1) and need Clerk added as a sub-processor; not
+  changed here.
+
