@@ -127,12 +127,15 @@ the deferral has expired.
 
 ## 2. Data residency
 
-The Supabase project runs in `eu-west-1` (Ireland). Sentry is configured for
-an EU ingest region (`docs/DEPLOYMENT.md` §5). ImageKit and the cPanel mail
-host (`premium17.web-hosting.com`) are UK-based.
+**Since the cPanel cutover the data is in the United Kingdom** (owner confirmed, 1 November 2026): the MariaDB
+database, the PHP API, stored files and outbound mail run on Namecheap's UK data centre (`premium17.web-hosting.com`,
+`185.61.152.45`, netblock `UK-NC-NET1`, country GB). Sentry is configured for an EU ingest region
+(`docs/DEPLOYMENT.md` §5). Before the cutover the database was Supabase in `eu-west-1` (Ireland); ImageKit is no
+longer used (S9).
 
-**Two components do send personal data outside the UK/EU. Both are US-based, and
-both must appear in the Privacy Notice and the sub-processor list.** This section
+**Three components send personal data outside the UK/EU. All are US-based, and all must appear in the Privacy Notice
+and the sub-processor list:** Clerk (sign-in, for everyone: email address, name if given, session and device details;
+no rota, staff or organisation data), and the two below. This section
 previously claimed the opposite; that claim was wrong and was corrected on
 2026-08-29.
 
@@ -552,7 +555,7 @@ not legal advice.
 | Intended users | UK and EEA. Employers and the staff they invite                                                                                                                            |
 | Role           | **Controller** for visitors, account holders, billing contacts, support correspondence and crash reports. **Processor** for everything an employer records about its staff |
 | Live data      | None. Production held 0 organisations and 1 user at the last measurement (2026-08-31). Nothing below has been exercised against a real tenant                              |
-| Database       | Supabase Postgres, `eu-west-1` (Ireland)                                                                                                                                   |
+| Database       | MariaDB on RotaFlow's cPanel server, Namecheap UK data centre (Supabase Postgres, `eu-west-1`, until the cutover)                                                          |
 | Backups        | **None.** No backups and no point-in-time recovery, by cost decision (`docs/SECURITY.md` §1). Every deletion is irreversible                                               |
 
 ---
@@ -690,12 +693,11 @@ here only where this document adds something.
 
 | Processor                   | What it gets                                                          | Where              | Outside UK/EU           |
 | --------------------------- | --------------------------------------------------------------------- | ------------------ | ----------------------- |
-| Supabase                    | everything the product holds                                          | eu-west-1, Ireland | No                      |
+| Namecheap / cPanel          | everything the product holds: database, files, the site, outbound mail | United Kingdom     | No                      |
+| Clerk                       | sign-in email, name if given, session and device details              | United States      | **Yes**                 |
 | OpenRouter + model provider | staff aliases (not names), job titles, skills, hours, leave **dates** | United States      | **Yes**                 |
 | Stripe                      | billing identity of the payer                                         | United States      | **Yes**                 |
 | Sentry                      | stack trace, page path, breadcrumbs                                   | EU ingest          | No                      |
-| ImageKit                    | uploaded images, including staff photographs                          | United Kingdom     | No                      |
-| Namecheap / cPanel          | the site itself, and outbound mail                                    | United Kingdom     | No                      |
 | Cloudflare                  | IP address and requested pages of **every visitor**                   | global edge        | Not flagged — see below |
 
 **Cloudflare is the awkward one.** The `outsideUkEu` flag means "personal data

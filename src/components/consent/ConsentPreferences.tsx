@@ -44,9 +44,10 @@ export function ConsentPreferences(): JSX.Element | null {
     <Modal open onClose={closePanel} title="Choose what this browser keeps">
       <div className="space-y-6">
         <p className="text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
-          RotaFlow sets no cookies. What follows is everything it stores on this device,
-          and the one thing it sends off it. Declining costs you two conveniences and
-          nothing else — the app works either way.
+          The only cookies are the two Clerk uses to keep you signed in. What follows is
+          everything RotaFlow stores on this device, and the one thing it sends off it.
+          Declining costs you two conveniences and nothing else — the app works either
+          way.
         </p>
 
         <section className="space-y-3">

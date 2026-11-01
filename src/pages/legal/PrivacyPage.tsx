@@ -88,7 +88,8 @@ export function PrivacyPage(): JSX.Element {
             <Link to="/legal/cookies" className="underline">
               Cookie notice
             </Link>{' '}
-            lists everything stored in your browser — there are no cookies at all.
+            lists everything stored in your browser, including the two cookies that keep
+            you signed in.
           </p>
           <p className="mt-3 leading-relaxed text-content-muted dark:text-content-muted-dark">
             Questions about your own data go to your employer first: they decide what is

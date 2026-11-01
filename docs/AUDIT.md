@@ -1241,3 +1241,17 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   it in the Namecheap account. Those pages still name Supabase (eu-west-1) and need Clerk added as a sub-processor; not
   changed here.
 
+## 2026-11-01: Legal pages updated for the cutover (owner confirmed UK)
+
+- Owner confirmed the server location: UK (Namecheap, `premium17.web-hosting.com`). The privacy decisions A-DM-1 to
+  A-DM-6 cover the data move only, so the legal copy had no other owner; updated here from facts the code proves:
+  `src/lib/subprocessors.ts` (already listed Clerk and Namecheap UK, no Supabase), `backend/src/Mod/AiAssistant.php`
+  (OpenRouter still the AI provider), `src/lib/legalFacts.ts` (Clerk's `__session` and `__client_uat` cookies).
+- Changed: Trust page residency paragraph and the US-processor sentence (three, not two; Clerk receives sign-in data for
+  everyone); Privacy FAQ "Where is it held?"; every "no cookies" claim (consent bar, storage window, Cookie Notice,
+  Privacy Notice); `docs/SECURITY.md` §2 and the processor tables (Supabase row replaced, Clerk added, ImageKit removed).
+- Evidence: `/legal/trust`, `/legal/cookies`, `/legal/privacy` and `/` at 1440 and 390, axe clean; the rendered Trust
+  text read back; Playwright consent, marketing, responsive 81 passed; typecheck, lint, format, 1799 unit tests pass.
+- Not changed: anything asserting a transfer assessment (Cloudflare stays an open question, as before). Not legal advice:
+  the owner may want the Privacy Notice reviewed before launch.
+

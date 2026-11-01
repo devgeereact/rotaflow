@@ -40,16 +40,21 @@ export function CookiesPage(): JSX.Element {
       <PageHero
         eyebrow="Legal"
         heading="Cookies and browser storage"
-        body="RotaFlow sets no cookies. Here is everything it does keep on your device, everything it sends off it, and how to change your mind."
+        body="The only cookies are the two that keep you signed in. Here is everything RotaFlow keeps on your device, everything it sends off it, and how to change your mind."
       />
 
       <section className="mx-auto max-w-3xl space-y-8 px-6 py-16">
         <Card className="bg-surface-muted dark:bg-surface-muted-dark">
           <p className="leading-relaxed text-content dark:text-content-dark">
-            <strong>There are no cookies, no analytics and no advertising.</strong> There
-            is no tag manager, no advertising pixel and nothing that follows you to
-            another site. Everything in the table below is stored by your own browser and
-            stays on this device.
+            {/* Was "There are no cookies": untrue since sign-in moved to Clerk,
+                whose two session cookies are listed in the table (1 Nov 2026). */}
+            <strong>
+              No analytics and no advertising, and the only cookies are the two that keep
+              you signed in.
+            </strong>{' '}
+            There is no tag manager, no advertising pixel and nothing that follows you to
+            another site. Everything in the table below is stored by your own browser; the
+            two sign-in cookies also go to Clerk, which runs sign-in.
           </p>
           <p className="mt-3 leading-relaxed text-content-muted dark:text-content-muted-dark">
             One thing does leave the browser, and it is easier to name it than to write

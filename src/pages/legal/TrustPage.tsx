@@ -30,6 +30,12 @@ import { SUB_PROCESSORS, SUB_PROCESSORS_REVIEWED } from '@/lib/subprocessors';
  * stale. This one is built from `src/lib/subprocessors.ts`, which cites a file
  * per row, so it changes when the system changes.
  */
+/** "A, B and C": the number of US processors is no longer always two. */
+function listNames(names: string[]): string {
+  if (names.length <= 1) return names.join('');
+  return `${names.slice(0, -1).join(', ')} and ${names.at(-1) ?? ''}`;
+}
+
 export function TrustPage(): JSX.Element {
   const crossBorder = SUB_PROCESSORS.filter((p) => p.outsideUkEu);
 
@@ -57,17 +63,25 @@ export function TrustPage(): JSX.Element {
             </h2>
           </div>
           <p className="mb-4 leading-relaxed text-content dark:text-content-dark">
-            Your data lives in the European Union. The database, authentication, file
-            storage and server functions all run in <strong>eu-west-1 (Ireland)</strong>,
-            error monitoring uses an EU region, and the site and its outbound mail are
-            hosted in the <strong>United Kingdom</strong>.
+            {/* Was "the European Union ... eu-west-1 (Ireland)": the Supabase
+                stack. Since the cPanel cutover the data is in the UK; the owner
+                confirmed the server's location on 1 Nov 2026. */}
+            Your data lives in the <strong>United Kingdom</strong>. The database, the API
+            that reads and writes it, stored files and outbound mail all run on
+            RotaFlow&rsquo;s own server in Namecheap&rsquo;s UK data centre. Error
+            monitoring uses an EU region.
           </p>
           <p className="mb-4 leading-relaxed text-content dark:text-content-dark">
-            {crossBorder.length} of our {SUB_PROCESSORS.length} sub-processors are outside
-            that area, both in the United States:{' '}
-            <strong>{crossBorder.map((p) => p.name.split(',')[0]).join(' and ')}</strong>.
-            Neither receives anything unless you use the feature it powers — the AI
-            assistant, or a paid subscription. Both are listed in full below.
+            {crossBorder.length} of our {SUB_PROCESSORS.length} sub-processors are in the
+            United States:{' '}
+            <strong>
+              {listNames(crossBorder.map((p) => p.name.split(',')[0] ?? p.name))}
+            </strong>
+            . Clerk runs sign-in for everyone, so it holds the email address you sign in
+            with, your name if you give one, and session details; no rota, staff record or
+            organisation data goes to it. The others receive nothing unless you use the
+            feature they power: the AI assistant, or a paid subscription. All are listed
+            in full below.
           </p>
           <p className="mb-4 leading-relaxed text-content dark:text-content-dark">
             One thing does not fit that count and is easier to say than to leave implied.{' '}
@@ -80,10 +94,11 @@ export function TrustPage(): JSX.Element {
             recorded as an open question rather than answered here.
           </p>
           <p className="leading-relaxed text-content-muted dark:text-content-muted-dark">
-            We would rather say this plainly than describe ourselves as EU-only and bury
+            We would rather say this plainly than describe ourselves as UK-only and bury
             the exceptions. If your organisation cannot send staff data to a US processor,
-            the AI assistant is the only feature you need to avoid, and not using it sends
-            nothing.
+            the AI assistant is the only feature you need to avoid: sign-in sends Clerk
+            only the sign-in details above, and not using the assistant sends no staff
+            data.
           </p>
         </Card>
 

@@ -13,6 +13,12 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Legal pages follow the cutover: data in the UK, Clerk named, cookies told truthfully (1 November 2026).** The owner
+  confirmed the server is in Namecheap's UK data centre. The Trust page and the Privacy FAQ now say the data lives in
+  the United Kingdom (was the EU, Supabase eu-west-1), name all three US sub-processors (OpenRouter, Stripe and Clerk)
+  and say what Clerk receives. "RotaFlow sets no cookies" was untrue since sign-in moved to Clerk: the consent bar, the
+  storage window, the Cookie Notice and the Privacy Notice now say the only cookies are the two that keep you signed
+  in. `docs/SECURITY.md` residency and processor tables updated to match.
 - **Design gaps, phase 6: self-service (branch `design/gap-fixes`, 1 November 2026).** Staff can now manage their own
   emergency contacts from My account → Profile, in the Contact details card's empty second column, through the same
   window a manager uses (the API always allowed it). The Profile email field points to Security, where Clerk changes

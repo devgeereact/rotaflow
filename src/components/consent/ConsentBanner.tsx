@@ -93,8 +93,9 @@ export function ConsentBanner(): JSX.Element | null {
           >
             What may this browser keep?
           </span>{' '}
-          RotaFlow sets no cookies and runs no analytics. May we also remember your
-          preferences and send error reports? Neither is on unless you say so.
+          No analytics, and the only cookies are the two that keep you signed in. May we
+          also remember your preferences and send error reports? Neither is on unless you
+          say so.
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
