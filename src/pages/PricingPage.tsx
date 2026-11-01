@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
+import { JOIN_BETA_PATH } from '@/lib/enquiry';
 import { Link } from 'react-router-dom';
-import { Check, Info } from 'lucide-react';
+import { Check, ChevronDown, Info } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { MarketingLayout, PageHero } from '@/components/marketing/MarketingLayout';
@@ -20,7 +21,7 @@ import { cn } from '@/lib/utils';
 const FAQS = [
   {
     q: 'How does billing work?',
-    a: "Sign up with no card required. Every new organisation starts a 30-day free trial with Professional limits. Its owner picks a plan from Settings and pays through Stripe's secure checkout, and choosing one during the trial keeps the days left: the card is first charged when the trial ends.",
+    a: "No card is needed to start. Every new organisation starts a 30-day free trial with Professional limits. Its owner picks a plan from Settings and pays through Stripe's secure checkout, and choosing one during the trial keeps the days left: the card is first charged when the trial ends.",
   },
   {
     q: 'What counts as a staff member?',
@@ -67,9 +68,10 @@ export function PricingPage(): JSX.Element {
             className="mt-0.5 shrink-0 text-info-ink dark:text-info-ink-dark"
           />
           <p className="text-sm leading-relaxed text-content dark:text-content-dark">
-            <span className="font-semibold">No card required to sign up.</span> Signing up
-            collects no payment details. You choose and pay for a plan afterwards, from
-            your organisation's own Settings once it exists.
+            <span className="font-semibold">30 days free, no card.</span> Every new
+            organisation starts with 30 days on Professional limits and no payment
+            details. You choose and pay for a plan afterwards, from your
+            organisation&rsquo;s own Settings.
           </p>
         </div>
 
@@ -91,7 +93,10 @@ export function PricingPage(): JSX.Element {
               <h2 className="font-display text-xl font-bold text-content dark:text-content-dark">
                 {name}
               </h2>
-              <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
+              {/* Two lines reserved, so every price sits on one baseline: the
+                  longer summaries wrapped and pushed two prices 20 px lower
+                  (design gap F07). */}
+              <p className="mt-1 min-h-10 text-sm text-content-muted dark:text-content-muted-dark">
                 {summary}
               </p>
 
@@ -102,6 +107,9 @@ export function PricingPage(): JSX.Element {
                 <span className="text-sm text-content-muted dark:text-content-muted-dark">
                   {cadence}
                 </span>
+              </p>
+              <p className="mt-1 text-xs text-content-muted dark:text-content-muted-dark">
+                After 30 days free
               </p>
 
               <ul className="mt-6 flex-1 space-y-2.5 border-t border-surface-border pt-6 dark:border-surface-border-dark">
@@ -117,10 +125,7 @@ export function PricingPage(): JSX.Element {
                 ))}
               </ul>
 
-              <Link
-                to={name === 'Enterprise' ? '/contact' : '/signup'}
-                className="mt-7 block"
-              >
+              <Link to={JOIN_BETA_PATH} className="mt-7 block">
                 <Button variant={featured ? 'primary' : 'secondary'} className="w-full">
                   {cta}
                 </Button>
@@ -136,22 +141,26 @@ export function PricingPage(): JSX.Element {
             Questions
           </h2>
 
-          <dl className="space-y-4">
-            {FAQS.map(({ q, a }) => (
-              <div
-                key={q}
-                data-reveal
-                className="rounded-2xl border border-surface-border bg-surface p-6 shadow-sm dark:border-surface-border-dark dark:bg-surface-dark"
-              >
-                <dt className="font-display font-semibold text-content dark:text-content-dark">
+          {/* One list of questions, first answer open, instead of six boxed
+              cards (design gap F09). Native details/summary: works by keyboard
+              and with no JavaScript, and every answer stays in the page. */}
+          <div className="divide-y divide-surface-border rounded-2xl border border-surface-border bg-surface dark:divide-surface-border-dark dark:border-surface-border-dark dark:bg-surface-dark">
+            {FAQS.map(({ q, a }, index) => (
+              <details key={q} open={index === 0} className="group px-6 py-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded font-display font-semibold text-content focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-dark [&::-webkit-details-marker]:hidden">
                   {q}
-                </dt>
-                <dd className="mt-2 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
+                  <ChevronDown
+                    size={18}
+                    aria-hidden="true"
+                    className="shrink-0 text-content-muted transition-transform group-open:rotate-180 motion-reduce:transition-none dark:text-content-muted-dark"
+                  />
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
                   {a}
-                </dd>
-              </div>
+                </p>
+              </details>
             ))}
-          </dl>
+          </div>
 
           <p className="mt-10 text-center text-sm text-content-muted dark:text-content-muted-dark">
             Still deciding?{' '}

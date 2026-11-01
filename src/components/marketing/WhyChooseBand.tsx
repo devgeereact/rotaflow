@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { Check } from 'lucide-react';
+import { AlertTriangle, Check, XCircle } from 'lucide-react';
 import { WHY_ROTAFLOW } from '@/lib/marketing';
 
 /**
@@ -22,6 +22,47 @@ export function WhyChooseBand(): JSX.Element {
             Scheduling goes wrong in a handful of predictable ways. RotaFlow is built
             around catching each of them before it reaches a member of staff.
           </p>
+
+          {/* A real example of what "caught while you build" looks like, so this
+              column is not three lines beside a five-item list (design gap F04).
+              The figures are an illustration, and labelled as one. */}
+          <figure className="mt-8 max-w-md rounded-card border border-surface-border bg-surface p-4 shadow-sm dark:border-surface-border-dark dark:bg-surface-dark">
+            <figcaption className="mb-3 text-xs font-medium uppercase tracking-wide text-content-muted dark:text-content-muted-dark">
+              Example: while you build
+            </figcaption>
+            <ul className="space-y-2">
+              <li className="flex gap-3 rounded-lg border border-warning/40 bg-warning-wash p-3 dark:bg-warning-wash-dark">
+                <AlertTriangle
+                  size={18}
+                  aria-hidden="true"
+                  className="mt-0.5 shrink-0 text-warning-ink dark:text-warning-ink-dark"
+                />
+                <span className="text-sm">
+                  <span className="block font-medium text-content dark:text-content-dark">
+                    Short rest: 9 h 30 min
+                  </span>
+                  <span className="block text-ink-muted dark:text-content-muted-dark">
+                    The late ends 22:00 and Thursday&rsquo;s early starts 07:30.
+                  </span>
+                </span>
+              </li>
+              <li className="flex gap-3 rounded-lg border border-danger/40 bg-danger-wash p-3 dark:bg-danger-wash-dark">
+                <XCircle
+                  size={18}
+                  aria-hidden="true"
+                  className="mt-0.5 shrink-0 text-danger-ink dark:text-danger-ink-dark"
+                />
+                <span className="text-sm">
+                  <span className="block font-medium text-content dark:text-content-dark">
+                    Double-booked
+                  </span>
+                  <span className="block text-ink-muted dark:text-content-muted-dark">
+                    The same person is on two sites on Friday morning.
+                  </span>
+                </span>
+              </li>
+            </ul>
+          </figure>
         </div>
 
         <ul className="space-y-6">

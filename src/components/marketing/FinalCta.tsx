@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { HERO, PRIMARY_CTA } from '@/lib/marketing';
-import { BOOK_DEMO_PATH } from '@/lib/enquiry';
+import { BOOK_DEMO_PATH, JOIN_BETA_PATH } from '@/lib/enquiry';
 
 interface FinalCtaProps {
   heading?: string;
@@ -20,7 +20,7 @@ interface FinalCtaProps {
  */
 export function FinalCta({
   heading = 'See your own rota in RotaFlow.',
-  body = 'Create your organisation, add a location, and build your first rota today.',
+  body = 'Tell us about your organisation. We set it up and invite you, and you build your first rota the same day.',
 }: FinalCtaProps): JSX.Element {
   const { user } = useAuth();
 
@@ -47,7 +47,7 @@ export function FinalCta({
             </Link>
           ) : (
             <>
-              <Link to="/signup">
+              <Link to={JOIN_BETA_PATH}>
                 <Button size="lg">
                   {PRIMARY_CTA}
                   <ArrowRight size={18} aria-hidden="true" />

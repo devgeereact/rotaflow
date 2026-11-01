@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { MarketingLayout } from '@/components/marketing/MarketingLayout';
@@ -12,7 +12,7 @@ import { WhyChooseBand } from '@/components/marketing/WhyChooseBand';
 import { TestimonialBand } from '@/components/marketing/TestimonialBand';
 import { FinalCta } from '@/components/marketing/FinalCta';
 import { HERO, PRIMARY_CTA, TAGLINE } from '@/lib/marketing';
-import { BOOK_DEMO_PATH } from '@/lib/enquiry';
+import { BOOK_DEMO_PATH, JOIN_BETA_PATH } from '@/lib/enquiry';
 
 /**
  * `/`. The public marketing homepage.
@@ -28,7 +28,7 @@ export function HomePage(): JSX.Element {
 
   return (
     <MarketingLayout title={TAGLINE}>
-      <section className="overflow-hidden pb-28 pt-16 md:pt-24">
+      <section className="overflow-hidden pb-16 pt-16 md:pb-20 md:pt-24">
         {/*
           The hero copy enters on the CSS `fade-up` keyframe, one line after
           another, never through GSAP. A JS animation library starts an element
@@ -72,7 +72,7 @@ export function HomePage(): JSX.Element {
                 </Link>
               ) : (
                 <>
-                  <Link to="/signup">
+                  <Link to={JOIN_BETA_PATH}>
                     <Button size="lg">
                       {PRIMARY_CTA}
                       <ArrowRight size={18} aria-hidden="true" />
@@ -89,12 +89,19 @@ export function HomePage(): JSX.Element {
 
             <ul className="mt-6 flex animate-fade-up flex-wrap items-center [animation-delay:320ms] motion-reduce:animate-none justify-center gap-x-6 gap-y-2 xl:justify-start text-sm text-content-muted dark:text-content-muted-dark">
               {HERO.trust.map((point) => (
-                <li key={point}>{point}</li>
+                <li key={point} className="flex items-center gap-1.5 whitespace-nowrap">
+                  <Check
+                    size={16}
+                    aria-hidden="true"
+                    className="text-success-ink dark:text-success-ink-dark"
+                  />
+                  {point}
+                </li>
               ))}
             </ul>
           </div>
 
-          <div className="mt-16 xl:mt-0">
+          <div className="mt-10 xl:mt-0">
             <ProductPreview />
           </div>
         </div>

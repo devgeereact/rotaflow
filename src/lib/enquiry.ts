@@ -102,6 +102,16 @@ export function wantsDemoFromSearch(search: string): boolean {
 /** Where every "Book a demo" call to action points. */
 export const BOOK_DEMO_PATH = '/contact?demo=1';
 
+/**
+ * Where every "Join the beta" call to action points. Not `/signup`:
+ * organisations are by invitation (docs/MERGE-TARGET.md §6), so open sign-up
+ * gave a prospect an account with no organisation. The enquiry reaches the
+ * console queue; a platform admin creates the organisation and invites its
+ * first owner. Sign-up stays for invitees, who arrive by their invite link.
+ * Design gap F39, 1 Nov 2026.
+ */
+export const JOIN_BETA_PATH = '/contact';
+
 // ── the console side ───────────────────────────────────────────────────
 
 export const ENQUIRY_STATUSES = ['new', 'replied', 'demo_booked', 'closed'] as const;

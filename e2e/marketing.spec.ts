@@ -26,7 +26,6 @@ const PUBLIC_PAGES = [
   // every sweep, and neither set a title: the password-reset tab read
   // "RotaFlow — Scheduling certainty for every shift", and the 404 rendered
   // with no nav and no way out.
-  { path: '/forgot-password', heading: /reset|forgot|password/i },
   { path: '/this-page-does-not-exist', heading: /doesn.t exist/i },
 ];
 
@@ -196,7 +195,7 @@ test.describe('page metadata', () => {
  * markup, which cannot drift from the answer.
  */
 test.describe('auth screens submit from the keyboard', () => {
-  for (const path of ['/login', '/signup', '/forgot-password']) {
+  for (const path of ['/login', '/signup']) {
     test(`${path} has a form with a submit button in it`, async ({ page }) => {
       await page.goto(path);
 
@@ -208,15 +207,16 @@ test.describe('auth screens submit from the keyboard', () => {
     });
   }
 
-  test('the other buttons on the sign-in form do not submit it', async ({ page }) => {
-    await page.goto('/login');
-    // Show-password and magic-link sit inside the same form as Sign in. With
-    // the HTML default of type="submit" either would sign the person in, or
-    // try to, when they only wanted to see what they had typed.
-    const nonSubmit = page.locator('form button:not([type="submit"])');
-    expect(await nonSubmit.count()).toBeGreaterThan(0);
-    for (const button of await nonSubmit.all()) {
-      await expect(button).toHaveAttribute('type', 'button');
+  // The show-password and magic-link buttons this used to check belonged to
+  // the Supabase form. Clerk owns the form now (S9) and has neither; the
+  // submit check above still covers both auth pages.
+
+  test('old password-reset links land on sign-in', async ({ page }) => {
+    // There are no passwords under Clerk, so `/forgot-password` and
+    // `/reset-password` redirect rather than render (src/App.tsx).
+    for (const path of ['/forgot-password', '/reset-password']) {
+      await page.goto(path);
+      await expect(page).toHaveURL(/\/login$/);
     }
   });
 });

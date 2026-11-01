@@ -19,8 +19,21 @@ const CONSENT_KEY = 'rotaflow:consent';
 const THEME_KEY = 'pwa-theme';
 
 /** Every key this browser holds, so a test can assert on the whole set. */
+/**
+ * RotaFlow's own keys. Clerk's `__clerk_*` entries are left out on purpose:
+ * Clerk writes its cached sign-in settings (`__clerk_environment`) as soon as
+ * it loads, before any answer, because sign-in cannot work without them. That
+ * is strictly necessary storage, listed in the Cookie Notice
+ * (`src/lib/legalFacts.ts`), not optional storage this banner governs (owner
+ * decision F38, 1 Nov 2026). Before this filter the declined-preference test
+ * failed whenever Clerk finished loading first.
+ */
 async function storageKeys(page: Page): Promise<string[]> {
-  return page.evaluate(() => Object.keys(window.localStorage).sort());
+  return page.evaluate(() =>
+    Object.keys(window.localStorage)
+      .filter((key) => !key.startsWith('__clerk'))
+      .sort(),
+  );
 }
 
 async function consentRecord(page: Page): Promise<Record<string, unknown> | null> {

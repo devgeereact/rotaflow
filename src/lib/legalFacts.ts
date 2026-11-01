@@ -70,9 +70,9 @@ export interface StoredItem {
  */
 export const STORED_ITEMS: readonly StoredItem[] = [
   {
-    key: 'Clerk session (cookies __session and __client_uat)',
+    key: 'Clerk sign-in (cookies __session and __client_uat; local storage __clerk_environment)',
     purpose:
-      'Keeps you signed in between visits. Set by Clerk, which runs sign-in for RotaFlow on clerk.rotaflow.space. Without it you would sign in again on every page load.',
+      'Keeps you signed in between visits, and keeps a copy of the sign-in settings so the form can load. Set by Clerk, which runs sign-in for RotaFlow on clerk.rotaflow.space. Without it you would sign in again on every page load.',
     lifetime: 'Until you sign out, or the session expires.',
     category: 'necessary',
     source: 'src/context/AuthContext.tsx (@clerk/clerk-react)',

@@ -13,6 +13,16 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Design gaps, phase 3: landing site (branch `design/gap-fixes`, 1 November 2026).** Every "Join the beta" now goes
+  to the contact form instead of open sign-up: organisations are by invitation, so a prospect who signed up got an
+  account with no organisation (F39). The contact page explains how joining works, and the closing call to action and
+  the setup guide say "we set it up and invite you". The hero's three facts sit on one row with ticks; on a phone the
+  hero shows the staff schedule card instead of a week grid too narrow to read; less empty space under it. "Why teams
+  choose RotaFlow" shows a worked warning card beside the list, and the point repeated in the commitments band is
+  gone. The footer's six columns sit on one row. Pricing: the four prices share a baseline, each says "After 30 days
+  free", and the questions are one accordion. The Cookie Notice now names Clerk's `__clerk_environment` as strictly
+  necessary (F38), and the auth e2e tests that still expected the Supabase forms were replaced. Findings F02 to F07,
+  F09, F38, F39.
 - **Design gaps, phase 2: consent and sign in (branch `design/gap-fixes`, 1 November 2026).** The storage question is
   now one line of text and one row of controls (about 64 px instead of 205 px), with Reject and Accept the same button
   and "Choose what to keep" as a link; it still pads the page so it never covers content. Sign in and sign up no longer

@@ -12,7 +12,7 @@ import {
   TurnstileWidget,
   type TurnstileHandle,
 } from '@/components/marketing/TurnstileWidget';
-import { CONTACT_EMAIL, PRIMARY_CTA } from '@/lib/marketing';
+import { CONTACT_EMAIL } from '@/lib/marketing';
 import { env } from '@/lib/env';
 import {
   EMPTY_ENQUIRY,
@@ -166,8 +166,8 @@ export function ContactPage(): JSX.Element {
                   <Button variant="secondary" onClick={startAgain}>
                     Write another message
                   </Button>
-                  <Link to="/signup">
-                    <Button className="w-full sm:w-auto">{PRIMARY_CTA}</Button>
+                  <Link to="/pricing">
+                    <Button className="w-full sm:w-auto">See pricing</Button>
                   </Link>
                 </div>
               </div>
@@ -383,17 +383,15 @@ export function ContactPage(): JSX.Element {
                 <Rocket size={20} aria-hidden="true" />
               </span>
               <h2 className="font-display text-base font-semibold text-content dark:text-content-dark">
-                Or just try it
+                How joining works
               </h2>
+              {/* Organisations are by invitation (docs/MERGE-TARGET.md §6): this
+                  card used to promise a one-minute self sign-up (F39). */}
               <p className="mt-1.5 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
-                You do not need a demo to see RotaFlow. Signing up takes a minute, needs
-                no card, and you can build a real week straight away.
+                Tell us about your organisation with this form. We set it up and send your
+                first owner an invitation, usually within one working day. No card is
+                needed, and you can build a real week straight away.
               </p>
-              <Link to="/signup" className="mt-4 block">
-                <Button variant="secondary" className="w-full">
-                  {PRIMARY_CTA}
-                </Button>
-              </Link>
             </Card>
 
             <Card>

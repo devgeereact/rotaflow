@@ -44,9 +44,9 @@ const GUIDES: readonly Guide[] = [
   {
     icon: Hammer,
     title: 'Set up your organisation',
-    body: 'From signing up to a published first week.',
+    body: 'From your invitation to a published first week.',
     steps: [
-      'Create your organisation and pick your industry',
+      'Accept the invitation and pick your industry',
       'Add your sites and the departments inside them',
       'Set your working week, timezone and week start day',
       'Invite your managers, then your staff, with a role each',

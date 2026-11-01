@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import { JOIN_BETA_PATH } from '@/lib/enquiry';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -57,7 +58,7 @@ export function SolutionsPage(): JSX.Element {
         heading="Built for the sectors that run on shifts"
         body="Healthcare, hospitality, retail, education, security and facilities management all schedule differently, but they break in the same four places. RotaFlow is built around those."
       >
-        <Link to="/signup">
+        <Link to={JOIN_BETA_PATH}>
           <Button size="lg">
             {PRIMARY_CTA}
             <ArrowRight size={18} aria-hidden="true" />

@@ -30,7 +30,9 @@ export function PublicFooter(): JSX.Element {
   return (
     <footer className="border-t border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
       <div className="mx-auto max-w-6xl px-6 py-14">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
+        {/* Brand plus five link columns: six on one row from `lg` (it was five,
+            so Legal dropped to a row of its own, design gap F06). */}
+        <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           <div className="lg:col-span-1">
             <Link to="/" className="flex items-center gap-2">
               <BrandMark label={null} className="h-8 w-8" />

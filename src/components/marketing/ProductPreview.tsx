@@ -26,7 +26,7 @@ const CHIP_DELAY_START_MS = 300;
 const CHIP_DELAY_STEP_MS = 18;
 
 const METRICS = [
-  { label: 'On shift today', value: '41', tone: 'text-content dark:text-content-dark' },
+  { label: 'On shift', value: '41', tone: 'text-content dark:text-content-dark' },
   // The ink tokens, not `text-success` / `text-warning`: since the website took
   // the two-weight rule these figures are medium, not bold, so they need 4.5:1
   // rather than the large-text 3:1, and the plain status fills miss it
@@ -90,7 +90,7 @@ export function ProductPreview(): JSX.Element {
       */}
       <div
         data-parallax="frame"
-        className="overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-lg lg:mr-40 xl:mr-48 dark:border-surface-border-dark dark:bg-surface-dark"
+        className="hidden overflow-hidden rounded-2xl border border-surface-border bg-surface shadow-lg sm:block lg:mr-40 xl:mr-48 dark:border-surface-border-dark dark:bg-surface-dark"
       >
         <div className="flex items-center gap-2 border-b border-surface-border px-4 py-3 dark:border-surface-border-dark">
           <span className="h-2.5 w-2.5 rounded-full bg-danger/60" />
@@ -181,7 +181,7 @@ export function ProductPreview(): JSX.Element {
                         }
                       >
                         {shift && (
-                          <span className="font-mono text-[8px] font-medium leading-none">
+                          <span className="hidden font-mono text-[11px] font-medium leading-none md:inline">
                             {CHIP_TIME[shift]}
                           </span>
                         )}
@@ -195,17 +195,19 @@ export function ProductPreview(): JSX.Element {
         </div>
       </div>
 
-      {/* Staff phone. The same week, published */}
+      {/* Staff phone. The same week, published. Below `sm` it is the whole
+          picture: the week grid needs width to be legible, and at 390 px its
+          labels truncated and its times ran together (design gap F02). */}
       <div
         data-parallax="phone"
-        className="absolute -bottom-8 -right-2 hidden w-52 rounded-[1.75rem] border-4 border-content/85 bg-surface shadow-lg lg:block dark:border-content-dark/20 dark:bg-surface-dark"
+        className="relative mx-auto block w-full max-w-xs rounded-[1.75rem] border-4 border-content/85 bg-surface shadow-lg sm:hidden lg:absolute lg:-bottom-8 lg:-right-2 lg:mx-0 lg:block lg:w-52 dark:border-content-dark/20 dark:bg-surface-dark"
       >
         <div className="rounded-t-[1.4rem] bg-primary px-4 pb-4 pt-5 text-primary-fg">
           {/* Not `opacity-80`: white at 80% over solid `bg-primary` reads at
               3.56:1, under the 4.5:1 small-text minimum. Full `text-primary-fg`
               (the token this fill is designed to pair with) passes easily. */}
           <p className="text-xs uppercase tracking-wide text-primary-fg">My schedule</p>
-          <p className="font-display text-sm font-medium">11-17 May</p>
+          <p className="font-display text-sm font-medium">11–17 May</p>
         </div>
         <div className="space-y-2 p-3">
           {AGENDA.map(({ day, time, role, chip }) => (

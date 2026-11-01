@@ -1142,3 +1142,26 @@ Branch `design/gap-fixes`, local commit only. Closes F01, F11, F12, F13, F18, F2
   necessary.
 - `pnpm run check` passes to `check:php` (test database socket refused in the sandbox; no PHP changed).
 
+## 2026-11-01: Design gaps, phase 3 (landing site) and two owner decisions
+
+Branch `design/gap-fixes`, local commit only. Closes F02 to F07, F09, F38 and F39.
+
+**Decisions taken (owner: "make the right decision")**
+
+- F38: Clerk's `__clerk_environment` local-storage entry is strictly necessary (sign-in cannot load without it).
+  Named in the Cookie Notice (`src/lib/legalFacts.ts`); the consent e2e counts only RotaFlow's own keys.
+- Legal pages: Trust, Privacy and `src/lib/subprocessors.ts` still say Supabase and eu-west-1. Not changed here:
+  they need the confirmed server location and belong to the cutover privacy decisions (A-DM-1 to A-DM-6). No cutover
+  session was running to hand over to; this entry is the hand-over.
+- F39, found while building: "Join the beta" went to `/signup`, which under invitation-only organisations gives a
+  prospect an account with no organisation. Every such link now uses `JOIN_BETA_PATH` (`/contact`); sign-up remains
+  for invitees.
+
+**Evidence**
+
+- Home, Pricing, Contact, Features, Solutions, About, Resources at 1920, 1440, 834, 390 and 320: no sideways scroll,
+  zero axe violations (dev server 5043). Hero, pricing and footer checked by eye; the four prices align.
+- Playwright `marketing`, `consent`, `responsive-and-motion` on 5043: 81 passed, 0 failed (3 stale auth tests
+  replaced by a redirect check). `consent.spec.ts` 72 of 72 across four repeats.
+- `pnpm run typecheck`, `lint`, `format:check`, 132 files / 1796 tests pass. `check:php` not run (sandbox).
+

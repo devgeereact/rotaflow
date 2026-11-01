@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import { JOIN_BETA_PATH } from '@/lib/enquiry';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -121,7 +122,7 @@ export function FeaturesPage(): JSX.Element {
         heading="Everything scheduling touches, in one place"
         body="RotaFlow covers the full loop. Building the rota, publishing it, collecting what staff need, tracking attendance, producing the timesheet and reporting on all of it."
       >
-        <Link to="/signup">
+        <Link to={JOIN_BETA_PATH}>
           <Button size="lg">
             {PRIMARY_CTA}
             <ArrowRight size={18} aria-hidden="true" />

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
+import { JOIN_BETA_PATH } from '@/lib/enquiry';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -125,7 +126,7 @@ export function PublicNav(): JSX.Element {
               >
                 Log in
               </Link>
-              <Link to="/signup" className="hidden sm:block">
+              <Link to={JOIN_BETA_PATH} className="hidden sm:block">
                 <Button size="sm">{PRIMARY_CTA}</Button>
               </Link>
             </>
@@ -202,7 +203,7 @@ export function PublicNav(): JSX.Element {
                 </Link>
               ) : (
                 <>
-                  <Link to="/signup">
+                  <Link to={JOIN_BETA_PATH}>
                     <Button className="w-full">{PRIMARY_CTA}</Button>
                   </Link>
                   <Link to="/login">

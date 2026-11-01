@@ -97,7 +97,9 @@ export const HERO = {
    * (`/signup` collects name, email, org and password. Nothing else), and
    * payment setup happens later in Settings > Billing after an org exists.
    */
-  trust: ['Early access beta', 'No credit card required', 'No payment setup'],
+  // Three short facts so they sit on one row (F03: the third wrapped alone).
+  // "Set up for you": organisations are by invitation (F39).
+  trust: ['In beta', 'Set up for you', '30 days free'],
 } as const;
 
 export interface Benefit {
@@ -301,15 +303,10 @@ export const WHY_ROTAFLOW: readonly Reason[] = [
     title: 'Improve staff communication',
     body: 'Published rotas, announcements and swap responses reach everyone in one place, instead of a WhatsApp group and a printed notice board.',
   },
-  {
-    // Not "compliance": the rota warns, it does not certify. "Rest-period",
-    // not "rest-break": the check is the 11-hour gap between shifts
-    // (`rotaInsights.ts`, rest_breach); nothing checks breaks within a shift.
-    // The 48-hour figure is the week total the rota grid turns red
-    // (`RotaGridRow.tsx`, STATUTORY_WEEKLY_MINUTES).
-    title: 'Rest-period and 48-hour warnings',
-    body: 'Rest-period and 48-hour warnings on the rota, qualification expiry in view, and a record of every clock-in.',
-  },
+  // "Rest-period and 48-hour warnings" lived here as well as in the
+  // commitments band (TestimonialBand), word for word (design gap F05). It
+  // stays there, where the 2 × 2 grid needs four, and the warning card beside
+  // this list now shows the check itself.
   {
     title: 'Increase workforce visibility',
     body: 'Coverage, labour hours and absence across every site, in one view, updated live as things change.',
@@ -442,7 +439,9 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
     links: [
       { label: 'Features', to: '/features' },
       { label: 'Pricing', to: '/pricing' },
-      { label: PRIMARY_CTA, to: '/signup' },
+      // `/contact`, not `/signup`: organisations are by invitation (F39). Kept
+      // as a literal so this module takes no import from `lib/enquiry`.
+      { label: PRIMARY_CTA, to: '/contact' },
       { label: 'Sign in', to: '/login' },
     ],
   },
