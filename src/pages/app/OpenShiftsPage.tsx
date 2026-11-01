@@ -384,6 +384,9 @@ export function OpenShiftsPage(): JSX.Element {
                       >
                         Take it
                       </Button>
+                      <p className="w-full text-xs text-content-muted dark:text-content-muted-dark">
+                        This shift overlaps one you are already rostered for.
+                      </p>
                     </>
                   ) : (
                     <Button

@@ -1188,3 +1188,17 @@ Branch `design/gap-fixes`, local commit only. Closes F19 to F24.
   settings previews: clean. Dashboard and rota builder checked by eye at 1440.
 - typecheck, lint, format and 132 files / 1796 unit tests pass.
 
+## 2026-11-01: Design gaps, phase 5 (module match pass)
+
+Branch `design/gap-fixes`, local commit only. Closes F28 to F31 and F36.
+
+- Method: the R2 screens have no preview routes and ship flag-off, so they were checked in code against the review
+  file's rules (status colours through `Badge` use the ink shades; every disabled control explains itself in text;
+  warnings never disable, a double-booking does) rather than screenshotted. NOT TESTED in a browser with flags on.
+- Changed: Compliance Approve / Not accepted and the Open shifts clash case gain a visible reason. A visible reason
+  added for the other Open shifts case was removed again: `OpenShiftsCover.test.tsx` showed the card already prints it.
+- Unchanged by decision: Cover (candidate, applicant and staff rows already print `Reasons`), `PublishCheckModal`,
+  `GeneratePatternModal`, `ManagerTimesheets`, and the 404, error, offline, install and update states.
+- `docs/design/RF-GAPS.html` added (the approved review file, sample data only) and cited from UX-SPEC §7a to §7d.
+- Unit tests 132 files / 1796 pass; lint and format clean.
+

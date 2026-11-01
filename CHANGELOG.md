@@ -13,6 +13,12 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Design gaps, phase 5: module match pass (branch `design/gap-fixes`, 1 November 2026).** The review file is now in
+  the repository as `docs/design/RF-GAPS.html`, the design reference UX-SPEC §7a to §7d point to. Matched in code:
+  Compliance's disabled Approve and Not accepted, and Open shifts' "clashes with your rota" Take it, now state their
+  reason as text under the button (a title shows only on hover, never on a phone). Cover, the scheduling dialogs,
+  timesheet flags and the global states (404, error, offline, install, update) already met the rules: no change.
+  Findings F28 to F31, F36.
 - **Design gaps, phase 4: dashboard and publishing (branch `design/gap-fixes`, 1 November 2026).** The operations
   dashboard leads with four tiles (Clocked in now "of N scheduled today", Late start, Open shifts, Pending approvals);
   scheduled, on break, completed and tomorrow uncovered sit on one linked line beneath. Each item that needs a look is

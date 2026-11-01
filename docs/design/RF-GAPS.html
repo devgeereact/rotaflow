@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RotaFlow design gaps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* RotaFlow design gaps, review file v2 (31 Oct 2026).
+   Two layers: .doc is the review file itself; .m is the product, drawn with the
+   live app's tokens from src/index.css (Inter, 4px controls, 12px cards).
+   Ratios measured with product-design/scripts/contrast.py. */
+
+:root {
+  /* live product tokens */
+  --canvas:#F4F4F4; --surface:#FFFFFF; --subtle:#F8F8F9; --rail:#F4F4F4;
+  --line:#D0D1D2;            /* decoration only: 1.53:1 on white, never a field edge */
+  --field:#8A8F98;           /* field edges: 3.25:1 on white (WCAG 1.4.11) */
+  --divider:#E6E7E9;
+  --ink:#0D1934; --ink-2:#3E4A6E; --muted:#5A6684;   /* muted 5.72:1 white, 5.20:1 canvas */
+  --primary:#3B6FE0;         /* fills; white on it 4.63:1 */
+  --primary-ink:#2F5BC0;     /* text and links: 5.65:1 on canvas (was #3B6FE0 4.21:1) */
+  --primary-wash:#EEF3FD; --brand:#0C60F8;
+  --ok:#1EA06B;   --ok-ink:#12724E;   --ok-wash:#E7F5EE;
+  --warn:#E0A030; --warn-ink:#7A5410; --warn-wash:#FBF2E1;
+  --bad:#D94A3A;  --bad-ink:#B23A2C;  --bad-wash:#FAEAE7;  /* bad-ink 5.94:1 (was #D94A3A 4.21:1) */
+  --info:#388FD4; --info-ink:#1B5E8E; --info-wash:#E8F2FA;
+  --s-indigo:#6CA0EB; --s-teal:#4FB39A; --s-amber:#C69A45; --s-violet:#C48FD6; --s-sky:#56AACD; --s-moss:#86AC6A; --s-rose:#E888AB;
+  --r-ctl:4px; --r-card:12px;
+  --sh-1:0 1px 2px rgba(13,25,52,.06); --sh-2:0 6px 20px rgba(13,25,52,.08); --sh-3:0 18px 50px rgba(13,25,52,.16);
+  --sans:Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* review file */
+  --d-bg:#FBFBFC; --d-ink:#0D1934; --d-muted:#4B5568; --d-line:#E3E5E9; --d-accent:#2F5BC0;
+}
+* { box-sizing:border-box; }
+html { scroll-padding-top:72px; }
+body { margin:0; background:var(--d-bg); color:var(--d-ink); font:400 15px/1.55 var(--sans); -webkit-font-smoothing:antialiased; font-feature-settings:"cv11","ss01"; }
+a { color:var(--primary-ink); }
+:focus-visible { outline:2px solid var(--primary); outline-offset:2px; border-radius:4px; }
+button, input, select, textarea { font:inherit; color:inherit; }
+@media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+/* ================= review file shell ================= */
+.skip { position:absolute; left:-999px; top:8px; background:#fff; padding:8px 12px; z-index:99; }
+.skip:focus { left:8px; }
+.doc { display:grid; grid-template-columns:280px minmax(0,1fr); min-height:100vh; }
+.toc { position:sticky; top:0; height:100vh; overflow-y:auto; border-right:1px solid var(--d-line); background:#fff; padding:22px 16px 24px; }
+.toc .brand { display:flex; gap:10px; align-items:center; margin:0 6px 4px; }
+.toc .brand b { font-size:15px; letter-spacing:-.2px; }
+.toc .brand span { display:block; font-size:12px; color:var(--d-muted); }
+.toc .meta { margin:12px 6px 18px; padding:10px 12px; border:1px solid var(--d-line); border-radius:10px; font-size:12px; color:var(--d-muted); line-height:1.5; }
+.toc .meta b { color:var(--d-ink); }
+.toc ol { list-style:none; margin:0; padding:0; display:grid; gap:1px; }
+.toc li a { display:grid; grid-template-columns:26px 1fr auto; gap:8px; align-items:center; padding:8px 8px; border-radius:8px; color:var(--d-ink); text-decoration:none; font-size:13.5px; font-weight:500; }
+.toc li a:hover { background:#F2F4F8; }
+.toc li a[aria-current="page"] { background:#EAF0FC; color:var(--d-accent); font-weight:650; }
+.toc li a .no { font:600 11px/1 var(--mono); color:var(--d-muted); }
+.toc li a[aria-current="page"] .no { color:var(--d-accent); }
+.toc li a .ct { font:600 11px/1 var(--mono); color:var(--d-muted); background:#F2F4F8; border-radius:999px; padding:3px 7px; }
+.toc .grp { font-size:11px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; color:var(--d-muted); padding:16px 8px 6px; }
+.dmain { min-width:0; }
+.dbar { position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:12px; padding:12px 40px; background:rgba(251,251,252,.9); backdrop-filter:blur(10px); border-bottom:1px solid var(--d-line); }
+.dbar .crumb { font-size:13px; color:var(--d-muted); }
+.dbar .crumb b { color:var(--d-ink); font-weight:600; }
+.dbar .sp { margin-left:auto; }
+.dbar .nav2 { display:flex; gap:8px; }
+.dbtn { display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:7px 12px; border-radius:8px; border:1px solid var(--d-line); background:#fff; font-size:13px; font-weight:600; color:var(--d-ink); text-decoration:none; cursor:pointer; }
+.dbtn:hover { border-color:#C5CAD3; }
+.dbtn.pri { background:var(--d-accent); border-color:var(--d-accent); color:#fff; }
+.menu { display:none; }
+.page { padding:40px 40px 72px; max-width:1360px; margin:0 auto; }
+.kicker { font:600 12px/1 var(--mono); color:var(--d-accent); letter-spacing:.04em; }
+.ptitle { font-size:36px; line-height:1.15; font-weight:700; letter-spacing:-.8px; margin:10px 0 10px; text-wrap:balance; }
+.plede { font-size:17px; color:var(--d-muted); max-width:72ch; margin:0; }
+.h2 { font-size:22px; font-weight:700; letter-spacing:-.3px; margin:48px 0 6px; }
+.h2 + .sub { color:var(--d-muted); margin:0 0 18px; font-size:14.5px; max-width:80ch; }
+.h3 { font-size:16px; font-weight:650; margin:0 0 6px; }
+.dcard { background:#fff; border:1px solid var(--d-line); border-radius:14px; }
+.dgrid2 { display:grid; gap:16px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.dgrid3 { display:grid; gap:16px; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.dgrid4 { display:grid; gap:16px; grid-template-columns:repeat(4,minmax(0,1fr)); }
+.stat { padding:18px 20px; display:grid; gap:4px; }
+.stat .l { font-size:13px; color:var(--d-muted); font-weight:550; }
+.stat .v { font-size:32px; font-weight:700; letter-spacing:-.8px; line-height:1.1; font-variant-numeric:tabular-nums; }
+.stat .s { font-size:12.5px; color:var(--d-muted); }
+.steps3 { counter-reset:s; }
+.step { padding:20px; display:grid; gap:6px; align-content:start; }
+.step .n { width:28px; height:28px; border-radius:999px; background:var(--d-ink); color:#fff; display:grid; place-items:center; font:700 13px/1 var(--mono); margin-bottom:6px; }
+.step p { margin:0; color:var(--d-muted); font-size:14px; }
+.legend2 { display:flex; flex-wrap:wrap; gap:8px 18px; font-size:13px; color:var(--d-muted); }
+.legend2 span { display:inline-flex; gap:7px; align-items:center; }
+
+/* severity + status tags in the review file */
+.sev { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:650; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+.sev::before { content:""; width:7px; height:7px; border-radius:999px; background:currentColor; }
+.sev.high { color:var(--bad-ink); background:var(--bad-wash); }
+.sev.med { color:var(--warn-ink); background:var(--warn-wash); }
+.sev.low { color:var(--info-ink); background:var(--info-wash); }
+.tagd { display:inline-block; font:600 11px/1.4 var(--mono); padding:2px 7px; border-radius:6px; background:#F2F4F8; color:var(--d-muted); white-space:nowrap; }
+.tagd.v { background:#EAF0FC; color:var(--d-accent); }
+
+/* direction block: problem / change / done when */
+.direction { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border:1px solid var(--d-line); border-radius:14px; background:#fff; overflow:hidden; margin:24px 0 20px; }
+.direction > div { padding:18px 20px; display:grid; gap:8px; align-content:start; }
+.direction > div + div { border-left:1px solid var(--d-line); }
+.direction .lab { font:650 11px/1 var(--mono); letter-spacing:.06em; text-transform:uppercase; display:flex; gap:8px; align-items:center; }
+.direction .lab i { width:8px; height:8px; border-radius:2px; display:block; }
+.direction ul { margin:0; padding-left:18px; display:grid; gap:6px; font-size:14px; }
+.direction li::marker { color:#9AA3B2; }
+.direction .ids { display:flex; gap:6px; flex-wrap:wrap; }
+
+/* frames */
+.frames { display:grid; gap:24px; grid-template-columns:minmax(0,1fr) 340px; align-items:start; }
+.frames.solo { grid-template-columns:minmax(0,1fr); }
+.frames.pair { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.fcap { display:flex; justify-content:space-between; gap:12px; align-items:baseline; margin:0 2px 8px; font-size:12.5px; color:var(--d-muted); }
+.fcap b { color:var(--d-ink); font-weight:650; font-size:13px; }
+.browser { border:1px solid var(--d-line); border-radius:12px; overflow:hidden; background:#fff; box-shadow:var(--sh-2); }
+.browser .chrome { height:34px; display:flex; align-items:center; gap:7px; padding:0 12px; background:#F3F4F6; border-bottom:1px solid var(--d-line); }
+.browser .chrome i { width:10px; height:10px; border-radius:999px; background:#D9DCE1; display:block; }
+.browser .chrome .url { margin-left:12px; flex:1; max-width:440px; height:22px; border-radius:6px; background:#fff; border:1px solid var(--d-line); font:500 11.5px/20px var(--mono); color:var(--d-muted); padding:0 10px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.phone { border:10px solid #0D1934; border-radius:38px; overflow:hidden; background:#fff; box-shadow:var(--sh-2); }
+.phone .notch { height:22px; background:#fff; display:flex; justify-content:center; align-items:center; }
+.phone .notch i { width:80px; height:6px; border-radius:999px; background:#E3E5E9; display:block; }
+.fit { position:relative; overflow:hidden; }
+.fit > .vp { position:absolute; top:0; left:0; transform-origin:0 0; }
+.note { font-size:12.5px; color:var(--d-muted); margin:10px 2px 0; }
+.ann { margin-top:14px; display:grid; gap:8px; }
+.ann div { display:grid; grid-template-columns:22px 1fr; gap:10px; font-size:13.5px; align-items:start; }
+.ann b.pin { width:22px; height:22px; border-radius:999px; background:var(--d-accent); color:#fff; font:700 11px/22px var(--mono); text-align:center; }
+
+/* findings table */
+.ftools { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:0 0 14px; }
+.segd { display:inline-flex; border:1px solid var(--d-line); border-radius:9px; overflow:hidden; background:#fff; }
+.segd button { border:0; background:none; padding:7px 12px; font-size:13px; font-weight:600; color:var(--d-muted); cursor:pointer; min-height:36px; }
+.segd button + button { border-left:1px solid var(--d-line); }
+.segd button[aria-pressed="true"] { background:var(--d-ink); color:#fff; }
+.ftable { width:100%; border-collapse:collapse; font-size:14px; }
+.ftable th { text-align:left; font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--d-muted); font-weight:650; padding:12px 14px; border-bottom:1px solid var(--d-line); background:#FAFBFC; }
+.ftable td { padding:14px; border-bottom:1px solid var(--d-line); vertical-align:top; }
+.ftable tr:last-child td { border-bottom:0; }
+.ftable .id { font:650 12.5px/1.4 var(--mono); white-space:nowrap; }
+.ftable .what { font-weight:600; display:block; margin-bottom:3px; }
+.ftable .ev { color:var(--d-muted); font-size:13px; display:block; }
+.ftable .fix { font-size:13.5px; }
+.ftable a.go { font-size:13px; font-weight:600; white-space:nowrap; }
+.empty-d { padding:28px; text-align:center; color:var(--d-muted); }
+
+/* plan list */
+.phase { display:grid; grid-template-columns:220px minmax(0,1fr) minmax(0,1fr); border-top:1px solid var(--d-line); }
+.phase:first-child { border-top:0; }
+.phase > div { padding:20px; }
+.phase .pn { font:700 12px/1 var(--mono); color:var(--d-accent); margin-bottom:8px; }
+.phase .pt { font-size:16px; font-weight:650; }
+.phase ul { margin:0; padding-left:18px; display:grid; gap:6px; font-size:14px; }
+.phase .lab { font:650 11px/1 var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--d-muted); margin-bottom:10px; }
+
+/* design system swatches */
+.sw-row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.swc { border:1px solid var(--d-line); border-radius:12px; overflow:hidden; background:#fff; }
+.swc .chip { height:64px; display:flex; align-items:flex-end; padding:10px 12px; font-weight:650; font-size:14px; }
+.swc .inf { padding:10px 12px; font-size:12.5px; color:var(--d-muted); display:grid; gap:2px; }
+.swc .inf b { color:var(--d-ink); font:600 12.5px/1.4 var(--mono); }
+.pass { color:var(--ok-ink); font-weight:650; } .fail { color:var(--bad-ink); font-weight:650; }
+
+@media (max-width:1240px) {
+  .frames, .frames.pair { grid-template-columns:minmax(0,1fr); }
+  .frames .phonewrap { max-width:360px; }
+  .dgrid4 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .phase { grid-template-columns:minmax(0,1fr); }
+  .phase > div + div { padding-top:0; }
+  .sw-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:960px) {
+  .doc { grid-template-columns:minmax(0,1fr); }
+  .toc { position:fixed; inset:0 auto 0 0; width:290px; z-index:60; transform:translateX(-100%); transition:transform .2s ease; box-shadow:var(--sh-3); }
+  .toc.open { transform:none; }
+  .menu { display:inline-flex; }
+  .page { padding:28px 18px 56px; }
+  .dbar { padding:10px 18px; }
+  .dbar .nav2 .dbtn span { display:none; }
+  .direction, .dgrid2, .dgrid3 { grid-template-columns:minmax(0,1fr); }
+  .direction > div + div { border-left:0; border-top:1px solid var(--d-line); }
+  .ptitle { font-size:28px; }
+  .ftable thead { display:none; }
+  .ftable, .ftable tbody, .ftable tr, .ftable td { display:block; width:100%; }
+  .ftable tr { border-bottom:1px solid var(--d-line); padding:10px 0; }
+  .ftable td { border:0; padding:6px 14px; }
+}
+@media (max-width:560px) { .dgrid4, .sw-row { grid-template-columns:minmax(0,1fr); } }
+
+/* ================= product layer (.m) ================= */
+.m { font:400 14px/1.5 var(--sans); color:var(--ink); background:var(--canvas); text-align:left; }
+.m .mono { font-family:var(--mono); font-size:12.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.m .dim { color:var(--muted); } .m .strong { font-weight:600; }
+.m .h1 { font-size:26px; line-height:1.2; font-weight:700; letter-spacing:-.5px; }
+.m .h2m { font-size:18px; font-weight:650; letter-spacing:-.2px; }
+.m .h3m { font-size:15px; font-weight:650; }
+.m .lede { color:var(--muted); font-size:14px; margin-top:4px; }
+.m .eyebrow { font-size:11px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+
+.m .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:36px; padding:7px 14px; border-radius:var(--r-ctl); border:1px solid var(--field); background:var(--surface); color:var(--ink); font-size:13.5px; font-weight:600; white-space:nowrap; text-decoration:none; cursor:pointer; }
+.m .btn.p { background:var(--primary); border-color:var(--primary); color:#fff; }
+.m .btn.d { color:var(--bad-ink); border-color:color-mix(in srgb, var(--bad) 55%, white); }
+.m .btn.q { border-color:transparent; background:transparent; color:var(--primary-ink); padding-left:6px; padding-right:6px; }
+.m .btn.sm { min-height:30px; padding:4px 10px; font-size:12.5px; }
+.m .btn.lg { min-height:46px; padding:11px 20px; font-size:15px; }
+.m .btn[disabled] { background:#EEF0F3; border-color:#D6D9DE; color:#5A6684; cursor:not-allowed; }
+.m .btn .ico { width:15px; height:15px; }
+.m .why { font-size:12px; color:var(--muted); }
+
+.m .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--r-card); }
+.m .card > .hd { display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--divider); }
+.m .card > .hd .sp { margin-left:auto; }
+.m .card > .bd { padding:16px; }
+.m .tiles { display:grid; gap:12px; }
+.m .tile { background:var(--surface); border:1px solid var(--line); border-radius:var(--r-card); padding:14px 16px; display:grid; gap:2px; align-content:start; }
+.m .tile .l { font-size:12.5px; color:var(--muted); font-weight:550; }
+.m .tile .v { font-size:28px; font-weight:700; letter-spacing:-.6px; font-variant-numeric:tabular-nums; line-height:1.2; }
+.m .tile .s { font-size:12.5px; color:var(--muted); }
+
+.m .pill { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; white-space:nowrap; }
+.m .pill::before { content:""; width:6px; height:6px; border-radius:999px; background:currentColor; }
+.m .pill.ok { background:var(--ok-wash); color:var(--ok-ink); }
+.m .pill.warn { background:var(--warn-wash); color:var(--warn-ink); }
+.m .pill.bad { background:var(--bad-wash); color:var(--bad-ink); }
+.m .pill.info { background:var(--info-wash); color:var(--info-ink); }
+.m .pill.neutral { background:#EEF0F3; color:var(--ink-2); }
+.m .pill.flag { font-family:var(--mono); font-weight:500; background:#EEF0F3; color:var(--ink-2); }
+.m .pill.flag::before, .m .pill.plain::before { display:none; }
+
+.m table { width:100%; border-collapse:collapse; font-size:13.5px; }
+.m th { text-align:left; font-size:11px; font-weight:650; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:9px 14px; border-bottom:1px solid var(--divider); background:var(--subtle); white-space:nowrap; }
+.m td { padding:11px 14px; border-bottom:1px solid var(--divider); vertical-align:middle; }
+.m tr:last-child td { border-bottom:0; }
+.m td.num, .m th.num { text-align:right; }
+.m .who { display:flex; align-items:center; gap:10px; min-width:0; }
+.m .av { width:30px; height:30px; border-radius:999px; flex:none; display:grid; place-items:center; background:var(--primary-wash); color:var(--primary-ink); font-weight:650; font-size:11.5px; }
+.m .two .t { font-weight:600; display:block; line-height:1.3; }
+.m .two .s { display:block; font-size:12px; color:var(--muted); line-height:1.35; }
+.m .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.m .nowrap { flex-wrap:nowrap; }
+
+.m .callout { display:flex; gap:12px; padding:12px 14px; border-radius:var(--r-card); border:1px solid; font-size:13.5px; }
+.m .callout .ico { width:18px; height:18px; flex:none; margin-top:1px; }
+.m .callout > div { min-width:0; flex:1; }
+.m .callout.warn { background:var(--warn-wash); border-color:#EDD3A1; } .m .callout.warn .ico { color:var(--warn-ink); }
+.m .callout.bad { background:var(--bad-wash); border-color:#EFC2BA; } .m .callout.bad .ico { color:var(--bad-ink); }
+.m .callout.ok { background:var(--ok-wash); border-color:#B6E0C9; } .m .callout.ok .ico { color:var(--ok-ink); }
+.m .callout.info { background:var(--info-wash); border-color:#BFD9EE; } .m .callout.info .ico { color:var(--info-ink); }
+
+.m .field { display:grid; gap:5px; }
+.m .field .lbl { font-size:12.5px; font-weight:600; }
+.m .input { min-height:38px; padding:8px 10px; border-radius:var(--r-ctl); border:1px solid var(--field); background:#fff; font-size:13.5px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.m .input.ph { color:var(--muted); }
+.m .input.err { border-color:var(--bad); box-shadow:0 0 0 1px var(--bad); }
+.m .hint { font-size:12px; color:var(--muted); } .m .err-t { font-size:12px; color:var(--bad-ink); font-weight:600; }
+.m .g2 { display:grid; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.m .g3 { display:grid; gap:12px; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.m .g4 { display:grid; gap:12px; grid-template-columns:repeat(4,minmax(0,1fr)); }
+.m .split { display:grid; gap:16px; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); align-items:stretch; }
+.m .split.even { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.m .split > .card { display:flex; flex-direction:column; } .m .split > .card > .bd { flex:1; }
+.m .seg { display:inline-flex; border:1px solid var(--field); border-radius:var(--r-ctl); overflow:hidden; background:#fff; }
+.m .seg span { padding:7px 12px; font-size:13px; font-weight:600; color:var(--ink-2); }
+.m .seg span + span { border-left:1px solid var(--line); }
+.m .seg span.on { background:var(--primary); color:#fff; }
+.m .tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); }
+.m .tabs span { padding:9px 12px; font-size:13.5px; font-weight:600; color:var(--ink-2); border-bottom:2px solid transparent; }
+.m .tabs span.on { color:var(--primary-ink); border-bottom-color:var(--primary-ink); }
+.m .sw { width:36px; height:20px; border-radius:999px; background:var(--primary); position:relative; flex:none; }
+.m .sw::after { content:""; position:absolute; right:2px; top:2px; width:16px; height:16px; border-radius:999px; background:#fff; }
+
+.m .dlg { background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:var(--sh-3); display:flex; flex-direction:column; }
+.m .dlg > .hd { padding:16px 18px 12px; border-bottom:1px solid var(--divider); }
+.m .dlg > .bd { padding:16px 18px; display:grid; gap:14px; align-content:start; flex:1; }
+.m .dlg > .ft { padding:12px 18px; border-top:1px solid var(--divider); display:flex; gap:8px; justify-content:flex-end; align-items:center; flex-wrap:wrap; }
+.m .dlg > .ft .why { margin-right:auto; }
+.m .checks { display:grid; gap:8px; }
+.m .chk { display:flex; gap:10px; padding:10px 12px; border-radius:8px; background:var(--subtle); border:1px solid var(--divider); font-size:13.5px; }
+.m .chk .ico { width:17px; height:17px; flex:none; margin-top:2px; }
+.m .chk .t { font-weight:600; display:block; } .m .chk .s { display:block; color:var(--ink-2); font-size:12.5px; }
+.m .chk.warn { background:var(--warn-wash); border-color:#EDD3A1; } .m .chk.warn .ico { color:var(--warn-ink); }
+.m .chk.bad { background:var(--bad-wash); border-color:#EFC2BA; } .m .chk.bad .ico { color:var(--bad-ink); }
+.m .chk.ok .ico { color:var(--ok-ink); }
+.m .list > div { display:flex; gap:12px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--divider); }
+.m .list > div:last-child { border-bottom:0; }
+.m .ic { width:32px; height:32px; border-radius:8px; display:grid; place-items:center; flex:none; }
+.m .ic .ico { width:16px; height:16px; }
+.m .ic.warn { background:var(--warn-wash); color:var(--warn-ink); } .m .ic.info { background:var(--info-wash); color:var(--info-ink); }
+.m .ic.ok { background:var(--ok-wash); color:var(--ok-ink); } .m .ic.bad { background:var(--bad-wash); color:var(--bad-ink); }
+.m .ic.pri { background:var(--primary-wash); color:var(--primary-ink); }
+.m .bar { height:8px; border-radius:999px; background:#EEF0F3; overflow:hidden; } .m .bar i { display:block; height:100%; border-radius:999px; background:var(--primary); }
+.m .shift { border-radius:6px; padding:6px 8px; display:grid; gap:1px; font-size:11.5px; min-height:46px; align-content:center; }
+.m .shift b { font:650 11.5px/1.2 var(--mono); }
+.m .shift span { color:var(--ink-2); font-size:11px; }
+.m .shift.empty { border:1px dashed var(--line); color:var(--muted); place-items:center; }
+.m .shift.clash { box-shadow:0 0 0 2px var(--bad); }
+
+/* product: app shell */
+.m.app { display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100%; }
+.m .rail { background:var(--rail); border-right:1px solid var(--line); padding:16px 12px; display:flex; flex-direction:column; gap:4px; }
+.m .wm { display:flex; align-items:center; gap:9px; font-weight:700; font-size:17px; letter-spacing:-.3px; padding:0 6px 10px; }
+.m .wm em { font-style:normal; color:var(--primary-ink); }
+.m .org { display:flex; gap:9px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; margin-bottom:6px; }
+.m .org .mk { width:30px; height:30px; border-radius:6px; background:var(--brand); color:#fff; display:grid; place-items:center; font-weight:700; font-size:12px; }
+.m .org b { font-size:13px; display:block; line-height:1.25; } .m .org span { font-size:11.5px; color:var(--muted); }
+.m .ng { font-size:10.5px; font-weight:650; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); padding:10px 8px 3px; }
+.m .ni { display:flex; align-items:center; gap:9px; padding:6px 8px; border-radius:6px; font-size:13px; font-weight:550; color:var(--ink); }
+.m .ni .ico { width:16px; height:16px; color:var(--ink-2); }
+.m .ni.on { background:var(--primary); color:#fff; } .m .ni.on .ico { color:#fff; }
+.m .ni .ct { margin-left:auto; font:650 10.5px/1 var(--mono); background:var(--warn); color:#3A2A08; border-radius:999px; padding:3px 6px; }
+.m .me { margin-top:auto; display:flex; gap:9px; align-items:center; padding:10px 8px 0; border-top:1px solid var(--line); }
+.m .me b { font-size:13px; display:block; line-height:1.25; } .m .me span { font-size:11.5px; color:var(--muted); }
+.m .top { display:flex; align-items:center; gap:10px; padding:10px 24px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.7); }
+.m .top .crumbs { font-size:12.5px; color:var(--muted); } .m .top .crumbs b { color:var(--ink); font-weight:600; }
+.m .top .sp { margin-left:auto; }
+.m .kbd { display:inline-flex; align-items:center; gap:8px; min-width:240px; padding:6px 10px; border:1px solid var(--field); border-radius:var(--r-ctl); background:#fff; font-size:12.5px; color:var(--muted); }
+.m .iconb { width:34px; height:34px; border-radius:var(--r-ctl); border:1px solid var(--field); background:#fff; display:grid; place-items:center; position:relative; }
+.m .iconb .ico { width:16px; height:16px; }
+.m .iconb .dot { position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:999px; background:var(--bad); }
+.m .content { padding:24px; display:grid; gap:16px; align-content:start; }
+.m .phead { display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+.m .phead .acts { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+/* product: phone app */
+.m.mob { min-height:100%; display:flex; flex-direction:column; }
+.m .mtop { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--line); background:#fff; }
+.m .mbody { padding:16px; display:grid; gap:14px; align-content:start; flex:1; }
+.m .tabbar { display:grid; grid-template-columns:repeat(5,1fr); border-top:1px solid var(--line); background:#fff; padding:6px 4px 10px; }
+.m .tabbar span { display:grid; justify-items:center; gap:2px; font-size:10.5px; font-weight:600; color:var(--ink-2); }
+.m .tabbar span.on { color:var(--primary-ink); }
+.m .tabbar .ico { width:19px; height:19px; }
+
+/* product: marketing */
+.m.site { background:#fff; }
+.m .snav { display:flex; align-items:center; gap:28px; padding:16px 64px; border-bottom:1px solid var(--divider); background:#fff; }
+.m .snav .links { display:flex; gap:26px; font-size:14px; font-weight:500; color:var(--ink-2); margin:0 auto; }
+.m .snav .links .on { color:var(--primary-ink); }
+.m .sec { padding:72px 64px; }
+.m .sec.alt { background:var(--canvas); }
+.m .disp { font-size:58px; line-height:1.04; font-weight:700; letter-spacing:-2px; text-wrap:balance; }
+.m .disp2 { font-size:36px; line-height:1.15; font-weight:700; letter-spacing:-1px; text-wrap:balance; }
+.m .big { font-size:18px; color:var(--ink-2); line-height:1.6; }
+.m .tick { display:flex; gap:8px; align-items:center; font-size:13.5px; color:var(--ink-2); }
+.m .tick .ico { width:16px; height:16px; color:var(--ok-ink); }
+.m .fcard { background:#fff; border:1px solid var(--line); border-radius:var(--r-card); padding:22px; display:grid; gap:8px; align-content:start; }
+.m .fcard .ic { width:38px; height:38px; }
+.m .fcard p { margin:0; color:var(--ink-2); font-size:14px; }
+.m .badge { display:inline-flex; gap:6px; align-items:center; border:1px solid var(--line); border-radius:999px; padding:5px 12px; font-size:13px; color:var(--ink-2); background:#fff; }
+.m .consent { display:flex; align-items:center; gap:16px; padding:12px 18px; background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:var(--sh-3); font-size:13.5px; }
+.m .consent p { margin:0; flex:1; color:var(--ink-2); }
+.m .sfoot { padding:48px 64px 28px; border-top:1px solid var(--divider); background:var(--canvas); }
+.m .sfoot .cols { display:grid; grid-template-columns:1.4fr repeat(5,1fr); gap:24px; }
+.m .sfoot .cols b { font-size:13px; display:block; margin-bottom:10px; }
+.m .sfoot .cols span { display:block; font-size:13px; color:var(--ink-2); padding:3px 0; }
+.m .sfoot .base { display:flex; justify-content:space-between; margin-top:32px; padding-top:18px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted); }
+.m .price { font-size:40px; font-weight:700; letter-spacing:-1.2px; line-height:1; }
+.m .acc > div { border-bottom:1px solid var(--line); padding:16px 0; }
+.m .acc .q { display:flex; justify-content:space-between; font-weight:600; font-size:15px; }
+.m .acc .a { color:var(--ink-2); font-size:14px; margin-top:8px; }
+.m .wk { display:grid; grid-template-columns:130px repeat(7,minmax(0,1fr)); gap:5px; align-items:center; font-size:12px; }
+.m .wk .hdc { font-size:11px; font-weight:650; color:var(--muted); text-align:center; letter-spacing:.04em; }
+.vp > .m, .vp > div > .m { min-height:inherit; }
+.m.app, .m.site, .m.mob { position:relative; }
+.m .ico { width:16px; height:16px; flex:none; }
+.m .sfoot .cols .wm span { display:inline; padding:0; font-size:17px; color:var(--ink); }
+.m .sfoot .cols .wm em { color:var(--primary-ink); }
+
+</style>
+</head>
+<body>
+<a class="skip" href="#page">Skip to content</a>
+<div class="doc">
+  <aside class="toc" id="toc" aria-label="Sections">
+    <div class="brand"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0C60F8"/><path d="M10 8h7.5a5.5 5.5 0 0 1 1.6 10.8L23 24h-4.2l-3.4-4.8H13.6V24H10z" fill="#fff"/><path d="M13.6 11.2v4.8h3.8a2.4 2.4 0 0 0 0-4.8z" fill="#0C60F8"/></svg><div><b>RotaFlow design gaps</b><span>Review file · v2</span></div></div>
+    <div class="meta"><b>31 October 2026</b><br>Design only. Nothing in the product has changed. All names and figures are sample data.</div>
+    <nav aria-label="Sections"><ol id="toc-list"></ol></nav>
+  </aside>
+  <div class="dmain">
+    <div class="dbar"><button class="dbtn menu" id="menuBtn" aria-controls="toc">Sections</button><span class="crumb" id="crumb"></span><span class="sp"></span><span class="nav2"><span id="prev"></span><span id="next"></span></span></div>
+    <main class="page" id="page" tabindex="-1"></main>
+  </div>
+</div>
+<script>
+/* Findings. src: "verified" = seen in the running product on 31 Oct 2026
+   (screenshots at 390 / 834 / 1440 / 1920, axe-core, overflow check);
+   "docs" = listed in docs/UX-SPEC.md as having no design reference. */
+const FINDINGS = [
+  // ---------- landing ----------
+  { id:'F01', sev:'high', surf:'Landing', src:'verified', where:'Every public page, first screen',
+    what:'The cookie notice covers a quarter of the first screen',
+    ev:'At 1440 × 900 it is 205 px tall and sits over the pricing cards, the features heading and the rota grid. Three buttons and a paragraph.',
+    fix:'A compact bar, one line of text, Accept and Reject at equal weight, "Choose" as a link. 64 px tall.', sec:'states' },
+  { id:'F02', sev:'high', surf:'Landing', src:'verified', where:'Home hero, 390 wide',
+    what:'The product picture is unreadable on a phone',
+    ev:'Tile labels cut to "ON SHIF…" and "COVERA…"; shift times run together as "07:0007:00".',
+    fix:'On phones, show the staff "My schedule" card instead of the week grid. It is what a phone user sees anyway.', sec:'home' },
+  { id:'F03', sev:'med', surf:'Landing', src:'verified', where:'Home hero',
+    what:'Uneven hero: an orphaned line and empty bands',
+    ev:'"No payment setup" wraps alone to a second line at 1440. About 150 px of blank space under the picture at 390.',
+    fix:'Three short facts on one row with ticks; picture sits inside the hero column, no trailing band.', sec:'home' },
+  { id:'F04', sev:'med', surf:'Landing', src:'verified', where:'Home, "Why teams choose RotaFlow"',
+    what:'Left column ends early, leaving a 420 px empty band',
+    ev:'Heading and three lines on the left; five list items on the right.',
+    fix:'Show what RotaFlow catches as a real warning card in the left column.', sec:'home' },
+  { id:'F05', sev:'low', surf:'Landing', src:'verified', where:'Home',
+    what:'The same point appears twice',
+    ev:'"Rest-period and 48-hour warnings" is in both the Why list and the commitments.',
+    fix:'Keep it in Why; the commitments keep offline, isolation and tested pay maths.', sec:'home' },
+  { id:'F06', sev:'med', surf:'Landing', src:'verified', where:'Footer, every public page',
+    what:'Footer leaves most of its width empty',
+    ev:'Legal drops to its own row under the brand; a 250 px blank band follows the footer.',
+    fix:'Six columns on one row, one base line. No trailing space.', sec:'home' },
+  { id:'F07', sev:'med', surf:'Landing', src:'verified', where:'Pricing cards',
+    what:'Prices do not line up, and the trial is hidden',
+    ev:'Two-line descriptions push the Business and Enterprise prices 20 px lower. The 30-day free trial is only in the FAQ.',
+    fix:'Fixed description slot so prices align; "30 days free, no card" under each price.', sec:'pricing' },
+  { id:'F08', sev:'high', surf:'Landing', src:'verified', where:'Pricing FAQ, home, sign-in footer',
+    what:'Copy that stops being true at cutover',
+    ev:'"A managed Postgres database in the EU", "row-level security" and "Data held in the EU". The move is to MariaDB on cPanel with a PHP API.',
+    fix:'Rewrite before cutover. Server location must be confirmed by the owner first (ASSUMPTION: not yet known).', sec:'pricing' },
+  { id:'F09', sev:'low', surf:'Landing', src:'verified', where:'Pricing',
+    what:'Six separate FAQ boxes make a long scroll',
+    ev:'Each answer is its own bordered card, 900 px of boxes.',
+    fix:'One accordion list, first answer open.', sec:'pricing' },
+  { id:'F10', sev:'low', surf:'Landing', src:'verified', where:'Features page',
+    what:'The new modules are not mentioned',
+    ev:'"The eight things RotaFlow does" predates Compliance, Cover and the payroll export.',
+    fix:'Add them when their flags go on, not before.', sec:'plan' },
+  // ---------- sign in ----------
+  { id:'F11', sev:'high', surf:'Sign in', src:'verified', where:'/login, /signup, /forgot-password at 390',
+    what:'Sign-in pages scroll sideways on phones',
+    ev:'Overflow check: 82 px. The Clerk card is wider than its container and the language picker is clipped.',
+    fix:'One card, full width on phones, Clerk sized to it.', sec:'signin' },
+  { id:'F12', sev:'med', surf:'Sign in', src:'verified', where:'/login',
+    what:'A card inside a card, and two sign-up links',
+    ev:'"Don\'t have an account? Sign up" (Clerk) and "New to RotaFlow? Create an account". Clerk heading reads "Sign in to rotaflow", lower case.',
+    fix:'One card, one secondary link, brand name set in Clerk.', sec:'signin' },
+  { id:'F13', sev:'med', surf:'Sign in', src:'verified', where:'/login copy',
+    what:'The page contradicts the invitation-only rule',
+    ev:'Organisations are invitation only (owner decision, 30 Oct), but the page offers "Create an account" to anyone.',
+    fix:'"Use the email your organisation invited." New organisations: "Ask for access".', sec:'signin' },
+  // ---------- app ----------
+  { id:'F14', sev:'high', surf:'App', src:'verified', where:'Sidebar wordmark, all 14 workspace screens',
+    what:'Brand text fails contrast on the sidebar',
+    ev:'axe: "Flow" #3B6FE0 on #F4F4F4 measures 4.21:1; 4.5:1 needed.',
+    fix:'Text uses primary-ink #2F5BC0: 5.65:1.', sec:'system' },
+  { id:'F15', sev:'high', surf:'App', src:'verified', where:'Leave, Decline buttons, "oldest: 16 days"',
+    what:'Red text fails contrast',
+    ev:'axe: #D94A3A on white measures 4.21:1.',
+    fix:'Text uses danger-ink #B23A2C: 5.94:1. The lighter red stays for fills and borders.', sec:'system' },
+  { id:'F16', sev:'med', surf:'App', src:'verified', where:'Every input and select',
+    what:'Field edges are too faint to see',
+    ev:'Border #D0D1D2 on white measures 1.53:1; a field edge needs 3:1 (WCAG 1.4.11).',
+    fix:'Field border #8A8F98: 3.25:1. Card borders keep the lighter line.', sec:'system' },
+  { id:'F17', sev:'med', surf:'App', src:'verified', where:'Swaps (390), onboarding plan step, settings tabs (390)',
+    what:'Small text fails contrast in three places',
+    ev:'axe: a 10 px swap tag, plan descriptions at 80% opacity, and the mobile settings tab label.',
+    fix:'No text under 12 px; no opacity on text; use the muted token instead.', sec:'system' },
+  { id:'F18', sev:'high', surf:'App', src:'verified', where:'Inside the signed-in app',
+    what:'The cookie notice covers the rota grid',
+    ev:'The same 205 px banner appears over Rota builder and Dashboard until answered.',
+    fix:'Inside the app, a small card in the corner that never covers content.', sec:'states' },
+  { id:'F19', sev:'med', surf:'App', src:'verified', where:'Dashboard',
+    what:'Eight tiles in one row are hard to read',
+    ev:'At 1440 labels wrap and notes run to four lines, so tiles are uneven. On a phone the tiles fill two screens before the staffing list.',
+    fix:'Four headline tiles and a "Needs you" list. The other four figures move into the staffing header.', sec:'dashboard' },
+  { id:'F20', sev:'med', surf:'App', src:'verified', where:'Dashboard staffing table',
+    what:'The staffing table does not fit',
+    ev:'At 1440 the location wraps to three lines, job pills wrap, the Review column is cut off. Headers mix "Expected start" with "JOB TITLE"; raw value "gps".',
+    fix:'Person (name and job), Shift, Clocked, Worked, Status, action. Location in the filter. "GPS" in words.', sec:'dashboard' },
+  { id:'F21', sev:'med', surf:'App', src:'verified', where:'Dashboard alert',
+    what:'"1 thing needs a look" is hard to scan',
+    ev:'Status, name, site, times and explanation run as one sentence; "Open" wraps to its own line.',
+    fix:'Each item is a row in "Needs you": what, who, when, one button.', sec:'dashboard' },
+  { id:'F22', sev:'low', surf:'App', src:'verified', where:'Sidebar and top bar',
+    what:'18 ungrouped links, an empty profile, an idle top bar',
+    ev:'The sidebar scrolls on a 900 px screen. With no name set the profile shows a blank circle and "Owner". The top bar holds only the org name and bell.',
+    fix:'Five labelled groups; initials and email when no name; search moves to the top bar.', sec:'dashboard' },
+  { id:'F23', sev:'high', surf:'App', src:'verified', where:'Rota builder',
+    what:'"2 issues block publication" without saying which',
+    ev:'The red banner names no shift, while "Publish (3 changes)" stays blue and clickable.',
+    fix:'List each issue with "Go to shift". Publish is disabled with the reason beside it.', sec:'rota' },
+  { id:'F24', sev:'med', surf:'App', src:'verified', where:'Rota builder grid',
+    what:'Week view shows nine days, cut off',
+    ev:'Mon 2 and Tue 3 of next week appear clipped at the right edge. Roles cut to "Senior Nur…". Date reads "26 Oct, 1 Nov 2026".',
+    fix:'Seven days in Week view; role on its own line; "26 Oct – 1 Nov 2026".', sec:'rota' },
+  { id:'F25', sev:'low', surf:'App', src:'verified', where:'Leave tiles and chips',
+    what:'US date order and Title Case',
+    ev:'"Aug 25-29" in the Cover risk tile; chips read "Annual Leave".',
+    fix:'"25–29 Aug"; sentence case "Annual leave".', sec:'system' },
+  { id:'F26', sev:'low', surf:'App', src:'verified', where:'Dashboard',
+    what:'Updated time shows seconds',
+    ev:'"Updated 13:00:00".',
+    fix:'"Updated 13:00".', sec:'dashboard' },
+  { id:'F27', sev:'low', surf:'App', src:'verified', where:'/app-preview/dashboard (development only)',
+    what:'A preview address renders a blank page',
+    ev:'The preview shell has no catch-all route. Real /app/* addresses fall through to the 404 correctly.',
+    fix:'Add a catch-all to the preview shell so a mistyped preview link shows the 404.', sec:'states' },
+  // ---------- from docs ----------
+  { id:'F28', sev:'med', surf:'Modules', src:'docs', where:'/app/compliance, Settings → Document types',
+    what:'Compliance has no design reference', ev:'UX-SPEC §7a: built from existing components.', fix:'Designed here.', sec:'compliance' },
+  { id:'F29', sev:'med', surf:'Modules', src:'docs', where:'/app/cover, /app/open-shifts',
+    what:'Cover has no design reference', ev:'UX-SPEC §7c.', fix:'Designed here.', sec:'cover' },
+  { id:'F30', sev:'med', surf:'Modules', src:'docs', where:'Rota builder dialogs, Leave',
+    what:'Scheduling checks have no design reference', ev:'UX-SPEC §7b.', fix:'Designed here.', sec:'scheduling' },
+  { id:'F31', sev:'med', surf:'Modules', src:'docs', where:'/app/timesheets',
+    what:'Timesheet flags and payroll export have no design reference', ev:'UX-SPEC §7d.', fix:'Designed here.', sec:'timesheets' },
+  { id:'F32', sev:'med', surf:'Not built', src:'docs', where:'Documents, photo',
+    what:'Nothing can be uploaded', ev:'UX-SPEC §7: file and photo are pasted links.', fix:'Designed here; needs the S8 Files module.', sec:'notbuilt' },
+  { id:'F33', sev:'med', surf:'Not built', src:'docs', where:'My account',
+    what:'Staff cannot edit their own contacts', ev:'UX-SPEC §7: emergency contacts are manager-only.', fix:'Designed here; needs an API rule.', sec:'notbuilt' },
+  { id:'F34', sev:'low', surf:'Not built', src:'docs', where:'My account → Security',
+    what:'Email cannot be changed', ev:'UX-SPEC §7.', fix:'Designed here; uses Clerk\'s email API.', sec:'notbuilt' },
+  { id:'F35', sev:'low', surf:'Not built', src:'docs', where:'Clock in, Locations',
+    what:'No QR clock-in', ev:'UX-SPEC §7: GPS and manual only.', fix:'Designed here; needs a per-site code in the schema.', sec:'notbuilt' },
+  { id:'F36', sev:'low', surf:'System', src:'docs', where:'Global',
+    what:'System states have no design reference', ev:'UX-SPEC "Screens with no design reference".', fix:'Designed here.', sec:'states' },
+  { id:'F37', sev:'low', surf:'System', src:'verified', where:'docs/design/ORGANISATION_WORKSPACE.html',
+    what:'The design reference itself fails contrast', ev:'Status text on washes: warning 2.04:1, success 2.97:1. The live app already uses darker -ink shades.', fix:'Treat this file as the reference for status colour; update the HTML reference later.', sec:'system' },
+];
+
+/* ============================ helpers ============================ */
+const P = {
+  home:'M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z',
+  grid:'M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18',
+  cal:'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2',
+  clock:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 6v6l4 2',
+  sheet:'M4 2h16v20H4zM8 7h8M8 11h8M8 15h5',
+  plane:'M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 0 0-3-3L13 8 4.8 6.2a1 1 0 0 0-.9 1.7L9 11l-2 3H4l1.5 3L9 18.5V15l3-2 3.1 5.1a1 1 0 0 0 1.7-.9',
+  swap:'M7 3 3 7l4 4M3 7h13a4 4 0 0 1 4 4M17 21l4-4-4-4M21 17H8a4 4 0 0 1-4-4',
+  users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
+  pin:'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6',
+  cog:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4',
+  user:'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+  bell:'M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0',
+  lock:'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2M8 11V7a4 4 0 1 1 8 0v4',
+  alert:'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0',
+  info:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 16v-4M12 8h.01',
+  ok:'M20 6 9 17l-5-5',
+  x:'M18 6 6 18M6 6l12 12',
+  doc:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5',
+  shield:'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10M9 12l2 2 4-4',
+  upload:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+  download:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
+  hand:'M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15',
+  qr:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2',
+  mail:'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2M22 6l-10 7L2 6',
+  wifi:'M2 8.8a15 15 0 0 1 20 0M5 12.9a10 10 0 0 1 14 0M8.5 16.4a5 5 0 0 1 7 0M12 20h.01M2 2l20 20',
+  refresh:'M21 12a9 9 0 1 1-2.6-6.4L21 8M21 3v5h-5',
+  search:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3',
+  chev:'M6 9l6 6 6-6', left:'M15 18l-6-6 6-6', right:'M9 18l6-6-6-6', arrow:'M5 12h14M13 6l6 6-6 6',
+  chart:'M3 3v18h18M7 15l4-5 3 3 5-7',
+  mega:'M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1M15.5 8.5a5 5 0 0 1 0 7',
+  check2:'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+  more:'M5 12h.01M12 12h.01M19 12h.01', menu:'M3 6h18M3 12h18M3 18h18',
+  life:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+  phone:'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2',
+  gps:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8M12 2v3M12 19v3M2 12h3M19 12h3',
+  layers:'M12 2 2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+  list:'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  flag:'M4 22V4a1 1 0 0 1 1-1h12l-2 5 2 5H5',
+};
+const ico = (k, c = 'ico') => `<svg class="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P[k] || P.home}"/></svg>`;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const $ = s => document.querySelector(s);
+const ini = n => n.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const pill = (t, l) => `<span class="pill ${t}">${esc(l)}</span>`;
+const who = (n, s) => `<span class="who"><span class="av" aria-hidden="true">${ini(n)}</span><span class="two"><span class="t">${esc(n)}</span>${s ? `<span class="s">${esc(s)}</span>` : ''}</span></span>`;
+const tbl = (cols, rows) => `<table><thead><tr>${cols.map(c => `<th${c.n ? ' class="num"' : ''}>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((v, i) => `<td${cols[i].n ? ' class="num"' : ''}>${v}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+const mcard = (title, body, o = {}) => `<div class="card"${o.style ? ` style="${o.style}"` : ''}><div class="hd"><span class="h3m">${esc(title)}</span>${o.aside ? `<span class="sp"></span>${o.aside}` : ''}</div>${o.raw ? body : `<div class="bd">${body}</div>`}</div>`;
+const tiles = (list, cols = 4) => `<div class="tiles" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${list.map(t => `<div class="tile"><span class="l">${esc(t[0])}</span><span class="v">${esc(t[1])}</span><span class="s">${t[2] || ''}</span></div>`).join('')}</div>`;
+const SH = (code, time, c, extra = '') => `<div class="shift ${extra}" style="background:color-mix(in srgb, ${c} 22%, white)"><b>${code}</b><span>${time}</span></div>`;
+const EMPTY = '<div class="shift empty">+</div>';
+
+/* frames: the product drawn at true size, then scaled to fit */
+const desk = (url, inner, h = 820, w = 1280) => `<div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url">${esc(url)}</span></div><div class="fit" data-w="${w}"><div class="vp" style="width:${w}px;min-height:${h}px">${inner}</div></div></div>`;
+const phone = (inner, h = 760) => `<div class="phonewrap"><div class="phone"><div class="notch"><i></i></div><div class="fit" data-w="390"><div class="vp" style="width:390px;min-height:${h}px">${inner}</div></div></div></div>`;
+const cap = (title, meta) => `<div class="fcap"><b>${title}</b><span>${meta || ''}</span></div>`;
+
+/* review-file blocks */
+const sevTag = s => `<span class="sev ${s}">${{ high:'High', med:'Medium', low:'Low' }[s]}</span>`;
+const fid = id => `<a class="tagd v" href="#findings" data-f="${id}">${id}</a>`;
+const direction = (ids, problem, change, done) => `<div class="direction">
+  <div><span class="lab" style="color:var(--bad-ink)"><i style="background:var(--bad)"></i>What is wrong</span><ul>${problem.map(x => `<li>${x}</li>`).join('')}</ul><div class="ids">${ids.map(fid).join('')}</div></div>
+  <div><span class="lab" style="color:var(--d-accent)"><i style="background:var(--d-accent)"></i>What changes</span><ul>${change.map(x => `<li>${x}</li>`).join('')}</ul></div>
+  <div><span class="lab" style="color:var(--ok-ink)"><i style="background:var(--ok)"></i>Done when</span><ul>${done.map(x => `<li>${x}</li>`).join('')}</ul></div></div>`;
+const phead = (no, title, lede, status) => `<span class="kicker">${no}</span><h1 class="ptitle">${title}</h1><p class="plede">${lede}</p>${status ? `<div style="margin-top:14px" class="legend2">${status}</div>` : ''}`;
+const ann = list => `<div class="ann">${list.map((t, i) => `<div><b class="pin">${i + 1}</b><span>${t}</span></div>`).join('')}</div>`;
+
+/* ============================ product pieces ============================ */
+const RAIL_GROUPS = [
+  ['Today', [['home', 'Dashboard'], ['cal', 'Schedule'], ['clock', 'Clock in']]],
+  ['Plan', [['grid', 'Rota builder'], ['swap', 'Open shifts'], ['hand', 'Cover', 2], ['check2', 'Availability']]],
+  ['Requests', [['plane', 'Leave', 2], ['swap', 'Shift swaps'], ['clock', 'Overtime'], ['ok', 'Approvals', 3]]],
+  ['People', [['users', 'Team'], ['shield', 'Compliance'], ['pin', 'Locations']]],
+  ['Insight', [['sheet', 'Timesheets'], ['chart', 'Reports'], ['mega', 'Announcements']]],
+];
+const rail = cur => `<div class="rail"><div class="wm">${logo(24)}<span>Rota<em>Flow</em></span></div>
+  <div class="org"><span class="mk">SC</span><span><b>Sunnyvale Care Group</b><span>Owner · 9 sites</span></span></div>
+  ${RAIL_GROUPS.map(([g, items]) => `<div class="ng">${g}</div>${items.map(([i, l, c]) => `<div class="ni${l === cur ? ' on' : ''}">${ico(i)}${l}${c ? `<span class="ct">${c}</span>` : ''}</div>`).join('')}`).join('')}
+  <div class="ni" style="margin-top:8px">${ico('cog')}Settings</div>
+  <div class="me"><span class="av">MB</span><span><b>Marcus Bell</b><span>Owner</span></span></div></div>`;
+const topbar = crumbs => `<div class="top"><span class="crumbs">${crumbs}</span><span class="sp"></span><span class="kbd">${ico('search')}Search screens and actions<span style="margin-left:auto" class="mono">⌘K</span></span><span class="iconb">${ico('bell')}<span class="dot"></span></span></div>`;
+const appShell = (cur, crumbs, content) => `<div class="m app">${rail(cur)}<div>${topbar(crumbs)}<div class="content">${content}</div></div></div>`;
+const mobShell = (title, content, tab = 0) => `<div class="m mob"><div class="mtop"><span class="wm" style="padding:0;font-size:16px">${logo(22)}<span>Rota<em>Flow</em></span></span><span style="margin-left:auto" class="iconb">${ico('search')}</span><span class="iconb">${ico('bell')}<span class="dot"></span></span></div>
+  <div class="mbody">${content}</div>
+  <div class="tabbar">${[['home', 'Home'], ['grid', 'Rota'], ['clock', 'Clock in'], ['plane', 'Requests'], ['more', 'More']].map(([i, l], k) => `<span class="${k === tab ? 'on' : ''}">${ico(i)}${l}</span>`).join('')}</div></div>`;
+function logo(s = 24) {
+  return `<svg width="${s}" height="${s}" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0C60F8"/><path d="M10 8h7.5a5.5 5.5 0 0 1 1.6 10.8L23 24h-4.2l-3.4-4.8H13.6V24H10z" fill="#fff"/><path d="M13.6 11.2v4.8h3.8a2.4 2.4 0 0 0 0-4.8z" fill="#0C60F8"/></svg>`;
+}
+const siteNav = cur => `<div class="snav"><span class="wm" style="padding:0">${logo(28)}<span>Rota<em>Flow</em></span></span><span class="links">${['Features', 'Solutions', 'Pricing', 'Resources', 'Contact'].map(l => `<span class="${l === cur ? 'on' : ''}">${l}</span>`).join('')}</span><span class="row"><span class="btn q" style="color:var(--ink)">Log in</span><span class="btn p">Join the beta</span></span></div>`;
+const siteFoot = () => `<div class="sfoot"><div class="cols">
+  <div><span class="wm" style="padding:0 0 10px">${logo(24)}<span>Rota<em>Flow</em></span></span><span>Scheduling certainty for every shift.</span></div>
+  ${[['Product', ['Features', 'Pricing', 'Join the beta', 'Sign in']], ['Solutions', ['Healthcare and care', 'Hospitality', 'Retail', 'Security']], ['Resources', ['Getting started', 'Product updates', 'Support']], ['Company', ['About', 'Contact']], ['Legal', ['Privacy', 'Terms', 'Cookies', 'Accessibility', 'Trust']]].map(([h, l]) => `<div><b>${h}</b>${l.map(x => `<span>${x}</span>`).join('')}</div>`).join('')}
+  </div><div class="base"><span>© 2026 RotaFlow. Built in the UK.</span><span>In active development. <u>What is built today</u> · <u>Cookie preferences</u></span></div></div>`;
+
+/* ============================ pages ============================ */
+const PAGES = {};
+const TOC = [
+  ['Review', [['start', 'Start here'], ['findings', 'What I found', () => FINDINGS.length]]],
+  ['Landing site', [['home', 'Home page'], ['pricing', 'Pricing']]],
+  ['Sign in', [['signin', 'Sign in and sign up']]],
+  ['App', [['dashboard', 'Shell and dashboard'], ['rota', 'Rota builder: publishing']]],
+  ['New modules', [['compliance', 'Compliance'], ['cover', 'Cover'], ['scheduling', 'Scheduling checks'], ['timesheets', 'Timesheets']]],
+  ['Not built yet', [['notbuilt', 'Self-service and QR']]],
+  ['Everywhere', [['states', 'States and consent']]],
+  ['Reference', [['system', 'Design system'], ['plan', 'Build plan']]],
+];
+const ORDER = TOC.flatMap(([, it]) => it.map(i => i[0]));
+const LABEL = Object.fromEntries(TOC.flatMap(([g, it]) => it.map(i => [i[0], [g, i[1]]])));
+const NO = id => String(ORDER.indexOf(id)).padStart(2, '0');
+
+/* ---------------- 00 start ---------------- */
+PAGES.start = () => {
+  const c = s => FINDINGS.filter(f => f.sev === s).length;
+  const v = FINDINGS.filter(f => f.src === 'verified').length;
+  return phead('00 · Start here', 'RotaFlow design gaps: what is wrong, and the design that fixes it',
+    'Every gap I found in the landing site and the app, each with a redesigned screen and a plain direction: what is wrong, what changes, and how we know it is done. This is a design file. Nothing in the product has been changed.') + `
+  <div class="dgrid4" style="margin-top:28px">
+    <div class="dcard stat"><span class="l">Gaps found</span><span class="v">${FINDINGS.length}</span><span class="s">${v} seen in the running product, ${FINDINGS.length - v} from the docs</span></div>
+    <div class="dcard stat"><span class="l">High</span><span class="v" style="color:var(--bad-ink)">${c('high')}</span><span class="s">Blocks a user, fails WCAG AA or misleads</span></div>
+    <div class="dcard stat"><span class="l">Medium</span><span class="v" style="color:var(--warn-ink)">${c('med')}</span><span class="s">Hard to use, or no design reference</span></div>
+    <div class="dcard stat"><span class="l">Low</span><span class="v" style="color:var(--info-ink)">${c('low')}</span><span class="s">Polish and consistency</span></div>
+  </div>
+  <h2 class="h2">How to review this file</h2><p class="sub">Three steps. Allow about 20 minutes.</p>
+  <div class="dgrid3">
+    <div class="dcard step"><span class="n">1</span><span class="h3">Read what I found</span><p>One table of every gap, with what I saw and the measured number behind it. Filter by area or severity.</p><a class="dbtn" style="justify-self:start;margin-top:8px" href="#findings">Open the findings</a></div>
+    <div class="dcard step"><span class="n">2</span><span class="h3">Look at each redesign</span><p>Each page shows the screen at desktop and phone size, with three boxes: what is wrong, what changes, done when.</p><a class="dbtn" style="justify-self:start;margin-top:8px" href="#home">Start with the home page</a></div>
+    <div class="dcard step"><span class="n">3</span><span class="h3">Approve or correct</span><p>Reply with the finding numbers you approve, for example "approve F01 to F27". Anything you change, I change here first.</p><a class="dbtn" style="justify-self:start;margin-top:8px" href="#plan">See the build plan</a></div>
+  </div>
+  <h2 class="h2">How I checked</h2><p class="sub">31 October 2026, against the local development server. Read-only: no code, data or settings touched.</p>
+  <div class="dgrid2">
+    <div class="dcard" style="padding:20px"><span class="h3">Covered</span><ul style="margin:8px 0 0;padding-left:18px;display:grid;gap:6px;font-size:14px">
+      <li>17 public pages and 14 workspace screens, 4 settings screens and 2 onboarding steps</li>
+      <li>Screenshots at 390, 834, 1440 and 1920 wide, each one looked at by eye</li>
+      <li>axe-core accessibility audit and a sideways-scroll check on every capture</li>
+      <li>Colour pairs measured against WCAG 2.2 (4.5:1 text, 3:1 large text and field edges)</li></ul></div>
+    <div class="dcard" style="padding:20px"><span class="h3">Not covered</span><ul style="margin:8px 0 0;padding-left:18px;display:grid;gap:6px;font-size:14px">
+      <li><b>NOT TESTED:</b> the four new modules in the browser. Their flags are off and they have no preview routes; they are designed from the spec and their code</li>
+      <li><b>NOT TESTED:</b> the platform console (/admin), screen readers, real phones</li>
+      <li><b>ASSUMPTION:</b> where the cPanel server is located. It decides the data-location wording (F08)</li></ul></div>
+  </div>
+  <h2 class="h2">Reading the screens</h2>
+  <div class="dcard" style="padding:18px 20px"><div class="legend2">
+    <span>${sevTag('high')} Blocks, fails AA or misleads</span><span>${sevTag('med')} Hard to use</span><span>${sevTag('low')} Polish</span>
+    <span><span class="tagd v">F01</span> Finding number, opens the table</span>
+    <span><span class="tagd">Sample data</span> All names and figures are invented for the design</span></div></div>`;
+};
+
+/* ---------------- 01 findings ---------------- */
+let FILTER = { surf:'All', sev:'All', q:'' };
+PAGES.findings = () => {
+  const surfs = ['All', ...new Set(FINDINGS.map(f => f.surf))];
+  return phead('01 · What I found', 'Every gap, with the evidence',
+    'Each row is one gap: where it is, what I saw (with the measurement where there is one), the fix, and the page in this file that shows it. Rows marked "docs" come from UX-SPEC; everything else I saw myself.') + `
+  <div class="ftools" style="margin-top:24px">
+    <div class="segd" role="group" aria-label="Area">${surfs.map(s => `<button type="button" data-surf="${s}" aria-pressed="${FILTER.surf === s}">${s}</button>`).join('')}</div>
+    <div class="segd" role="group" aria-label="Severity">${['All', 'high', 'med', 'low'].map(s => `<button type="button" data-sev="${s}" aria-pressed="${FILTER.sev === s}">${{ All:'Any severity', high:'High', med:'Medium', low:'Low' }[s]}</button>`).join('')}</div>
+    <span id="fcount" class="tagd" aria-live="polite"></span>
+  </div>
+  <div class="dcard" style="overflow:hidden"><table class="ftable"><thead><tr><th scope="col">No.</th><th scope="col">Severity</th><th scope="col">What is wrong</th><th scope="col">Fix</th><th scope="col">Where</th><th scope="col"><span class="sr">Design</span></th></tr></thead><tbody id="frows"></tbody></table></div>`;
+};
+function drawFindings() {
+  const rows = FINDINGS.filter(f => (FILTER.surf === 'All' || f.surf === FILTER.surf) && (FILTER.sev === 'All' || f.sev === FILTER.sev));
+  $('#frows').innerHTML = rows.length ? rows.map(f => `<tr id="row-${f.id}">
+    <td><span class="id">${f.id}</span><br><span class="tagd" style="margin-top:6px">${f.src === 'docs' ? 'docs' : 'seen'}</span></td>
+    <td>${sevTag(f.sev)}</td>
+    <td><span class="what">${esc(f.what)}</span><span class="ev">${esc(f.ev)}</span></td>
+    <td class="fix">${esc(f.fix)}</td>
+    <td><span class="tagd">${esc(f.surf)}</span><span class="ev" style="margin-top:6px">${esc(f.where)}</span></td>
+    <td><a class="go" href="#${f.sec}">See design →</a></td></tr>`).join('') : `<tr><td colspan="6"><div class="empty-d">No gaps match these filters.</div></td></tr>`;
+  $('#fcount').textContent = `${rows.length} of ${FINDINGS.length}`;
+}
+
+/* ---------------- 02 home ---------------- */
+const heroGrid = () => `<div class="card" style="box-shadow:var(--sh-2);overflow:hidden">
+  <div class="hd" style="padding:12px 16px"><span class="strong" style="font-size:13px">Week of 2–8 Nov · Sunnyvale House</span><span class="sp"></span>${pill('ok', 'Published')}</div>
+  <div class="bd" style="display:grid;gap:12px">
+    <div class="g3">${[['On shift now', '41'], ['Cover today', '92%'], ['Open shifts', '3']].map(t => `<div class="tile" style="padding:10px 12px"><span class="l">${t[0]}</span><span class="v" style="font-size:22px">${t[1]}</span></div>`).join('')}</div>
+    <div class="wk"><span></span>${['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(d => `<span class="hdc">${d}</span>`).join('')}
+    ${[['Amara Okafor', ['E', 'E', '', 'L', 'L', '', '']], ['Tomasz Nowak', ['', 'L', 'L', 'L', '', 'N', 'N']], ['Priya Shah', ['N', '', '', 'E', 'E', 'E', '']], ['Ben Ade', ['L', 'L', 'E', '', '', 'L', 'L']]].map(([n, d]) => `<span class="strong" style="font-size:12.5px">${n}</span>${d.map(c => c ? `<div class="shift" style="min-height:34px;padding:4px 6px;background:color-mix(in srgb, ${{ E:'var(--s-teal)', L:'var(--s-amber)', N:'var(--s-violet)' }[c]} 24%, white)"><b>${{ E:'07–15', L:'14–22', N:'22–07' }[c]}</b></div>` : '<div class="shift empty" style="min-height:34px"></div>').join('')}`).join('')}</div>
+  </div></div>`;
+const phoneCard = () => `<div class="card" style="box-shadow:var(--sh-2);overflow:hidden"><div style="background:var(--primary);color:#fff;padding:14px 16px"><span style="font-size:11px;letter-spacing:.08em;font-weight:650">MY SHIFTS</span><div style="font-size:17px;font-weight:700">2–8 November</div></div>
+  <div class="bd" style="display:grid;gap:8px">${[['Mon 2', '07:00–15:00', 'Early', 'ok'], ['Tue 3', '07:00–15:00', 'Early', 'ok'], ['Thu 5', '14:00–22:00', 'Late', 'warn'], ['Sat 7', '22:00–07:00', 'Night', 'info']].map(s => `<div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:8px;padding:9px 12px"><span class="two"><span class="t" style="font-size:13px">${s[0]}</span><span class="s mono">${s[1]}</span></span>${pill(s[3], s[2])}</div>`).join('')}</div></div>`;
+const homeDesk = () => `<div class="m site">${siteNav('')}
+  <div class="sec" style="padding-top:64px;padding-bottom:64px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:56px;align-items:center;background:linear-gradient(180deg,#fff, #F7F8FA)">
+    <div style="display:grid;gap:22px"><span class="badge">UK workforce scheduling · in beta</span><span class="disp">Rotas your team can actually follow.</span>
+      <span class="big">Plan and publish shifts across your sites, handle leave and swaps in one place, and see who has clocked in, from any phone.</span>
+      <span class="row" style="gap:12px"><span class="btn p lg">Join the beta ${ico('arrow')}</span><span class="btn lg">Book a demo</span></span>
+      <span class="row" style="gap:20px">${['No card to sign up', '30 days free', 'UK dates and rules'].map(t => `<span class="tick">${ico('ok')}${t}</span>`).join('')}</span></div>
+    <div>${heroGrid()}</div>
+    <div style="grid-column:1/-1" class="consent"><p><b>RotaFlow sets no cookies and runs no analytics.</b> We would like to remember your preferences and send error reports. <u>Choose</u></p><span class="btn sm">Reject</span><span class="btn sm">Accept</span></div>
+  </div>
+  <div class="sec alt"><div style="text-align:center;display:grid;gap:8px;margin-bottom:32px"><span class="disp2">One place for the whole rota</span><span class="dim" style="font-size:15px">Everything below is built and working today.</span></div>
+    <div class="g4">${[['cal', 'Build and publish', 'Drag shifts onto a week grid; rest breaches and clashes show as you build.'], ['users', 'Your whole team', 'Every person, site, contract and qualification in one directory.'], ['clock', 'Clock in by phone', 'GPS clock-in that waits for a signal and sends when it returns.'], ['plane', 'Leave and swaps', 'Staff ask from their phone; one approval updates the rota.']].map(c => `<div class="fcard"><span class="ic pri">${ico(c[0])}</span><span class="h3m">${c[1]}</span><p>${c[2]}</p></div>`).join('')}</div></div>
+  <div class="sec" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:center">
+    <div style="display:grid;gap:16px"><span class="disp2">Caught while you build, not after</span><span class="big" style="font-size:16px">Scheduling goes wrong in a few predictable ways. RotaFlow flags each one before the rota reaches staff.</span>
+      <div class="dlg" style="box-shadow:var(--sh-2)"><div class="bd"><div class="checks"><div class="chk warn">${ico('alert')}<span><span class="t">Short rest: 9 h 30 min</span><span class="s">Tomasz's late ends 22:00; Thursday's early starts 07:30.</span></span></div><div class="chk bad">${ico('x')}<span><span class="t">Double-booked</span><span class="s">Priya is on two sites on Friday morning.</span></span></div></div></div></div></div>
+    <div style="display:grid;gap:18px">${[['See gaps before you publish', 'Cover per day and department, against the minimum you set.'], ['Fewer scheduling errors', 'Clashes, short rests and unavailable staff, flagged as you go.'], ['One place for messages', 'Published rotas and announcements reach everyone, not a group chat.'], ['Rest and 48-hour warnings', 'On the rota as you build, with a record of every clock-in.']].map(x => `<div style="display:flex;gap:12px"><span class="ic ok" style="width:28px;height:28px;border-radius:999px">${ico('ok')}</span><span class="two"><span class="t" style="font-size:15px">${x[0]}</span><span class="s" style="font-size:13.5px">${x[1]}</span></span></div>`).join('')}</div></div>
+  ${siteFoot()}
+  </div>`;
+const homeMob = () => `<div class="m site"><div class="snav" style="padding:12px 16px"><span class="wm" style="padding:0;font-size:16px">${logo(24)}<span>Rota<em>Flow</em></span></span><span class="iconb" style="margin-left:auto">${ico('menu')}</span></div>
+  <div style="padding:28px 18px;display:grid;gap:16px;background:linear-gradient(180deg,#fff,#F7F8FA)"><span class="badge" style="justify-self:start">In beta</span><span class="disp" style="font-size:36px;letter-spacing:-1px">Rotas your team can actually follow.</span><span class="big" style="font-size:16px">Plan and publish shifts, handle leave and swaps, and see who has clocked in, from any phone.</span>
+    <span class="btn p lg">Join the beta ${ico('arrow')}</span><span class="btn lg">Book a demo</span>
+    <span style="display:grid;gap:6px">${['No card to sign up', '30 days free', 'UK dates and rules'].map(t => `<span class="tick">${ico('ok')}${t}</span>`).join('')}</span>
+    ${phoneCard()}</div>
+  <div style="position:absolute;left:10px;right:10px;bottom:12px" class="consent"><p style="font-size:12.5px">No cookies, no analytics. Remember preferences and send errors? <u>Choose</u></p><span class="btn sm">No</span><span class="btn sm">Yes</span></div></div>`;
+PAGES.home = () => phead(`${NO('home')} · Landing site`, 'Home page',
+  'The first screen most people see. It is honest and well written; the problems are layout and the cookie notice, which together hide the product.',
+  `<span class="sev high">2 high</span> <span class="sev med">3 medium</span> <span class="sev low">1 low</span>`) +
+  direction(['F01', 'F02', 'F03', 'F04', 'F05', 'F06'],
+    ['Cookie notice covers 205 px of the first screen', 'Hero picture unreadable on phones ("07:0007:00")', 'Orphaned trust line; empty band beside "Why teams choose"', 'Footer leaves most of its width empty'],
+    ['Compact consent bar, Accept and Reject at equal weight', 'Phones get the staff schedule card instead of the grid', 'Three facts on one row; a real warning card fills the Why column', 'Six-column footer on one row, no trailing band'],
+    ['At 390, 834, 1440 and 1920 nothing is clipped or overflows', 'Consent bar is under 72 px and never covers a heading or button', 'axe: zero violations', 'Every card in a row has the same height']) + `
+  <div class="frames">
+    <div>${cap('Desktop · 1280', 'full page')}${desk('rotaflow.space/', homeDesk(), 900)}${ann(['Hero picture uses real, legible times; nothing overlaps it.', 'Three facts on one row with ticks, no orphan line.', 'Consent sits at the foot of the first screen: one line, two equal buttons, "Choose" as a link.', 'The Why column shows what RotaFlow catches instead of empty space.'])}</div>
+    <div>${cap('Phone · 390', 'first screen')}${phone(homeMob(), 900)}<p class="note">The grid needs width to be readable, so phones show the card a staff member sees.</p></div>
+  </div>`;
+
+/* ---------------- 03 pricing ---------------- */
+const PLANS = [['Starter', 'One site, up to 15 staff.', '29', ['One location', 'Up to 15 staff', 'Rota builder and publishing', 'Leave and swaps', 'GPS clock-in']], ['Professional', 'Up to five sites and 60 staff.', '129', ['Everything in Starter', 'Up to five locations', 'Up to 60 staff', 'Timesheets and payroll export', 'Reports across sites']], ['Business', 'Up to 20 sites and 200 staff.', '299', ['Everything in Professional', 'Up to 20 locations', 'Up to 200 staff', 'Custom roles', 'Audit trail']], ['Enterprise', 'Unlimited sites and staff.', '790', ['Everything in Business', 'Unlimited locations and staff', 'Payroll export to your provider', 'Onboarding and migration']]];
+const pricingDesk = () => `<div class="m site">${siteNav('Pricing')}
+  <div class="sec" style="text-align:center;padding-bottom:40px;display:grid;gap:12px;justify-items:center"><span class="eyebrow" style="color:var(--primary-ink)">Pricing</span><span class="disp2" style="font-size:44px">One monthly price per organisation</span><span class="big" style="font-size:16px">Every plan starts with 30 days free on Professional limits. No card to sign up.</span></div>
+  <div class="sec alt" style="padding-top:48px">
+    <div class="g4" style="align-items:stretch">${PLANS.map((p, i) => `<div class="card" style="padding:24px;display:grid;grid-template-rows:auto 40px auto auto 1fr auto;gap:10px;${i === 1 ? 'border:2px solid var(--primary);' : ''}">
+      <span class="row" style="justify-content:space-between"><span class="h2m">${p[0]}</span>${i === 1 ? pill('info', 'Most chosen') : ''}</span>
+      <span class="dim" style="font-size:13.5px">${p[1]}</span>
+      <span class="row" style="align-items:baseline;gap:6px"><span class="price">£${p[2]}</span><span class="dim">per month</span></span>
+      <span class="dim" style="font-size:12.5px;padding-bottom:12px;border-bottom:1px solid var(--divider)">30 days free, no card</span>
+      <span style="display:grid;gap:8px;align-content:start">${p[3].map(x => `<span class="tick">${ico('ok')}${x}</span>`).join('')}</span>
+      <span class="btn ${i === 1 ? 'p' : ''}" style="margin-top:8px">${i === 3 ? 'Talk to us' : 'Join the beta'}</span></div>`).join('')}</div></div>
+  <div class="sec" style="display:grid;grid-template-columns:320px minmax(0,1fr);gap:56px">
+    <div style="display:grid;gap:10px;align-content:start"><span class="disp2" style="font-size:30px">Questions</span><span class="dim">Anything else? <u>Ask us</u>.</span></div>
+    <div class="acc">${[['How does billing work?', 'Sign up with no card. Your organisation starts a 30-day trial on Professional limits. The owner picks a plan in Settings and pays through Stripe; the card is first charged when the trial ends.', true], ['What counts as a staff member?'], ['What happens when the trial ends?'], ['Can we move between plans?'], ['Where is our data held?', 'On our UK-hosted server, separated per organisation by the API. [Owner to confirm the server location before this ships: F08]', true], ['Do you offer a charity discount?']].map(q => `<div><div class="q">${q[0]}<span>${ico(q[2] ? 'chev' : 'chev')}</span></div>${q[1] ? `<div class="a">${q[1]}</div>` : ''}</div>`).join('')}</div></div>
+  ${siteFoot()}</div>`;
+PAGES.pricing = () => phead(`${NO('pricing')} · Landing site`, 'Pricing',
+  'Clear prices and honest answers. The fixes make the row line up, put the free trial where people decide, and remove copy that becomes untrue at cutover.',
+  `<span class="sev high">1 high</span> <span class="sev med">1 medium</span> <span class="sev low">1 low</span>`) +
+  direction(['F07', 'F08', 'F09'],
+    ['Business and Enterprise prices sit 20 px lower than the others', 'The 30-day trial is only mentioned in the FAQ', '"Managed Postgres database in the EU" is wrong after the move to cPanel', 'Six boxed answers make a 900 px scroll'],
+    ['A fixed slot for the description, so every price lines up', '"30 days free, no card" under every price', 'Data answer rewritten; held until the owner confirms the server location', 'Questions beside an accordion, first answer open'],
+    ['The four prices share one baseline at 1280 and 1920', 'No page mentions Postgres, Supabase, EU or row-level security after cutover', 'Accordion works by keyboard; answers are readable without JavaScript']) + `
+  <div class="frames solo"><div>${cap('Desktop · 1280', 'rotaflow.space/pricing')}${desk('rotaflow.space/pricing', pricingDesk(), 1580)}${ann(['Description slot is a fixed 40 px, so the price row aligns.', 'Trial stated once per card, in the same place.', 'Data answer marked as waiting for the owner, so it cannot ship by accident.'])}</div></div>`;
+
+/* ---------------- 04 sign in ---------------- */
+const signCard = mob => `<div class="card" style="padding:${mob ? 22 : 32}px;display:grid;gap:16px;box-shadow:var(--sh-2)">
+  <span class="h1" style="font-size:${mob ? 22 : 24}px">Sign in to RotaFlow</span><span class="dim">Use the email your organisation invited. We send you a code, so there is no password to remember.</span>
+  <div class="field"><span class="lbl">Email address</span><span class="input ph">name@yourcare.co.uk</span></div>
+  <span class="btn p lg">Send me a code</span>
+  <span class="dim" style="font-size:13px;text-align:center">Setting up a new organisation? <a href="#signin">Ask for access</a></span>
+  <span class="row" style="justify-content:center;gap:6px;font-size:12px" ><span class="dim">Secured by Clerk</span></span></div>`;
+const signDesk = () => `<div class="m" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:760px">
+  <div style="background:#0D1934;color:#fff;padding:56px 64px;display:grid;align-content:space-between">
+    <span class="wm" style="color:#fff;padding:0;font-size:20px">${logo(30)}<span>Rota<span style="color:#9DBBFF">Flow</span></span></span>
+    <div style="display:grid;gap:18px;max-width:420px"><span style="font-size:34px;font-weight:700;letter-spacing:-1px;line-height:1.15">Your rota, your requests, your hours. On any phone.</span>
+      ${['See your shifts the moment they are published', 'Ask for leave or a swap without a phone call', 'Clock in with one tap, even without a signal'].map(t => `<span class="row nowrap" style="gap:10px;color:#D9E2F5">${ico('ok')}${t}</span>`).join('')}</div>
+    <span style="font-size:12.5px;color:#AFC0E0">Separated per organisation · UK dates and rules</span></div>
+  <div style="display:grid;place-items:center;padding:48px"><div style="width:400px">${signCard(false)}<span class="row" style="justify-content:center;margin-top:18px;gap:16px;font-size:12.5px"><span class="dim">English (UK)</span><span class="dim">Privacy</span><span class="dim">Help</span></span></div></div></div>`;
+const signMob = () => `<div class="m" style="padding:20px 16px;min-height:620px;display:grid;gap:18px;align-content:start"><span class="wm" style="padding:0">${logo(26)}<span>Rota<em>Flow</em></span></span>${signCard(true)}<span class="row" style="justify-content:center;gap:16px;font-size:12.5px"><span class="dim">English (UK)</span><span class="dim">Privacy</span><span class="dim">Help</span></span></div>`;
+PAGES.signin = () => phead(`${NO('signin')} · Sign in`, 'Sign in and sign up',
+  'The door to the product. On a phone it scrolls sideways today, and it invites people to create an organisation, which is now by invitation only.',
+  `<span class="sev high">1 high</span> <span class="sev med">2 medium</span>`) +
+  direction(['F11', 'F12', 'F13'],
+    ['82 px sideways scroll at 390 on sign in, sign up and reset', 'A card inside a card; two different sign-up links', '"Create an account" contradicts invitation-only organisations'],
+    ['One card, full width on phones; Clerk sized by its appearance settings', 'One secondary link: "Setting up a new organisation? Ask for access"', 'Left panel speaks to staff, who are most sign-ins'],
+    ['Overflow check passes at 320, 390 and 834', 'Clerk heading reads "RotaFlow"', 'Only one sign-up route is visible on the page']) + `
+  <div class="frames"><div>${cap('Desktop · 1280', 'rotaflow.space/login')}${desk('rotaflow.space/login', signDesk(), 760)}</div><div>${cap('Phone · 390', '')}${phone(signMob(), 620)}</div></div>`;
+
+/* ---------------- 05 dashboard ---------------- */
+const dashDesk = () => appShell('Dashboard', 'Sunnyvale Care Group / <b>Today</b>', `
+  <div class="phead"><div><span class="h1">Today</span><div class="lede">Saturday 31 October · All sites · Updated 13:00</div></div><div class="acts"><span class="btn">${ico('pin')}All sites ${ico('chev')}</span><span class="btn">${ico('refresh')}Refresh</span><span class="btn p">${ico('grid')}Open rota builder</span></div></div>
+  ${tiles([['On shift now', '18', 'of 21 scheduled today'], ['Late or not in', '1', 'Ben Ade, due 13:00'], ['Open shifts today', '2', 'Night at Riverside, Late at Oak'], ['Waiting for you', '4', '3 approvals, 1 break check']])}
+  <div class="split">
+    ${mcard('Needs you', `<div class="list">${[['warn', 'alert', 'Break never ended', 'Michael Brown · started 11:30', 'Check'], ['info', 'plane', 'Leave request', 'Amara Osei · 25–29 Aug', 'Decide'], ['info', 'swap', 'Swap request', 'Priya Raman ↔ Tom Hale · Thu', 'Decide'], ['info', 'clock', 'Missed clock-out', 'James Davis · yesterday', 'Fix']].map(r => `<div><span class="ic ${r[0]}">${ico(r[1])}</span><span class="two" style="flex:1"><span class="t">${r[2]}</span><span class="s">${r[3]}</span></span><span class="btn sm">${r[4]}</span></div>`).join('')}</div>`, { raw:true, aside:'<span class="btn sm q">See all</span>' })}
+    ${mcard('This week\'s rota', `<div style="display:grid;gap:12px"><span class="row" style="justify-content:space-between">${pill('warn', 'Draft, not visible to staff')}<span class="mono dim">26 Oct – 1 Nov</span></span><span class="dim" style="font-size:13px">3 changes since the last publish. 2 things to fix before it can go out.</span><span class="row" style="justify-content:space-between;font-size:13px"><span>Cover against minimum</span><b>96%</b></span><span class="bar"><i style="width:96%"></i></span><span class="btn" style="justify-self:start">Review and publish</span></div>`)}
+  </div>
+  ${mcard('Staffing today', tbl([{ h:'Person' }, { h:'Shift' }, { h:'Clocked' }, { h:'Worked', n:1 }, { h:'Status' }, { h:'' }], [
+      [who('Emily Davis', 'Care assistant'), '<span class="mono">06:00–12:00</span>', '<span class="mono">05:57–12:04</span>', '<span class="mono">6h 07m</span>', pill('neutral', 'Finished'), '<span class="btn sm q">Review</span>'],
+      [who('Sarah Johnson', 'Senior nurse'), '<span class="mono">07:00–19:00</span>', '<span class="mono">06:58 · GPS</span>', '<span class="mono">6h 02m</span>', pill('ok', 'Working'), '<span class="btn sm q">Review</span>'],
+      [who('Michael Brown', 'Care assistant'), '<span class="mono">08:00–16:00</span>', '<span class="mono">07:59 · GPS</span>', '<span class="mono">4h 31m</span>', pill('info', 'On break'), '<span class="btn sm q">Review</span>'],
+      [who('Ben Ade', 'Care assistant'), '<span class="mono">13:00–21:00</span>', '<span class="dim">Not in</span>', '<span class="mono">–</span>', pill('bad', 'Late 12 min'), '<span class="btn sm">Call</span>'],
+    ]), { raw:true, aside:'<span class="row" style="gap:14px;font-size:12.5px"><span class="dim">On break <b>1</b></span><span class="dim">Finished <b>3</b></span><span class="dim">Tomorrow uncovered <b>0</b></span></span>' })}
+`);
+const dashMob = () => mobShell('Today', `<div><span class="h1" style="font-size:22px">Today</span><div class="lede">Sat 31 Oct · All sites · 13:00</div></div>
+  ${tiles([['On shift now', '18', 'of 21'], ['Late or not in', '1', 'Ben Ade'], ['Open shifts', '2', 'today'], ['Waiting for you', '4', 'approvals']], 2)}
+  ${mcard('Needs you', `<div class="list">${[['warn', 'alert', 'Break never ended', 'Michael Brown'], ['info', 'plane', 'Leave request', 'Amara Osei'], ['info', 'swap', 'Swap request', 'Priya ↔ Tom']].map(r => `<div><span class="ic ${r[0]}">${ico(r[1])}</span><span class="two" style="flex:1"><span class="t">${r[2]}</span><span class="s">${r[3]}</span></span>${ico('right')}</div>`).join('')}</div>`, { raw:true })}
+  ${mcard('Staffing', `<div class="list">${[['Sarah Johnson', '07:00–19:00', 'ok', 'Working'], ['Ben Ade', '13:00–21:00', 'bad', 'Late 12 min']].map(r => `<div>${who(r[0], r[1])}<span style="margin-left:auto">${pill(r[2], r[3])}</span></div>`).join('')}</div>`, { raw:true })}`);
+PAGES.dashboard = () => phead(`${NO('dashboard')} · App`, 'Shell and dashboard',
+  'The screen a manager opens first. Today it shows eight figures at once and a table that does not fit. The redesign leads with four figures and what needs the manager.',
+  `<span class="sev med">4 medium</span> <span class="sev low">2 low</span>`) +
+  direction(['F19', 'F20', 'F21', 'F22', 'F26'],
+    ['Eight tiles in a row; notes run to four lines; uneven heights', 'Staffing table clips its Review column at 1440', 'Alert reads as one long sentence', '18 ungrouped links; blank profile; idle top bar'],
+    ['Four headline tiles; the other four figures sit in the table header', '"Needs you" lists each item with one button', 'Table: person, shift, clocked, worked, status, action', 'Sidebar in five groups; search in the top bar; initials always shown'],
+    ['No column clipped at 1280; nothing wraps past two lines', 'Every tile in the row has the same height', 'Sidebar fits a 900 px tall screen without scrolling', 'One primary button on the page']) + `
+  <div class="frames"><div>${cap('Desktop · 1280', 'Owner view')}${desk('rotaflow.space/app', dashDesk(), 820)}${ann(['Sidebar grouped Today, Plan, Requests, People, Insight. Counts only where action is waiting.', 'Four tiles, each with a short plain note.', '"Needs you": one row per item, one button each, beside this week\'s rota.', 'Staffing gets the full width, so no column wraps or clips; the secondary figures sit in its header.'])}</div><div>${cap('Phone · 390', '')}${phone(dashMob(), 800)}</div></div>`;
+
+/* ---------------- 06 rota ---------------- */
+const rotaDesk = () => appShell('Rota builder', 'Rota builder / <b>Sunnyvale House</b>', `
+  <div class="phead"><div><span class="h1">Rota builder</span><div class="lede">Sunnyvale House · ${pill('warn', 'Draft, not visible to staff')}</div></div>
+    <div class="acts"><span class="row nowrap"><span class="iconb">${ico('left')}</span><span class="btn">26 Oct – 1 Nov 2026</span><span class="iconb">${ico('right')}</span></span><span class="seg"><span>Day</span><span class="on">Week</span><span>2 weeks</span></span><span class="btn">Week actions ${ico('chev')}</span>
+    <span style="display:grid;justify-items:end;gap:2px"><span class="btn p" style="opacity:1" aria-disabled="true">Publish 3 changes</span></span></div></div>
+  <div class="callout bad">${ico('alert')}<div><b>Fix 2 things to publish.</b> Staff cannot see this week until these are resolved.
+    <div style="margin-top:10px;display:grid;gap:6px">${[['Double-booked', 'Tomasz Nowak · Thu 29 Oct · Night 19:00–07:30 overlaps Early 07:00–15:00'], ['No one on the minimum', 'Night, Fri 30 Oct · needs 2, has 1']].map(r => `<div class="row nowrap" style="background:#fff;border:1px solid #EFC2BA;border-radius:8px;padding:8px 10px"><b style="min-width:150px">${r[0]}</b><span class="dim" style="flex:1">${r[1]}</span><span class="btn sm">Go to shift</span></div>`).join('')}</div></div></div>
+  <div class="card" style="overflow:hidden"><div class="bd" style="padding:12px 16px">
+    <div class="wk" style="grid-template-columns:190px repeat(7,minmax(0,1fr));gap:6px"><span class="eyebrow">Staff</span>${['Mon 26', 'Tue 27', 'Wed 28', 'Thu 29', 'Fri 30', 'Sat 31', 'Sun 1'].map((d, i) => `<span class="hdc"${i === 5 ? ' style="color:var(--primary-ink)"' : ''}>${d}${i === 5 ? ' · today' : ''}</span>`).join('')}
+    ${[['Sarah Johnson', 'Senior nurse', ['E', 'E', 'E', '', 'E', 'E', '']], ['Michael Brown', 'Care assistant', ['E', 'E', 'E', '', 'E', 'E', '']], ['Tomasz Nowak', 'Senior carer', ['L', '', 'N', 'X', '', 'LD', '']], ['Emily Davis', 'Care assistant', ['E', 'E', 'E', 'L', 'E', 'E', '']], ['Daniel Lee', 'Care assistant', ['N', 'N', '', '', 'N', '', '']]].map(([n, r, d]) => `${who(n, r)}${d.map(c => !c ? EMPTY : SH({ E:'E', L:'L', N:'N', LD:'LD', X:'E' }[c], { E:'07:00–15:00', L:'14:00–22:00', N:'19:00–07:30', LD:'07:00–19:30', X:'07:00–15:00' }[c], { E:'var(--s-teal)', L:'var(--s-amber)', N:'var(--s-violet)', LD:'var(--s-indigo)', X:'var(--s-teal)' }[c], c === 'X' ? 'clash' : '')).join('')}`).join('')}
+    </div></div></div>`);
+PAGES.rota = () => {
+  const html = phead(`${NO('rota')} · App`, 'Rota builder: publishing',
+    'The most important action in the product. Today it says "2 issues block publication" without naming them, while the Publish button still looks ready.',
+    `<span class="sev high">1 high</span> <span class="sev med">1 medium</span>`) +
+    direction(['F23', 'F24'],
+      ['The blocking issues are not named', 'Publish stays blue and clickable while blocked', 'Week view shows nine days, two of them clipped', 'Roles cut to "Senior Nur…"; date reads "26 Oct, 1 Nov 2026"'],
+      ['Each blocking issue listed with "Go to shift"', 'Publish disabled, with the reason beside it', 'Seven days in Week view; today marked', 'Role on its own line; date range "26 Oct – 1 Nov 2026"'],
+      ['A manager can reach each issue in one click', 'Publish cannot be pressed while anything blocks it, and says why', 'No day column is clipped at 1280 or 1920']) + `
+    <div class="frames solo"><div>${cap('Desktop · 1280', 'Manager view, draft week with two blocking issues')}${desk('rotaflow.space/app/rota', rotaDesk(), 760)}${ann(['Publish is drawn disabled here (see the design system for the disabled style); its reason is the red panel directly under it.', 'Each issue is one row with one action.', 'The clashing shift carries a red ring, matching the issue.'])}</div></div>`;
+  return html.replace('<span class="btn p" style="opacity:1" aria-disabled="true">Publish 3 changes</span>', '<span class="btn" disabled aria-disabled="true" style="background:#EEF0F3;border-color:#D6D9DE;color:#5A6684">Publish 3 changes</span><span class="why">Fix 2 things first</span>');
+};
+
+/* ---------------- 07 compliance ---------------- */
+const compDesk = () => appShell('Compliance', 'People / <b>Compliance</b>', `
+  <div class="phead"><div><span class="h1">Compliance</span><div class="lede">Who is cleared to work, what is waiting for you, and what runs out soon.</div></div><div class="acts"><span class="pill flag">staff_documents</span><span class="btn">${ico('cog')}Document types</span></div></div>
+  ${tiles([['Waiting for review', '3', 'Oldest sent 27 Oct'], ['Run out in 30 days', '5', '2 DBS, 3 training'], ['Expired', '1', 'Food hygiene'], ['Not cleared', '2', 'of 48 on the rota']])}
+  <div class="split">
+    ${mcard('Review queue', tbl([{ h:'Person' }, { h:'Document' }, { h:'Sent' }, { h:'' }], [
+      [who('Amara Okafor', 'Care assistant'), 'DBS check (enhanced)', '<span class="mono">27 Oct</span>', '<span class="row nowrap"><span class="btn sm">Open</span><span class="btn sm p">Approve</span><span class="btn sm d">Not accepted</span></span>'],
+      [who('Tomasz Nowak', 'Senior carer'), 'Moving and handling', '<span class="mono">28 Oct</span>', '<span class="row nowrap"><span class="btn sm">Open</span><span class="btn sm p">Approve</span><span class="btn sm d">Not accepted</span></span>'],
+      [who('Priya Shah', 'Nurse'), 'NMC registration', '<span class="mono">30 Oct</span>', '<span style="display:grid;gap:3px;justify-items:start"><span class="row nowrap"><span class="btn sm">Open</span><span class="btn sm" disabled>Approve</span></span><span class="why">You uploaded it. Another manager approves.</span></span>'],
+    ]), { raw:true, aside:'<span class="why">Oldest first</span>' })}
+    ${mcard('Required to work', `${[['DBS check (enhanced)', 46, 48], ['Right to work', 48, 48], ['Care Certificate', 41, 48], ['Moving and handling', 39, 48]].map(([k, a, b]) => `<div style="display:grid;grid-template-columns:1fr 54px;gap:4px 10px;margin-bottom:12px"><span style="font-size:13px">${k}</span><span class="mono dim" style="text-align:right">${a}/${b}</span><span class="bar" style="grid-column:1/-1"><i style="width:${a / b * 100}%;${a === b ? 'background:var(--ok)' : ''}"></i></span></div>`).join('')}
+      <span class="eyebrow" style="display:block;margin:16px 0 6px">Next to run out</span>${[['Tomasz Nowak', 'Moving and handling', '14 Nov'], ['Grace Mensah', 'DBS check', '22 Nov']].map(r => `<div class="row nowrap" style="justify-content:space-between;padding:7px 0;border-top:1px solid var(--divider);font-size:13px"><span>${r[0]} · <span class="dim">${r[1]}</span></span><span class="mono">${r[2]}</span></div>`).join('')}`)}
+  </div>`);
+const compMob = () => mobShell('', `<div><span class="h1" style="font-size:22px">My documents</span><div class="lede">What you need to be cleared to work.</div></div>
+  <div class="callout warn">${ico('alert')}<div><b>Not cleared yet.</b> One missing, one running out. You can still be put on the rota.</div></div>
+  ${mcard('Required of you', `<div class="list">${[['DBS check', 'ok', 'Approved', 'Until Mar 2028'], ['Care Certificate', 'bad', 'Missing', 'Upload to clear'], ['Moving and handling', 'warn', 'Runs out 14 Nov', 'Upload renewal'], ['First aid', 'info', 'With your manager', 'Sent 30 Oct']].map(r => `<div><span class="two" style="flex:1"><span class="t">${r[0]}</span><span class="s">${r[3]}</span></span>${pill(r[1], r[2])}</div>`).join('')}</div>`, { raw:true })}
+  <span class="btn p lg">${ico('upload')}Upload a document</span>`, 4);
+PAGES.compliance = () => phead(`${NO('compliance')} · New modules`, 'Compliance',
+  'Built and working behind the staff_documents flag, but drawn from generic components with no reference. This page is that reference.',
+  `${sevTag('med')} no design reference (UX-SPEC §7a)`) +
+  direction(['F28'],
+    ['No reference for the board, the staff view or Document types', 'Disabled Approve explains itself only in a tooltip'],
+    ['Four tiles, review queue beside required-by-type coverage', 'Staff see a verdict first: cleared or not, and what to do', 'Every disabled button carries its reason as visible text'],
+    ['Match pass against this page at 390 and 1280', 'Approve on your own upload is disabled with the sentence shown', 'axe: zero violations']) + `
+  <div class="frames"><div>${cap('Manager · 1280', '')}${desk('rotaflow.space/app/compliance', compDesk(), 760)}</div><div>${cap('Staff · 390', '')}${phone(compMob(), 780)}</div></div>`;
+
+/* ---------------- 08 cover ---------------- */
+const coverDesk = () => appShell('Cover', 'Plan / <b>Cover</b>', `
+  <div class="phead"><div><span class="h1">Cover</span><div class="lede">Who cannot work, who has offered, and what is still empty in the next 72 hours.</div></div><div class="acts"><span class="pill flag">cover_tools</span></div></div>
+  ${tiles([['Cannot work', '2', 'Reported today'], ['Offers to decide', '3', 'On 2 shifts'], ['Unfilled, next 72 h', '4', 'First starts 07:00 tomorrow'], ['Filled this week', '9', 'Of 11 asked']])}
+  <div class="split">
+    ${mcard('Unfilled in the next 72 hours', tbl([{ h:'Shift' }, { h:'Site' }, { h:'Starts' }, { h:'' }], [
+      ['Early', 'Sunnyvale House', `<span class="mono">Sun 1 Nov 07:00</span> ${pill('bad', 'in 9 h')}`, '<span class="btn sm p">Find cover</span>'],
+      ['Long day', 'Sunnyvale House', '<span class="mono">Tue 3 Nov 07:00</span>', '<span class="btn sm">Find cover</span>'],
+      ['Night', 'Riverside Lodge', '<span class="mono">Tue 3 Nov 19:00</span>', '<span class="btn sm">Find cover</span>'],
+      ['Late', 'Riverside Lodge', '<span class="mono">Wed 4 Nov 14:00</span>', pill('info', 'Asked 6 people')]]), { raw:true })}
+    ${mcard('Who could take it', `<div class="dim" style="padding:12px 16px 4px;font-size:12.5px">Early · Sun 1 Nov 07:00–15:00 · Sunnyvale House</div><div class="list">${[['Sofia Reyes', 'Cleared · same site · free all day · 28 h this week', ''], ['Ben Ade', 'Cleared · works here weekly · 36 h', 'Short rest: 10 h after Saturday late'], ['Grace Mensah', 'Cleared · other site, 4 miles · 40 h', 'Reaches 48 h with this shift']].map((c, i) => `<div><span class="ic pri" style="font:700 12px/1 var(--mono)">${i + 1}</span><span class="two" style="flex:1"><span class="t">${c[0]}</span><span class="s">${c[1]}</span>${c[2] ? `<span class="s" style="color:var(--warn-ink)">${c[2]}</span>` : ''}</span><span class="btn sm${i ? '' : ' p'}">Assign</span></div>`).join('')}</div>`, { raw:true })}
+  </div>
+  ${mcard('Offers to decide', tbl([{ h:'Shift' }, { h:'Offered by' }, { h:'' }], [
+    ['<span class="mono">Tue 3 Nov · Long day</span>', who('Sofia Reyes', 'Cleared · 36 h this week'), '<span class="row nowrap"><span class="btn sm p">Approve</span><span class="btn sm">Turn down</span></span>'],
+    ['<span class="mono">Tue 3 Nov · Long day</span>', who('Jordan Price', 'Not cleared: DBS check missing'), '<span style="display:grid;gap:3px;justify-items:start"><span class="row nowrap"><span class="btn sm" disabled>Approve</span><span class="btn sm">Turn down</span></span><span class="why">Not cleared to work: DBS check missing</span></span>']]), { raw:true })}`);
+const coverMob = () => mobShell('', `<div><span class="h1" style="font-size:22px">Cover</span><div class="lede">Say you cannot work a shift, or offer to take one.</div></div>
+  ${mcard('My next shifts', `<div class="list">${[['Long day', 'Tue 3 Nov · 07:00–19:30', 'rep'], ['Night', 'Thu 5 Nov · 19:00–07:30', '']].map(s => `<div><span class="two" style="flex:1"><span class="t">${s[0]}</span><span class="s mono">${s[1]}</span>${s[2] ? '<span class="s" style="color:var(--warn-ink)">You reported this. You stay on it until cover is found.</span>' : ''}</span>${s[2] ? '<span class="btn sm">Withdraw</span>' : '<span class="btn sm">Cannot work it</span>'}</div>`).join('')}</div>`, { raw:true })}
+  ${mcard('Looking for cover', `<div class="list"><div><span class="two" style="flex:1"><span class="t">Late · Sunnyvale House</span><span class="s mono">Wed 4 Nov · 14:00–22:00</span></span><span class="btn sm p">Offer</span></div><div><span class="two" style="flex:1"><span class="t">Night · Riverside Lodge</span><span class="s mono">Tue 3 Nov · 19:00–07:30</span><span class="s">You cannot take it: it starts during your long day.</span></span><span class="btn sm" disabled>Offer</span></div></div>`, { raw:true })}`, 1);
+PAGES.cover = () => phead(`${NO('cover')} · New modules`, 'Cover',
+  'Built behind the cover_tools flag with no design reference. The board puts urgency first, then the people who could take the shift, with reasons in plain words.',
+  `${sevTag('med')} no design reference (UX-SPEC §7c)`) +
+  direction(['F29'],
+    ['No reference for the cover board, the staff view or Open shifts', 'Eligibility reasons can hide in tooltips'],
+    ['Most urgent first: unfilled, then candidates, then offers', 'Candidates ranked with the reason and any warning', 'A shift you cannot take says why under the button'],
+    ['Match pass at 390 and 1280', 'Every disabled Approve, Offer and Take it shows its reason as text']) + `
+  <div class="frames"><div>${cap('Manager · 1280', '')}${desk('rotaflow.space/app/cover', coverDesk(), 860)}</div><div>${cap('Staff · 390', '')}${phone(coverMob(), 760)}</div></div>`;
+
+/* ---------------- 09 scheduling ---------------- */
+const dlgWrap = inner => `<div class="m" style="padding:28px;background:rgba(13,25,52,.45)">${inner}</div>`;
+const addShift = () => dlgWrap(`<div class="dlg" style="width:560px;margin:0 auto"><div class="hd"><span class="h2m">Add shift</span><div class="lede">Thursday 5 November · Tomasz Nowak</div></div><div class="bd">
+  <div class="g3"><div class="field"><span class="lbl">Type</span><span class="input">Early ${ico('chev')}</span></div><div class="field"><span class="lbl">From</span><span class="input">07:00</span></div><div class="field"><span class="lbl">To</span><span class="input">15:00</span></div></div>
+  <div class="g2"><div class="field"><span class="lbl">Unpaid break</span><span class="input">30 minutes ${ico('chev')}</span></div><div class="field"><span class="lbl">Notes</span><span class="input ph">Seen by Tomasz</span></div></div>
+  <div><span class="h3m" style="font-size:13.5px">Things to check</span><div class="checks" style="margin-top:8px"><div class="chk warn">${ico('alert')}<span><span class="t">Short rest: 30 min</span><span class="s">Wednesday's night ends 07:30. Your minimum is 11 hours.</span></span></div><div class="chk warn">${ico('alert')}<span><span class="t">Over 48 hours: 52.5 h</span><span class="s">Counting this shift. He has not opted out.</span></span></div></div><div class="hint" style="margin-top:8px">These are warnings, not rules. You can still save.</div></div></div>
+  <div class="ft"><span class="btn">Cancel</span><span class="btn p">Save shift</span></div></div>`);
+const pubCheck = () => dlgWrap(`<div class="dlg" style="width:560px;margin:0 auto"><div class="hd"><span class="h2m">Before you publish</span><div class="lede">Week of 2 November · Sunnyvale House</div></div><div class="bd">
+  <div class="g4">${[['New', '14'], ['Same', '62'], ['Removed', '2'], ['Cancelled', '1']].map(t => `<div class="tile" style="padding:10px 12px"><span class="l">${t[0]}</span><span class="v" style="font-size:20px">${t[1]}</span></div>`).join('')}</div>
+  <div class="checks"><div class="chk bad">${ico('x')}<span><span class="t">Double-booked: Tomasz Nowak, Thu 5</span><span class="s">Night (Wed) overlaps Early. Fix this to publish.</span></span></div><div class="chk warn">${ico('alert')}<span><span class="t">2 short rests</span><span class="s">Tomasz Thu 5 · Amara Sun 8</span></span></div><div class="chk warn">${ico('alert')}<span><span class="t">1 on approved leave</span><span class="s">Jordan Price Fri 6</span></span></div></div></div>
+  <div class="ft"><span class="why">Publish is off until the double-booking is fixed.</span><span class="btn">Back to the rota</span><span class="btn" disabled>Publish anyway</span></div></div>`);
+const pattern = () => dlgWrap(`<div class="dlg" style="width:760px;margin:0 auto"><div class="hd"><span class="h2m">Generate pattern</span><div class="lede">Creates draft shifts. Nothing is published.</div></div><div class="bd" style="grid-template-columns:1fr 1fr;gap:20px">
+  <div style="display:grid;gap:12px;align-content:start"><div class="field"><span class="lbl">Repeat</span><span class="seg"><span class="on">Days of the week</span><span>Days on, days off</span></span></div>
+  <div class="field"><span class="lbl">Days</span><span class="row">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => `<span class="btn sm${i < 5 ? ' p' : ''}" style="min-width:42px">${d}</span>`).join('')}</span></div>
+  <div class="g2"><div class="field"><span class="lbl">Block 1</span><span class="input">07:00–11:00</span></div><div class="field"><span class="lbl">Block 2</span><span class="input">17:00–21:00</span></div></div>
+  <div class="g2"><div class="field"><span class="lbl">For</span><span class="input">Amara Okafor ${ico('chev')}</span></div><div class="field"><span class="lbl">Dates</span><span class="input">2–29 Nov</span></div></div></div>
+  <div style="display:grid;gap:10px;align-content:start"><span class="h3m" style="font-size:13.5px">Preview · 40 shifts</span><div class="checks"><div class="chk ok">${ico('ok')}<span><span class="t">34 created as drafts</span><span class="s">Weekdays, both blocks</span></span></div><div class="chk warn">${ico('alert')}<span><span class="t">4 with warnings</span><span class="s">Over 48 h, week of 23 Nov</span></span></div><div class="chk">${ico('info')}<span><span class="t">6 skipped</span><span class="s">4 on leave · 2 already rostered</span></span></div></div></div></div>
+  <div class="ft"><span class="btn">Cancel</span><span class="btn p">Create 34 drafts</span></div></div>`);
+PAGES.scheduling = () => phead(`${NO('scheduling')} · New modules`, 'Scheduling checks',
+  'Three dialogs behind the scheduling_tools flag. One rule runs through all of them: warnings inform and never block; only a double-booking stops publishing, as the server does.',
+  `${sevTag('med')} no design reference (UX-SPEC §7b)`) +
+  direction(['F30'],
+    ['No reference for the assign warnings, the publish check or Generate pattern', 'Warnings and blockers can look the same'],
+    ['Amber for warnings with "You can still save"', 'Red only for a double-booking, with Publish disabled and the reason in the footer', 'Pattern: form left, live preview right'],
+    ['A warning never disables Save', 'A double-booking always disables Publish, in the browser and on the server', 'Skipped shifts are counted by reason']) + `
+  <div class="frames pair"><div>${cap('Add shift · warnings', '')}${desk('Rota builder › Add shift', addShift(), 640, 640)}</div><div>${cap('Before you publish', '')}${desk('Rota builder › Publish', pubCheck(), 640, 640)}</div></div>
+  <div class="frames solo" style="margin-top:24px"><div>${cap('Generate pattern', '')}${desk('Rota builder › Week actions › Generate pattern', pattern(), 600, 1280)}</div></div>`;
+
+/* ---------------- 10 timesheets ---------------- */
+const tsDesk = () => appShell('Timesheets', 'Insight / <b>Timesheets</b>', `
+  <div class="phead"><div><span class="h1">Timesheets</span><div class="lede">Friday 30 October · flags show beyond your tolerance of 10 minutes.</div></div><div class="acts"><span class="pill flag">timesheet_tools</span><span class="btn">Export this day</span><span class="btn p">${ico('download')}Export payroll CSV</span></div></div>
+  ${mcard('Lines', tbl([{ h:'Person' }, { h:'Planned' }, { h:'Actual' }, { h:'Paid', n:1 }, { h:'Status' }], [
+    [who('Amara Okafor', 'Care assistant'), '<span class="mono">07:00–19:30</span>', '<span class="mono">07:12–19:30</span>', '<span class="mono">12.0 h</span>', `<span class="row nowrap">${pill('warn', 'Waiting')}${pill('warn', 'Late 12 min')}</span>`],
+    [who('Tomasz Nowak', 'Senior carer'), '<span class="mono">14:00–22:00</span>', '<span class="mono">14:00–22:25</span>', '<span class="mono">8.4 h</span>', `<span class="row nowrap">${pill('ok', 'Approved')}${pill('info', 'Overtime 25 min')}</span>`],
+    [who('Priya Shah', 'Nurse'), '<span class="mono">07:00–15:00</span>', '<span class="mono">06:58–14:45</span>', '<span class="mono">7.3 h</span>', `<span class="row nowrap">${pill('warn', 'Waiting')}${pill('warn', 'Left 15 min early')}</span>`],
+    [who('Ben Ade', 'Care assistant'), '<span class="mono">19:00–07:30</span>', '<span class="dim">No clock-out</span>', '<span class="mono">–</span>', pill('bad', 'No clock-out')]]), { raw:true })}
+  <div class="split even"><div class="dlg" style="box-shadow:var(--sh-2)"><div class="hd"><span class="h2m">Export payroll CSV</span><div class="lede">Approved lines only, one row per person per period.</div></div><div class="bd"><div class="g2"><div class="field"><span class="lbl">From</span><span class="input">1 Oct 2026</span></div><div class="field"><span class="lbl">To</span><span class="input err">2 Nov 2026</span></div></div><span class="err-t">That is 33 days. Choose a To date on or before 31 October; one file holds 31 days at most.</span><div class="callout info">${ico('info')}<div>6 lines in this range are still waiting and will be left out.</div></div></div><div class="ft"><span class="btn">Cancel</span><span class="btn" disabled>${ico('download')}Download</span></div></div>
+  ${mcard('Settings › Policies › Timesheet flags', `<div style="display:grid;gap:12px"><div class="field" style="max-width:220px"><span class="lbl">Tolerance in minutes</span><span class="input">10</span><span class="hint">Whole minutes, 0 to 120.</span></div><div class="callout info">${ico('info')}<div><b>Example.</b> Planned 07:00, clocked 07:08: no flag. Clocked 07:12: "Late 12 min".</div></div><span class="btn p" style="justify-self:start">Save policies</span></div>`)}</div>`);
+PAGES.timesheets = () => phead(`${NO('timesheets')} · New modules`, 'Timesheets',
+  'Flags and the payroll export, behind the timesheet_tools flag. The design keeps flags beside the status and puts the 31-day rule in the sentence, not in a tooltip.',
+  `${sevTag('med')} no design reference (UX-SPEC §7d)`) +
+  direction(['F31'],
+    ['No reference for flag chips, the payroll export or the tolerance setting'],
+    ['Flag chips next to the status, in plain words', 'The range limit is explained in the error and Download is disabled', 'A worked example under the tolerance field'],
+    ['Range over 31 days disables Download and says how to fix it', 'No chip appears within tolerance']) + `
+  <div class="frames solo"><div>${cap('Manager · 1280', '')}${desk('rotaflow.space/app/timesheets', tsDesk(), 860)}</div></div>`;
+
+/* ---------------- 11 not built ---------------- */
+const uploadDlg = () => dlgWrap(`<div class="dlg" style="width:520px;margin:0 auto"><div class="hd"><span class="h2m">Upload a document</span></div><div class="bd">
+  <div class="field"><span class="lbl">Type</span><span class="input">Care Certificate ${ico('chev')}</span></div>
+  <div style="border:1.5px dashed var(--primary);background:var(--primary-wash);border-radius:10px;padding:20px;text-align:center;display:grid;gap:4px;justify-items:center"><span style="color:var(--primary-ink)">${ico('upload')}</span><b>Drop a file here, or <u style="color:var(--primary-ink)">choose one</u></b><span class="hint">PDF, JPG or PNG up to 10 MB. A phone photo is fine.</span></div>
+  <div class="row nowrap" style="border:1px solid var(--line);border-radius:8px;padding:10px 12px"><span class="ic pri">${ico('doc')}</span><span style="flex:1;display:grid;gap:5px"><span class="row nowrap" style="justify-content:space-between"><b style="font-size:13px">care-certificate.pdf</b><span class="mono dim">1.8 MB · 64%</span></span><span class="bar"><i style="width:64%"></i></span></span></div>
+  <div class="callout bad">${ico('alert')}<div><b>That file is 14 MB.</b> The limit is 10 MB. Save the PDF smaller or take a photo of the page.</div></div></div>
+  <div class="ft"><span class="why">Saved as a draft until you send it.</span><span class="btn">Cancel</span><span class="btn p">Send for review</span></div></div>`);
+const detailsMob = () => mobShell('', `<div><span class="h1" style="font-size:22px">My details</span><div class="lede">Change what is yours. Your manager holds the rest.</div></div>
+  ${mcard('Contact', `<div style="display:grid;gap:12px"><div class="row"><span class="av" style="width:52px;height:52px;font-size:16px">AO</span><span class="btn sm">${ico('upload')}Change photo</span></div><div class="field"><span class="lbl">Mobile</span><span class="input">07700 900123</span></div><div class="field"><span class="lbl">Email</span><span class="input">amara.okafor@example.com</span><span class="hint">Change it in Security.</span></div></div>`)}
+  ${mcard('Emergency contacts', `<div class="list"><div><span class="two" style="flex:1"><span class="t">Chidi Okafor · Partner</span><span class="s mono">07700 900456</span></span><span class="btn sm">Edit</span></div><div><span class="btn sm q">${ico('ok')}Add a contact</span></div></div>`, { raw:true })}
+  ${mcard('Held by your employer', `<div style="display:grid;gap:6px;font-size:13px">${[['Job title', 'Care assistant'], ['Site', 'Sunnyvale House'], ['Contract', '37.5 h, permanent']].map(r => `<div class="row nowrap" style="justify-content:space-between"><span class="dim">${r[0]}</span><b>${r[1]}</b></div>`).join('')}<span class="hint" style="margin-top:6px">${ico('lock', 'ico')} Ask Marcus Bell to change these.</span></div>`)}`, 4);
+const emailDlg = () => dlgWrap(`<div class="dlg" style="width:460px;margin:0 auto"><div class="hd"><span class="row" style="gap:6px;font-size:12px"><span class="dim">1 New address</span><span class="dim">›</span><b style="color:var(--primary-ink)">2 Code</b><span class="dim">›</span><span class="dim">3 Done</span></span><span class="h2m" style="display:block;margin-top:8px">Check your new inbox</span></div><div class="bd">
+  <span>We sent a six-digit code to <b>amara@example.org</b>. It lasts 10 minutes.</span>
+  <span class="row nowrap">${['4', '8', '2', '9', '1', '7'].map(d => `<span class="input err" style="width:46px;justify-content:center;font:650 20px/1 var(--mono)">${d}</span>`).join('')}</span>
+  <span class="err-t">That code is not right. 2 tries left, then ask for a new one.</span><span class="btn sm q" style="justify-self:start">Send a new code</span>
+  <div class="callout info">${ico('info')}<div>When this works we tell your old address too, with a link if it was not you.</div></div></div>
+  <div class="ft"><span class="btn">Back</span><span class="btn p">Confirm</span></div></div>`);
+function qrSvg() {
+  let s = 7, cells = ''; const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280; const N = 25, u = 148 / N;
+  const f = (x, y) => `<rect x="${x * u}" y="${y * u}" width="${7 * u}" height="${7 * u}" fill="#0D1934"/><rect x="${(x + 1) * u}" y="${(y + 1) * u}" width="${5 * u}" height="${5 * u}" fill="#fff"/><rect x="${(x + 2) * u}" y="${(y + 2) * u}" width="${3 * u}" height="${3 * u}" fill="#0D1934"/>`;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const inF = (x < 8 && y < 8) || (x > N - 9 && y < 8) || (x < 8 && y > N - 9); if (!inF && rnd() > .52) cells += `<rect x="${(x * u).toFixed(2)}" y="${(y * u).toFixed(2)}" width="${u.toFixed(2)}" height="${u.toFixed(2)}" fill="#0D1934"/>`; }
+  return `<svg width="170" height="170" viewBox="0 0 148 148" role="img" aria-label="Illustration of a site clock-in code, not scannable">${cells}${f(0, 0)}${f(N - 7, 0)}${f(0, N - 7)}</svg>`;
+}
+const qrDesk = () => appShell('Locations', 'People / Locations / <b>Sunnyvale House</b>', `
+  <div class="phead"><div><span class="h1">Clock-in code</span><div class="lede">Sunnyvale House · a printed code as a second way to clock in, beside GPS.</div></div></div>
+  <div class="split even">
+    ${mcard('Poster', `<div style="display:grid;gap:14px;justify-items:center;text-align:center;border:1px solid var(--line);border-radius:12px;padding:24px">${qrSvg()}<span class="wm" style="padding:0">${logo(22)}<span>Rota<em>Flow</em></span></span><b>Clock in at Sunnyvale House</b><span class="dim" style="font-size:13px">Open RotaFlow, tap Clock in, then Scan site code.</span></div><div class="row" style="margin-top:14px"><span class="btn p">Print poster</span><span class="btn d">Replace code</span></div><p class="hint" style="margin:10px 0 0">Replace it if a photo of the poster is shared. The old code stops working at once.</p>`)}
+    ${mcard('What staff see', `<div style="display:grid;gap:14px;justify-items:center;text-align:center"><span style="font:650 40px/1 var(--mono)">06:58</span><span class="dim">Early · 07:00–15:00</span><span class="seg"><span>${ico('gps', 'ico')} GPS</span><span class="on">Scan site code</span></span><div style="width:280px;height:200px;border-radius:12px;background:#0D1934;display:grid;place-items:center;color:#fff;font-size:12.5px"><span style="width:130px;height:130px;border:2px solid rgba(255,255,255,.85);border-radius:14px;display:block"></span>Point the camera at the poster</div><span class="hint">No camera? Use GPS, or ask a manager to clock you in.</span></div>`)}
+  </div>`);
+PAGES.notbuilt = () => phead(`${NO('notbuilt')} · Not built yet`, 'Self-service and QR clock-in',
+  'Four features listed in UX-SPEC §7 that have never existed. Each needs backend work before it can be built; the design is ready so that work has a target.',
+  `<span class="sev med">2 medium</span> <span class="sev low">2 low</span> · every one needs backend work first`) +
+  direction(['F32', 'F33', 'F34', 'F35'],
+    ['Documents and photos are pasted links', 'Staff cannot change their own contacts', 'Email cannot be changed', 'GPS is the only self clock-in'],
+    ['One upload window for documents and photos, with honest failures', 'My details: edit what is yours; employer fields shown locked with who to ask', 'Email change in three steps, code to the new address', 'A printable site poster and "Scan site code" beside GPS'],
+    ['Upload: the S8 Files module signs uploads', 'Details: an API rule lets staff edit own phone, photo and contacts', 'Email: Clerk email-address API', 'QR: a per-site secret in the schema that can be replaced']) + `
+  <div class="frames pair"><div>${cap('Upload · document or photo', 'needs S8 Files')}${desk('Documents › Upload', uploadDlg(), 600, 600)}</div><div>${cap('Change email · step 2 of 3', 'needs Clerk email API')}${desk('My account › Security', emailDlg(), 600, 600)}</div></div>
+  <div class="frames" style="margin-top:24px"><div>${cap('QR clock-in · manager and staff', 'needs a schema change')}${desk('rotaflow.space/app/locations/…/clock-in-code', qrDesk(), 700)}</div><div>${cap('My details · 390', 'needs an API rule')}${phone(detailsMob(), 900)}</div></div>`;
+
+/* ---------------- 12 states ---------------- */
+const stateCard = (t, body) => `<div class="card" style="display:flex;flex-direction:column"><div class="hd"><span class="h3m">${t}</span></div><div class="bd" style="flex:1;display:grid;align-content:center">${body}</div></div>`;
+const statesBoard = () => `<div class="m" style="padding:24px;display:grid;gap:16px;grid-template-columns:repeat(3,minmax(0,1fr))">
+  ${stateCard('Not found (404)', `<div style="text-align:center;display:grid;gap:8px;justify-items:center"><span class="eyebrow">Error 404</span><span class="h2m">That page is not here</span><span class="dim" style="font-size:13px">The link may be old, or the page moved.</span><span class="row" style="justify-content:center"><span class="btn p sm">Go to today</span><span class="btn sm">Help</span></span></div>`)}
+  ${stateCard('Something broke', `<div style="text-align:center;display:grid;gap:8px;justify-items:center"><span class="eyebrow">Error</span><span class="h2m">This screen stopped working</span><span class="dim" style="font-size:13px">We have been told. Your saved work is safe.</span><span class="row" style="justify-content:center"><span class="btn p sm">${ico('refresh')}Reload</span><span class="btn sm">Copy reference</span></span><span class="mono dim">Ref 7f3a-91c2</span></div>`)}
+  ${stateCard('No permission', `<div style="text-align:center;display:grid;gap:8px;justify-items:center"><span style="color:var(--warn-ink)">${ico('lock')}</span><span class="h2m">Managers only</span><span class="dim" style="font-size:13px">Reports are for owners and managers. Ask Marcus Bell if you need this.</span><span class="btn sm">Back to today</span></div>`)}
+  ${stateCard('Offline', `<div style="display:grid;gap:10px"><div class="callout warn">${ico('wifi')}<div><b>You are offline.</b> Showing the rota from 08:41. Clock-ins are kept and sent later.</div></div><div class="row nowrap" style="justify-content:space-between;font-size:13px"><span>Clock in, 06:58</span>${pill('warn', 'Waiting to send')}</div><div class="row nowrap" style="justify-content:space-between;font-size:13px"><span>Leave request</span>${pill('neutral', 'Needs a signal')}</div></div>`)}
+  ${stateCard('Install the app', `<div style="display:grid;gap:10px"><div class="row nowrap">${logo(36)}<span class="two"><span class="t">Add RotaFlow to your home screen</span><span class="s">Opens like an app; your rota works offline.</span></span></div><span class="row"><span class="btn sm p">Install</span><span class="btn sm">Not now</span></span></div>`)}
+  ${stateCard('Update ready', `<div style="display:grid;gap:10px"><div class="row nowrap"><span class="ic pri">${ico('refresh')}</span><span class="two"><span class="t">A new version is ready</span><span class="s">Reload between tasks. Nothing unsaved is lost.</span></span></div><span class="row"><span class="btn sm p">Reload now</span><span class="btn sm">Later</span></span></div>`)}
+  </div>`;
+const consentApp = () => appShell('Rota builder', 'Rota builder / <b>Sunnyvale House</b>', `<div class="phead"><div><span class="h1">Rota builder</span><div class="lede">The grid stays fully visible.</div></div></div><div class="card" style="height:560px;display:grid;place-items:center;color:var(--muted)">Rota grid</div>
+  <div class="consent" style="position:absolute;left:256px;bottom:20px;width:380px;flex-direction:column;align-items:stretch;gap:10px"><p><b>Remember your preferences?</b> No cookies or analytics either way. We would like to keep your settings on this device and send error reports.</p><span class="row"><span class="btn sm">No thanks</span><span class="btn sm">Yes</span><span class="btn sm q">Choose</span></span></div>`);
+PAGES.states = () => phead(`${NO('states')} · Everywhere`, 'States and consent',
+  'The moments nobody plans for, and the consent notice that currently covers the product. Each state says what happened and gives one next step.',
+  `<span class="sev high">2 high</span> <span class="sev low">2 low</span>`) +
+  direction(['F01', 'F18', 'F27', 'F36'],
+    ['Consent notice is 205 px and covers content, on the site and in the app', 'A mistyped preview address shows a blank page', 'No reference for 404, error, offline, install, update'],
+    ['Site: one-line bar. App: a small corner card that never covers a control', 'Accept and Reject the same size and style (ICO guidance)', 'One board for every global state'],
+    ['Consent never covers a heading, button or grid cell at any width', 'Every state names what happened and offers one action', 'Preview shell falls through to the 404']) + `
+  <div class="frames solo"><div>${cap('Global states', '')}${desk('Global states', statesBoard(), 560)}</div></div>
+  <div class="frames solo" style="margin-top:24px"><div>${cap('Consent inside the app', 'corner card, content stays usable')}${desk('rotaflow.space/app/rota', `<div style="position:relative">${consentApp()}</div>`, 560)}</div></div>`;
+
+/* ---------------- 13 system ---------------- */
+const swc = (name, hex, fg, ratio, ok, note) => `<div class="swc"><div class="chip" style="background:${hex}"><span style="background:#fff;color:#0D1934;padding:2px 8px;border-radius:6px;font-size:13px">${name}</span></div><div class="inf"><b>${hex}</b><span>${ratio} · <span class="${ok ? 'pass' : 'fail'}">${ok ? 'passes' : 'fails'}</span></span><span>${note}</span></div></div>`;
+PAGES.system = () => phead(`${NO('system')} · Reference`, 'Design system changes',
+  'The live system stays: Inter, 4 px controls, 12 px cards, the same blue. Only the pairs that fail are changed, each with its measurement.',
+  `<span class="sev high">2 high</span> <span class="sev med">2 medium</span> <span class="sev low">2 low</span>`) +
+  direction(['F14', 'F15', 'F16', 'F17', 'F25', 'F37'],
+    ['Blue and red text under 4.5:1', 'Field edges at 1.53:1', 'Text at 10 px or 80% opacity', 'US date order and Title Case chips'],
+    ['Text uses -ink shades; fills keep the bright colours', 'Field border #8A8F98', 'Minimum 12 px; muted token, not opacity', 'UK dates "25–29 Aug"; sentence case'],
+    ['axe colour-contrast: zero on every screen', 'Every field edge measures 3:1 or more', 'No text below 12 px in src/']) + `
+  <h2 class="h2">Colour: before and after</h2><p class="sub">Measured with contrast.py against WCAG 2.2. Left of each pair is today; right is the fix.</p>
+  <div class="sw-row">
+    ${swc('Brand text, today', '#3B6FE0', '#fff', 'on #F4F4F4 4.21:1', false, 'Sidebar "Flow", links on grey')}
+    ${swc('Brand text, fix', '#2F5BC0', '#fff', 'on #F4F4F4 5.65:1', true, 'primary-ink, already in src/index.css')}
+    ${swc('Red text, today', '#D94A3A', '#fff', 'on white 4.21:1', false, 'Decline, overdue notes')}
+    ${swc('Red text, fix', '#B23A2C', '#fff', 'on white 5.94:1', true, 'danger-ink')}
+    ${swc('Field edge, today', '#D0D1D2', '#0D1934', 'on white 1.53:1', false, 'Inputs, selects')}
+    ${swc('Field edge, fix', '#8A8F98', '#fff', 'on white 3.25:1', true, 'New token: field')}
+    ${swc('Muted text', '#5A6684', '#fff', 'on white 5.72:1', true, 'Use instead of opacity')}
+    ${swc('Warning text', '#7A5410', '#fff', 'on wash 6.09:1', true, 'Not #E0A030 (2.04:1)')}
+  </div>
+  <h2 class="h2">Components that change</h2><p class="sub">Drawn with the live tokens.</p>
+  <div class="dcard" style="padding:24px"><div class="m" style="background:#fff;display:grid;gap:22px">
+    <div class="row" style="gap:12px"><span class="btn p">Primary</span><span class="btn">Secondary</span><span class="btn d">Decline</span><span class="btn q">Text button</span><span style="display:grid;gap:3px"><span class="btn" disabled>Publish 3 changes</span><span class="why">Fix 2 things first</span></span></div>
+    <div class="row" style="gap:8px">${pill('ok', 'Approved')}${pill('warn', 'Waiting')}${pill('bad', 'Late 12 min')}${pill('info', 'On break')}${pill('neutral', 'Finished')}<span class="dim" style="font-size:12.5px;margin-left:8px">Sentence case · 12 px minimum · -ink text on wash</span></div>
+    <div class="g3"><div class="field"><span class="lbl">Field, new edge</span><span class="input">Sunnyvale House</span><span class="hint">Border #8A8F98, 3.25:1</span></div><div class="field"><span class="lbl">Field with error</span><span class="input err">2 Nov 2026</span><span class="err-t">Say what is wrong and how to fix it.</span></div><div class="field"><span class="lbl">Dates</span><span class="input">25–29 Aug 2026</span><span class="hint">Day first, en dash, no seconds on times</span></div></div>
+  </div></div>
+  <h2 class="h2">Rules every new screen follows</h2>
+  <div class="dgrid3">${[['One primary action', 'Only one filled blue button per screen. Everything else is secondary or a text button.'], ['Disabled means explained', 'A disabled button always has its reason as visible text beside or under it.'], ['Warnings inform, blockers stop', 'Amber never disables anything. Red only for what the server will also refuse.'], ['Equal rows', 'Cards in a row share a height; rows of 2, 3 or 4, never an orphan.'], ['Plain UK English', 'Buttons say what happens. Dates "31 Oct". Times "13:00".'], ['Honest data', 'Missing values say so. Sample data is labelled.']].map(r => `<div class="dcard" style="padding:18px 20px"><span class="h3">${r[0]}</span><p style="margin:4px 0 0;color:var(--d-muted);font-size:14px">${r[1]}</p></div>`).join('')}</div>`;
+
+/* ---------------- 14 plan ---------------- */
+PAGES.plan = () => phead(`${NO('plan')} · Reference`, 'Build plan',
+  'Six phases, smallest and safest first. Each lists the findings it closes and how we will know it is done. Nothing starts until you approve.',
+  '') + `<div class="dcard" style="margin-top:28px;overflow:hidden">${[
+  ['Phase 1', 'Colour and text fixes', 'Front end · small', ['F14', 'F15', 'F16', 'F17', 'F25', 'F26'], ['Swap text to -ink tokens; new field border token', 'Raise small text to 12 px; drop opacity on text', 'UK date and time formats'], ['axe colour-contrast zero on all 31 captured screens', 'pnpm check passes']],
+  ['Phase 2', 'Consent and sign in', 'Front end · small', ['F01', 'F18', 'F11', 'F12', 'F13', 'F27'], ['Compact consent bar on the site; corner card in the app', 'Single sign-in card, Clerk sized and named', 'Preview catch-all route'], ['No sideways scroll at 320 and 390', 'Consent never covers content']],
+  ['Phase 3', 'Landing layout', 'Front end · medium', ['F02', 'F03', 'F04', 'F05', 'F06', 'F07', 'F09'], ['Hero, Why section and footer as drawn', 'Pricing alignment, trial line, FAQ accordion'], ['Screens match this file at 390, 834, 1440 and 1920', 'Equal card heights in every row']],
+  ['Phase 4', 'Dashboard and publishing', 'Front end · medium', ['F19', 'F20', 'F21', 'F22', 'F23', 'F24'], ['Four tiles and "Needs you"', 'Staffing table columns', 'Blocking issues listed; Publish disabled with reason', 'Grouped sidebar; 7-day week view'], ['No clipped column at 1280', 'Publish cannot be pressed while blocked']],
+  ['Phase 5', 'New modules, match pass', 'Front end · medium', ['F28', 'F29', 'F30', 'F31', 'F36'], ['Compliance, Cover, Scheduling checks, Timesheets and global states compared side by side with this file', 'Preview routes added so each can be screenshotted'], ['Each screen matched at 390 and 1280', 'UX-SPEC gains a reference row for each']],
+  ['Phase 6', 'Needs backend first', 'Backend + front end · large', ['F32', 'F33', 'F34', 'F35', 'F08', 'F10'], ['Upload after the S8 Files module', 'My details after the API rule', 'Email change with Clerk', 'QR after the schema change', 'Cutover copy once the server location is confirmed'], ['Each shipped behind its own check', 'No public page mentions Postgres, Supabase or EU after cutover']],
+].map(p => `<div class="phase"><div><div class="pn">${p[0]}</div><div class="pt">${p[1]}</div><div style="margin-top:6px"><span class="tagd">${p[2]}</span></div><div class="ids" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">${p[3].map(fid).join('')}</div></div><div><div class="lab">What we do</div><ul>${p[4].map(x => `<li>${x}</li>`).join('')}</ul></div><div><div class="lab">Done when</div><ul>${p[5].map(x => `<li>${x}</li>`).join('')}</ul></div></div>`).join('')}</div>
+  <h2 class="h2">What I need from you</h2>
+  <div class="dgrid3">
+    <div class="dcard step"><span class="n">1</span><span class="h3">Approve the findings</span><p>Reply with the numbers you approve, or "approve all". Corrections first come back here.</p></div>
+    <div class="dcard step"><span class="n">2</span><span class="h3">Confirm the server location</span><p>Needed for the data wording on Pricing and Sign in (F08). Until then that copy is held.</p></div>
+    <div class="dcard step"><span class="n">3</span><span class="h3">Say when to start</span><p>Phase 1 can start without waiting for the others. It touches tokens only.</p></div>
+  </div>`;
+
+/* ============================ shell ============================ */
+function drawToc(cur) {
+  $('#toc-list').innerHTML = TOC.map(([g, items]) => `<li class="grp" aria-hidden="true">${g}</li>${items.map(([id, label, ct]) => `<li><a href="#${id}"${id === cur ? ' aria-current="page"' : ''}><span class="no">${NO(id)}</span><span>${label}</span>${ct ? `<span class="ct">${ct()}</span>` : ''}</a></li>`).join('')}`).join('');
+}
+function fitFrames() {
+  document.querySelectorAll('.fit').forEach(f => {
+    const vp = f.firstElementChild, w = +f.dataset.w, k = f.clientWidth / w;
+    vp.style.transform = `scale(${k})`;
+    f.style.height = Math.ceil(vp.offsetHeight * k) + 'px';
+  });
+}
+function render() {
+  let id = location.hash.slice(1);
+  if (!PAGES[id]) id = 'start';
+  drawToc(id);
+  const i = ORDER.indexOf(id), prev = ORDER[i - 1], next = ORDER[i + 1];
+  $('#crumb').innerHTML = `${esc(LABEL[id][0])} / <b>${esc(LABEL[id][1])}</b>`;
+  $('#prev').outerHTML = prev ? `<a id="prev" class="dbtn" href="#${prev}">← <span>${esc(LABEL[prev][1])}</span></a>` : '<span id="prev"></span>';
+  $('#next').outerHTML = next ? `<a id="next" class="dbtn pri" href="#${next}"><span>${esc(LABEL[next][1])}</span> →</a>` : '<span id="next"></span>';
+  $('#page').innerHTML = PAGES[id]() + (next ? `<div style="margin-top:48px;display:flex;justify-content:flex-end"><a class="dbtn pri" href="#${next}">Next: ${esc(LABEL[next][1])} →</a></div>` : '');
+  document.title = `${LABEL[id][1]} · RotaFlow design gaps`;
+  if (id === 'findings') drawFindings();
+  $('#toc').classList.remove('open');
+  requestAnimationFrame(fitFrames);
+  window.scrollTo(0, 0);
+  $('#page').focus({ preventScroll:true });
+}
+addEventListener('hashchange', render);
+addEventListener('resize', () => requestAnimationFrame(fitFrames));
+document.addEventListener('click', e => {
+  const s = e.target.closest('[data-surf]'), v = e.target.closest('[data-sev]');
+  if (s) { FILTER.surf = s.dataset.surf; document.querySelectorAll('[data-surf]').forEach(b => b.setAttribute('aria-pressed', b === s)); drawFindings(); }
+  if (v) { FILTER.sev = v.dataset.sev; document.querySelectorAll('[data-sev]').forEach(b => b.setAttribute('aria-pressed', b === v)); drawFindings(); }
+  const f = e.target.closest('[data-f]');
+  if (f) { FILTER = { surf:'All', sev:'All' }; const id = f.dataset.f;
+    if ($('#frows')) { document.querySelectorAll('[data-surf],[data-sev]').forEach(b => b.setAttribute('aria-pressed', b.dataset.surf === 'All' || b.dataset.sev === 'All')); drawFindings(); }
+    setTimeout(() => { const r = document.getElementById('row-' + id); if (r) { r.scrollIntoView({ block:'center' }); r.style.background = '#FFF8E6'; } }, 60); }
+});
+$('#menuBtn').addEventListener('click', () => $('#toc').classList.toggle('open'));
+render();
+
+</script>
+</body>
+</html>

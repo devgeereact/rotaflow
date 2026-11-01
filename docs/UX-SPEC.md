@@ -186,7 +186,8 @@ Two long-standing ❌ rows here have been closed and moved:
 
 ## 7a. Compliance (R2 slice S10), behind the `staff_documents` flag
 
-No design reference; built in the existing components. Every screen below is hidden while the flag is off (the
+Design reference since 1 November 2026: `docs/design/RF-GAPS.html`, page 07 Compliance (manager board and staff view);
+matched in code for visible disabled reasons. Every screen below is hidden while the flag is off (the
 default), so the module ships dark.
 
 | Status | Screen | Route | What it does |
@@ -198,7 +199,8 @@ default), so the module ships dark.
 
 ## 7b. Scheduling (R2 slice S11), behind the `scheduling_tools` flag
 
-No design reference; built in the existing components. Hidden while the flag is off (the default).
+Design reference since 1 November 2026: `docs/design/RF-GAPS.html`, page 09 Scheduling checks. Hidden while the flag
+is off (the default).
 
 | Status | Screen | Where | What it does |
 | ------ | ------ | ----- | ------------ |
@@ -209,7 +211,8 @@ No design reference; built in the existing components. Hidden while the flag is 
 
 ## 7c. Cover (R2 slice S12), behind the `cover_tools` flag
 
-No design reference; built in the existing components. Hidden while the flag is off (the default). Swaps UI unchanged.
+Design reference since 1 November 2026: `docs/design/RF-GAPS.html`, page 08 Cover; disabled Take it, Approve and
+Offer to cover state their reason as text. Hidden while the flag is off (the default). Swaps UI unchanged.
 
 | Status | Screen | Where | What it does |
 | ------ | ------ | ----- | ------------ |
@@ -220,7 +223,8 @@ No design reference; built in the existing components. Hidden while the flag is 
 
 ## 7d. Timesheets (R2 slice S13), behind the `timesheet_tools` flag
 
-No design reference; built in the existing components. Hidden while the flag is off (the default): the page, its
+Design reference since 1 November 2026: `docs/design/RF-GAPS.html`, page 10 Timesheets. Hidden while the flag is off
+(the default): the page, its
 existing "Export CSV" (the visible day's rows, built in the browser) and the Policies save are exactly as before.
 
 | Status | Screen | Where | What it does |

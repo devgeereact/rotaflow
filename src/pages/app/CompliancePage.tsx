@@ -292,6 +292,15 @@ export function CompliancePage(): JSX.Element {
                           >
                             Not accepted
                           </Button>
+                          {/* Visible, not only a title: a disabled button
+                              cannot be focused, and a phone has no hover. */}
+                          {!doc.can_approve && (
+                            <p className="w-full text-xs text-content-muted dark:text-content-muted-dark">
+                              {doc.own
+                                ? 'Someone else must review your own documents.'
+                                : 'You uploaded this, so someone else must approve it.'}
+                            </p>
+                          )}
                         </div>
                       </div>
                       {rejecting === doc.id && (
