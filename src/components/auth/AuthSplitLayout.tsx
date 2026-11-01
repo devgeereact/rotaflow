@@ -90,7 +90,7 @@ export function AuthSplitLayout({
         </div>
       </div>
 
-      <div className="relative flex flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         <div className="flex justify-end px-6 pt-4 md:px-10">
           <LanguagePill />
         </div>

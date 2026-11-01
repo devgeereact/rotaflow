@@ -97,7 +97,7 @@ const PLATFORM = [
   },
   {
     title: 'Multi-tenant by design',
-    body: 'Each organisation is isolated at the database level by row-level security, so one tenant cannot read another even if application code has a bug.',
+    body: 'Every request is checked on the server against the organisations you belong to, so one organisation’s data never reaches another, whatever the browser asks for.',
   },
   {
     title: 'Role-aware throughout',

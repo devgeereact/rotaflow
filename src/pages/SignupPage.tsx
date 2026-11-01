@@ -25,7 +25,7 @@ export function SignupPage(): JSX.Element {
       description="Create a RotaFlow account for clearer rotas, reliable attendance and better-informed teams."
       features={AUTH_FEATURES}
     >
-      <div className="w-full max-w-3xl animate-fade-up motion-reduce:animate-none rounded-2xl border border-surface-border bg-surface p-9 shadow dark:border-surface-border-dark dark:bg-surface-dark md:p-11">
+      <div className="w-full max-w-md animate-fade-up motion-reduce:animate-none rounded-2xl border border-surface-border bg-surface p-5 shadow dark:border-surface-border-dark dark:bg-surface-dark sm:p-9">
         <h1 className="mb-1 font-display text-3xl font-bold text-ink dark:text-content-dark">
           Create your account
         </h1>

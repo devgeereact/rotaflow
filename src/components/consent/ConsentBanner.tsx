@@ -37,7 +37,7 @@ import { useConsent } from '@/context/ConsentContext';
  */
 export function ConsentBanner(): JSX.Element | null {
   const { needsDecision, acceptAll, rejectAll, openPanel } = useConsent();
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const headingRef = useRef<HTMLSpanElement>(null);
   const bannerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -71,47 +71,53 @@ export function ConsentBanner(): JSX.Element | null {
 
   if (!needsDecision) return null;
 
+  // Compact on purpose (design gap F01/F18, 1 Nov 2026): one line of text and
+  // one row of controls, about 64 px tall from `md` up. The old three-line
+  // card took 205 px of a 900 px screen. The inset above still pads the page by
+  // whatever height this ends up, so it never covers content at any width.
   return (
     <section
       ref={bannerRef}
       aria-labelledby="consent-heading"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-surface-border bg-surface p-4 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark sm:p-6"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-surface-border bg-surface px-4 py-3 shadow-lg dark:border-surface-border-dark dark:bg-surface-dark"
     >
-      <div className="mx-auto flex max-w-4xl flex-col gap-4">
-        <div>
-          <h2
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 md:flex-row md:items-center md:gap-6">
+        <p className="min-w-0 flex-1 text-sm leading-snug text-content-muted dark:text-content-muted-dark">
+          <span
             id="consent-heading"
             ref={headingRef}
+            role="heading"
+            aria-level={2}
             tabIndex={-1}
             className="font-semibold text-content focus-visible:outline-hidden dark:text-content-dark"
           >
             What may this browser keep?
-          </h2>
-          <p className="mt-1 text-sm leading-relaxed text-content-muted dark:text-content-muted-dark">
-            RotaFlow sets no cookies and runs no analytics. Signing in and working offline
-            need a little storage on this device and cannot be switched off. Beyond that
-            we would like to remember your interface preferences and, if something breaks,
-            send us the error. Neither is on unless you say so.
-          </p>
-        </div>
+          </span>{' '}
+          RotaFlow sets no cookies and runs no analytics. May we also remember your
+          preferences and send error reports? Neither is on unless you say so.
+        </p>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Deliberately identical in weight and size. Rejecting must not be
               harder, slower or quieter than accepting. */}
-          <Button variant="primary" onClick={acceptAll}>
-            Accept all
-          </Button>
-          <Button variant="primary" onClick={rejectAll}>
+          <Button variant="secondary" size="sm" onClick={rejectAll}>
             Reject all
           </Button>
-          <Button variant="secondary" onClick={openPanel}>
-            Choose what to keep
+          <Button variant="secondary" size="sm" onClick={acceptAll}>
+            Accept all
           </Button>
+          <button
+            type="button"
+            onClick={openPanel}
+            className="h-9 rounded px-2 text-sm font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
+          >
+            Choose what to keep
+          </button>
           <Link
             to="/legal/cookies"
-            className="rounded text-sm font-medium text-primary-ink underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-ink-dark"
+            className="rounded px-1 text-sm text-content-muted underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-content-muted-dark"
           >
-            Read the Cookie Notice
+            Cookie Notice
           </Link>
         </div>
       </div>

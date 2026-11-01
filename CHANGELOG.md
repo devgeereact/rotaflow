@@ -13,6 +13,15 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Design gaps, phase 2: consent and sign in (branch `design/gap-fixes`, 1 November 2026).** The storage question is
+  now one line of text and one row of controls (about 64 px instead of 205 px), with Reject and Accept the same button
+  and "Choose what to keep" as a link; it still pads the page so it never covers content. Sign in and sign up no longer
+  scroll sideways on a phone (82 px at 390 before: a fixed-width Clerk card and a column with no `min-w-0`), show one
+  card instead of Clerk's card inside ours, and offer one secondary route: "Setting up a new organisation? Ask for
+  access" (organisations are by invitation). Public copy that stops being true at cutover is gone: "Data held in the
+  EU", "managed Postgres", "row-level security" on Home, Features, About, Pricing and the sign-in strip; no location is
+  claimed until the owner confirms the server's. A mistyped `/app-preview/*` address shows the 404. Findings F01, F08
+  (marketing copy), F11 to F13, F18, F27.
 - **Design gaps, phase 1: colour and text (branch `design/gap-fixes`, 1 November 2026).** Every text use of the
   bright status and brand colours now uses its `-ink` shade with the matching dark variant (`text-primary`,
   `text-danger`, `text-success`, `text-warning`, `text-info` as text: 140 places), so blue, red, green, amber and info

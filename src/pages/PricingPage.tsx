@@ -36,7 +36,10 @@ const FAQS = [
   },
   {
     q: 'Where is our data held?',
-    a: 'In a managed Postgres database in the EU, isolated per organisation by row-level security. You can export any staff member’s full record, or anonymise it, at any time.',
+    // Was "a managed Postgres database in the EU ... row-level security": untrue
+    // after the cPanel cutover. The location returns once the owner confirms the
+    // server's (design gap F08, 1 Nov 2026).
+    a: 'On RotaFlow’s own server, kept separate for each organisation: the server refuses any request for an organisation you do not belong to. You can export any staff member’s full record, or anonymise it, at any time.',
   },
   {
     q: 'Do you offer a discount for charities?',

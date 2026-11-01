@@ -15,10 +15,34 @@ const APPEARANCE = {
     borderRadius: '0.75rem',
     fontFamily: 'inherit',
   },
+  // Style objects, not class names: Clerk's own CSS outranks Tailwind
+  // utilities, so the classes this used to pass were ignored and the card,
+  // its shadow and its heading all still rendered.
   elements: {
-    rootBox: 'w-full',
-    cardBox: 'w-full shadow-none',
-    card: 'w-full shadow-none border-0 bg-transparent p-0',
+    // Clerk's card has a fixed 25rem width; on a 390 px phone inside the
+    // page's own card it scrolled the page sideways by 82 px (design gap F11).
+    rootBox: { width: '100%', minWidth: 0 },
+    cardBox: {
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: 0,
+      boxShadow: 'none',
+      border: 'none',
+      overflow: 'visible',
+    },
+    card: {
+      width: '100%',
+      boxShadow: 'none',
+      border: 'none',
+      background: 'transparent',
+      padding: '2px',
+      overflow: 'visible',
+    },
+    // The page already has the heading and the one secondary link; Clerk's
+    // copies made a second card and a second sign-up route (F12, F13).
+    header: { display: 'none' },
+    footerAction: { display: 'none' },
+    footer: { background: 'transparent' },
   },
 } as const;
 

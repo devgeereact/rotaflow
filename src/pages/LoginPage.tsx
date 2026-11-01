@@ -18,22 +18,25 @@ export function LoginPage(): JSX.Element {
       description="Build rotas with fewer surprises, keep staff informed, and keep a record of every clock-in. A clock-in made with no signal waits on the phone until it returns."
       features={AUTH_FEATURES}
     >
-      <div className="w-full max-w-2xl animate-fade-up motion-reduce:animate-none rounded-2xl border border-surface-border bg-surface p-9 shadow dark:border-surface-border-dark dark:bg-surface-dark md:p-11">
+      <div className="w-full max-w-md animate-fade-up motion-reduce:animate-none rounded-2xl border border-surface-border bg-surface p-5 shadow dark:border-surface-border-dark dark:bg-surface-dark sm:p-9">
         <h1 className="mb-1 font-display text-3xl font-bold text-ink dark:text-content-dark">
-          Welcome back
+          Sign in to RotaFlow
         </h1>
         <p className="mb-6 text-ink-muted dark:text-content-muted-dark">
-          Sign in with the email address your organisation invited. We send you a code;
-          there is no password to remember.
+          Use the email your organisation invited. We send you a code, so there is no
+          password to remember.
         </p>
         <ClerkAuthPanel mode="sign-in" redirectTo={redirectTo} />
         <p className="mt-6 text-sm text-ink-muted dark:text-content-muted-dark">
-          New to RotaFlow?{' '}
+          {/* Organisations are by invitation (owner decision, 30 Oct 2026): an
+              invitee arrives through their invite link, so the page offers no
+              open sign-up route, only a way to ask (design gap F13). */}
+          Setting up a new organisation?{' '}
           <Link
-            to="/signup"
-            className="font-medium text-brand underline-offset-2 hover:underline"
+            to="/contact"
+            className="font-medium text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
           >
-            Create an account
+            Ask for access
           </Link>
         </p>
       </div>

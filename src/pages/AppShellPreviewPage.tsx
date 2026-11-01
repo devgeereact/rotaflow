@@ -1,4 +1,5 @@
 import { useMemo, type JSX } from 'react';
+import { NotFoundPage } from '@/pages/NotFoundPage';
 import { Route, Routes } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { OrgContext, type OrgContextValue } from '@/context/OrgContext';
@@ -86,6 +87,9 @@ export function AppShellPreviewPage(): JSX.Element {
           <Route path="announcements" element={<AnnouncementsPreviewPage />} />
           <Route path="reports" element={<ReportsPreviewPage />} />
           <Route path="help" element={<HelpPage />} />
+          {/* A mistyped preview address rendered an empty shell (design gap
+              F27). The real /app routes already fall through to the 404. */}
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </OrgContext.Provider>

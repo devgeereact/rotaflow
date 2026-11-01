@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
-import { Lock, MapPin } from 'lucide-react';
+import { KeyRound, Lock } from 'lucide-react';
 
 const CLAIMS = [
-  { icon: MapPin, label: 'Data held in the EU' },
-  { icon: Lock, label: 'Tenant isolation in the database' },
+  { icon: KeyRound, label: 'Sign in with a one-time code' },
+  { icon: Lock, label: "Each organisation's data kept separate" },
 ];
 
 /**
@@ -28,6 +28,13 @@ const CLAIMS = [
  * (`src/lib/subprocessors.ts`), and tenants are separated by row-level
  * security rather than by an application filter (`docs/DATA-MODEL.md` §5). Both
  * are facts a reader could falsify, which is the whole point.
+ *
+ * **Both stopped being true at the cPanel cutover** (design gap F08, 1 Nov
+ * 2026): the data moves to MariaDB behind the PHP API, whose `Scope` module
+ * refuses any organisation the caller is not a member of, and the server's
+ * location is not yet confirmed. The two claims now describe what holds on
+ * both stacks: Clerk's email code, and organisations kept apart. A location
+ * claim comes back only once the owner confirms where the server is.
  */
 export function AuthTrustStrip(): JSX.Element {
   return (

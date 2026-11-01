@@ -14,7 +14,7 @@ const PUBLIC_PAGES = [
   { path: '/solutions', heading: /solutions|sector/i },
   { path: '/about', heading: /about|scheduling/i },
   { path: '/contact', heading: /contact|talk/i },
-  { path: '/login', heading: /welcome back/i },
+  { path: '/login', heading: /sign in to rotaflow/i },
   { path: '/signup', heading: /create|sign ?up|account/i },
   { path: '/resources', heading: /resources|built|working|status/i },
   { path: '/legal/privacy', heading: /privacy/i },

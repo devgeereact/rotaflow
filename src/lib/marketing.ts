@@ -180,7 +180,7 @@ export const AUTH_FEATURES: readonly Benefit[] = [
   {
     icon: ShieldCheck,
     title: 'Tenant-isolated data',
-    body: "Every organisation's data is separated at the database level by row-level security, not an application-code filter.",
+    body: "Every request is checked on the server against the organisations you belong to, so one organisation's data never reaches another.",
   },
   {
     icon: BarChart3,

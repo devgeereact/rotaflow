@@ -1113,3 +1113,32 @@ F25 and F26 from the design review file (artifact "RotaFlow design gaps", v2).
 - `check:php`: the local test database could not create its socket in this sandbox. No PHP changed.
 - Dark mode by eye; Playwright and pgTAP (need Docker).
 
+## 2026-11-01: Design gaps, phase 2 (consent and sign in)
+
+Branch `design/gap-fixes`, local commit only. Closes F01, F11, F12, F13, F18, F27 and the marketing half of F08.
+
+**What changed**
+
+- `ConsentBanner`: compact one-line layout; same accessible name, focus and inset behaviour; Reject and Accept share
+  one class (the equal-weight e2e test checks it).
+- `ClerkAuthPanel`: appearance as style objects (Clerk's CSS outranked the Tailwind classes it was given): full width,
+  no inner card, Clerk's header and sign-up footer hidden. `AuthSplitLayout` column gains `min-w-0`.
+- Login: "Sign in to RotaFlow", one secondary link to `/contact`. Sign-up padding matches.
+- Copy: Pricing FAQ, Home commitments, Features, About and the auth trust strip no longer name Postgres, row-level
+  security or the EU. The legal pages (Trust, Privacy, `subprocessors.ts`) still do; they belong to the cutover
+  privacy decisions and were not touched.
+- `AppShellPreviewPage`: catch-all route to `NotFoundPage`.
+
+**Evidence**
+
+- Dev server on 5043 with the Clerk development key: `/login` and `/signup` at 1440, 834, 390 and 320 have no
+  sideways scroll and no axe violations (390 overflowed 82 px before). Home, Pricing, About, Features and the preview
+  404 clean at the same widths.
+- Playwright (`consent`, `marketing`, `responsive-and-motion`), `E2E_PORT=5043`: 81 passed, 3 failed. The same 3 fail
+  on the unchanged code (port 5042): two expect the deleted `/forgot-password` page, one expects non-submit buttons in
+  the old Supabase form. Left for the cutover owner.
+- `consent.spec.ts` "a declined preference still works" fails intermittently on both old and new code: Clerk writes
+  `__clerk_environment` to localStorage. Recorded as finding F38; the owner decides whether it counts as strictly
+  necessary.
+- `pnpm run check` passes to `check:php` (test database socket refused in the sandbox; no PHP changed).
+

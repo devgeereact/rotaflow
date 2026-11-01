@@ -27,7 +27,7 @@ const PRINCIPLES = [
   },
   {
     title: 'Tenants are separated by the database',
-    body: 'Every organisation’s data is isolated by row-level security in Postgres, not by a filter in application code. It is the boundary that holds even when application code has a bug, which it eventually will.',
+    body: 'Every request is checked on the server against the organisations you belong to, so one organisation’s data never reaches another, whatever the browser asks for.',
   },
   {
     title: 'Say what is not built',
@@ -38,7 +38,7 @@ const PRINCIPLES = [
 const FACTS = [
   { label: 'Stage', value: 'Pre-launch beta' },
   { label: 'Based in', value: 'United Kingdom' },
-  { label: 'Data held in', value: 'EU region, managed Postgres' },
+  { label: 'Data kept', value: 'Separate for each organisation' },
   { label: 'Built for', value: 'UK employment practice and GDPR' },
 ];
 

@@ -11,7 +11,7 @@ const COMMITMENTS = [
   {
     icon: Lock,
     title: 'Your data is isolated',
-    body: 'Every organisation is separated at the database level by row-level security, not by a filter in application code that a bug could skip.',
+    body: 'Every request is checked on the server against the organisations you belong to, so one organisation’s data never reaches another, whatever the browser asks for.',
   },
   {
     icon: ShieldCheck,
