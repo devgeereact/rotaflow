@@ -3,7 +3,6 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollRegion } from '@/components/ui/ScrollRegion';
 import { AttendanceStatusBadge } from '@/components/attendance/AttendanceStatusBadge';
-import { JobTitleBadge } from '@/components/staff/JobTitleBadge';
 import type { AttendanceViewRow } from '@/lib/attendanceRows';
 import type { SortSpec } from '@/lib/filters';
 
@@ -19,8 +18,18 @@ export interface AttendanceTableProps {
 }
 
 const CELL = 'px-3 py-2.5 align-middle text-sm';
+// `[&_button]:uppercase`: a button does not inherit `text-transform`, so the
+// sortable headers rendered in sentence case beside the uppercase plain ones
+// ("Expected start" next to "JOB TITLE", design gap F20).
 const HEAD =
-  'px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-content-muted dark:text-content-muted-dark';
+  'px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-content-muted dark:text-content-muted-dark [&_button]:uppercase [&_button]:tracking-wider';
+
+/** How the clock-in arrived, in words: the raw value read "gps" (F20). */
+const SOURCE_LABEL: Record<string, string> = {
+  gps: 'GPS',
+  qr: 'QR code',
+  manual: 'Manual',
+};
 
 function SortButton({
   spec,
@@ -151,7 +160,7 @@ export function AttendanceTable({
       </ul>
 
       <ScrollRegion label="Attendance table" className="hidden lg:block">
-        <table className="w-full min-w-248 border-collapse">
+        <table className="w-full min-w-200 border-collapse">
           <caption className="sr-only">
             Attendance for the selected period, one row per rostered shift.
           </caption>
@@ -164,12 +173,6 @@ export function AttendanceTable({
                   direction={direction}
                   onSort={onSort}
                 />
-              </th>
-              <th scope="col" className={HEAD}>
-                Job title
-              </th>
-              <th scope="col" className={HEAD}>
-                Location
               </th>
               <th scope="col" className={HEAD}>
                 <SortButton
@@ -218,18 +221,19 @@ export function AttendanceTable({
                 key={row.key}
                 className="hover:bg-surface-subtle dark:hover:bg-surface-subtle-dark"
               >
-                <td
-                  className={cn(CELL, 'font-medium text-content dark:text-content-dark')}
-                >
-                  {row.name}
-                </td>
+                {/* One Person cell: name, then job title and site. Three
+                    columns made the table 992 px wide, so at 1440 its last
+                    column scrolled out of the dashboard card (F20). */}
                 <td className={CELL}>
-                  <JobTitleBadge name={row.jobTitleName} colour={row.jobTitleColour} />
-                </td>
-                <td
-                  className={cn(CELL, 'text-content-muted dark:text-content-muted-dark')}
-                >
-                  {row.locationName ?? 'Unassigned'}
+                  <span className="block font-medium text-content dark:text-content-dark">
+                    {row.name}
+                  </span>
+                  <span className="block text-xs text-content-muted dark:text-content-muted-dark">
+                    {[
+                      row.jobTitleName ?? 'No job title',
+                      row.locationName ?? 'Unassigned',
+                    ].join(' · ')}
+                  </span>
                 </td>
                 <td className={cn(CELL, 'whitespace-nowrap font-mono')}>
                   {row.plannedLabel}
@@ -243,7 +247,7 @@ export function AttendanceTable({
                 <td
                   className={cn(CELL, 'text-content-muted dark:text-content-muted-dark')}
                 >
-                  {row.source ?? '-'}
+                  {row.source ? (SOURCE_LABEL[row.source] ?? row.source) : '-'}
                 </td>
                 <td className={CELL}>
                   <AttendanceStatusBadge status={row.status} />

@@ -244,34 +244,22 @@ export function OperationsDashboard({
         </p>
       </header>
 
-      {/* 2 — the operational counts. */}
-      <div className="mb-6 grid min-w-0 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-8">
-        <StatTile
-          compact
-          className="min-w-0"
-          label="Scheduled today"
-          value={tileValue(today.failed, today.counts.scheduledPeople)}
-          // Both numbers, because they are different questions: cover is
-          // about people, workload is about shifts. Somebody with two shifts
-          // today is one scheduled person and two scheduled shifts.
-          hint={`people · ${today.counts.scheduledShifts} shift${today.counts.scheduledShifts === 1 ? '' : 's'}`}
-          to={attendanceLink(today.date, selectedLocationId, [])}
-        />
+      {/* 2 — the operational counts. Four headline tiles and a line of the
+          rest (design gap F19): eight tiles in one row wrapped every label and
+          ran their notes to four lines, and on a phone they filled two screens
+          before the staffing list. Every figure still links to its drill-down. */}
+      <div className="mb-3 grid min-w-0 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatTile
           compact
           className="min-w-0"
           label="Clocked in now"
           value={tileValue(today.failed, today.counts.workingNow)}
-          hint={ATTENDANCE_STATUS_META.working.definition}
+          hint={
+            today.failed
+              ? ATTENDANCE_STATUS_META.working.definition
+              : `of ${today.counts.scheduledPeople} scheduled today`
+          }
           to={attendanceLink(today.date, selectedLocationId, ['working'])}
-        />
-        <StatTile
-          compact
-          className="min-w-0"
-          label="On break"
-          value={tileValue(today.failed, today.counts.onBreak)}
-          hint={ATTENDANCE_STATUS_META.on_break.definition}
-          to={attendanceLink(today.date, selectedLocationId, ['on_break'])}
         />
         <StatTile
           compact
@@ -280,14 +268,6 @@ export function OperationsDashboard({
           value={tileValue(today.failed, today.counts.late)}
           hint={ATTENDANCE_STATUS_META.late.definition}
           to={attendanceLink(today.date, selectedLocationId, ['late'])}
-        />
-        <StatTile
-          compact
-          className="min-w-0"
-          label="Completed"
-          value={tileValue(today.failed, today.counts.completed)}
-          hint={ATTENDANCE_STATUS_META.completed.definition}
-          to={attendanceLink(today.date, selectedLocationId, ['completed'])}
         />
         <StatTile
           compact
@@ -305,15 +285,47 @@ export function OperationsDashboard({
           hint="leave, swaps and missed clock-ins"
           to="/app/approvals"
         />
-        <StatTile
-          compact
-          className="min-w-0"
-          label="Tomorrow uncovered"
-          value={tileValue(tomorrow.failed, tomorrowUncovered)}
-          hint="shifts tomorrow with nobody assigned"
-          to={attendanceLink(tomorrow.date, selectedLocationId, [])}
-        />
       </div>
+      <ul className="mb-6 flex flex-wrap gap-x-5 gap-y-1 text-sm text-content-muted dark:text-content-muted-dark">
+        {[
+          {
+            label: 'Scheduled today',
+            // Both numbers, because they are different questions: cover is
+            // about people, workload is about shifts.
+            value: today.failed
+              ? '-'
+              : `${today.counts.scheduledPeople} people · ${today.counts.scheduledShifts} shift${today.counts.scheduledShifts === 1 ? '' : 's'}`,
+            to: attendanceLink(today.date, selectedLocationId, []),
+          },
+          {
+            label: 'On break',
+            value: tileValue(today.failed, today.counts.onBreak),
+            to: attendanceLink(today.date, selectedLocationId, ['on_break']),
+          },
+          {
+            label: 'Completed',
+            value: tileValue(today.failed, today.counts.completed),
+            to: attendanceLink(today.date, selectedLocationId, ['completed']),
+          },
+          {
+            label: 'Tomorrow uncovered',
+            value: tileValue(tomorrow.failed, tomorrowUncovered),
+            to: attendanceLink(tomorrow.date, selectedLocationId, []),
+          },
+        ].map((item) => (
+          <li key={item.label}>
+            <Link
+              to={item.to}
+              className="rounded hover:text-content hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:hover:text-content-dark"
+            >
+              {item.label}{' '}
+              <span className="font-semibold text-content dark:text-content-dark">
+                {item.value}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
 
       {/* 0 — setup, but only while it is unfinished.
           A board reporting zero of everything is indistinguishable from a
@@ -345,21 +357,30 @@ export function OperationsDashboard({
           className="mb-6"
           title={`${issues.length} thing${issues.length === 1 ? '' : 's'} on today's shift need${issues.length === 1 ? 's' : ''} a look`}
         >
-          <ul className="mt-1 space-y-1.5">
+          {/* One row per item, with one button (design gap F21): the
+              details used to run on as a sentence with "Open" wrapping to a
+              line of its own. */}
+          <ul className="mt-2 divide-y divide-warning/30">
             {issues.map((row) => (
-              <li key={row.key} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+              <li
+                key={row.key}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm first:pt-0 last:pb-0"
+              >
                 <AttendanceStatusBadge status={row.status} />
-                <span className="font-medium">{row.name}</span>
                 {/* Inherits the Callout's own ink rather than the page's
                     muted grey: `text-content-muted` on the warning wash
                     measures 4.34:1, just under the 4.5:1 body text needs. */}
-                <span>
-                  {[row.locationName, row.plannedLabel].filter(Boolean).join(' · ')}
+                <span className="min-w-0 flex-1">
+                  <span className="font-medium">{row.name}</span>
+                  <span>
+                    {' · '}
+                    {[row.locationName, row.plannedLabel].filter(Boolean).join(' · ')}
+                  </span>
+                  <span className="block">{row.issue}</span>
                 </span>
-                <span>{row.issue}</span>
                 <Link
                   to={attendanceLink(today.date, row.locationId, [row.status])}
-                  className="font-medium text-primary-ink hover:underline dark:text-primary-ink-dark"
+                  className="inline-flex h-9 shrink-0 items-center rounded-control border border-field bg-surface px-3 font-medium text-content hover:bg-surface-subtle focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-field-dark dark:bg-surface-dark dark:text-content-dark"
                 >
                   Open
                   <span className="sr-only"> {row.name}&rsquo;s attendance</span>

@@ -26,7 +26,8 @@ function formatWeekRange(dates: string[]): string {
   const first = dates[0];
   const last = dates[dates.length - 1];
   if (!first || !last) return '';
-  return `${format(new Date(`${first}T00:00:00`), 'd MMM')}, ${format(new Date(`${last}T00:00:00`), 'd MMM yyyy')}`;
+  // Same wording as the live builder: "26 Oct – 1 Nov 2026" (design gap F24).
+  return `${format(new Date(`${first}T00:00:00`), 'd MMM')} – ${format(new Date(`${last}T00:00:00`), 'd MMM yyyy')}`;
 }
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -565,14 +566,26 @@ export function RotaBuilderPreviewPage(): JSX.Element {
                   className="border border-surface-border text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark"
                 />
               </MobileDisclosure>
+              <span
+                id="publish-blocked-reason"
+                className="hidden text-xs text-content-muted sm:inline dark:text-content-muted-dark"
+              >
+                Fix {warnings.filter((w) => w.severity === 'critical').length} first
+              </span>
               <div className="flex">
-                <Button size="sm" className="rounded-r-none">
+                <Button
+                  size="sm"
+                  className="rounded-r-none"
+                  disabled
+                  aria-describedby="publish-blocked-reason"
+                >
                   Publish (3 changes)
                 </Button>
                 <button
                   type="button"
                   aria-label="Publish options"
-                  className="w-11 shrink-0 rounded-r-xl border-l border-primary-fg/20 bg-primary text-primary-fg"
+                  disabled
+                  className="w-11 shrink-0 cursor-not-allowed rounded-r-xl border-l border-primary-fg/20 bg-primary text-primary-fg opacity-50"
                 >
                   <ChevronDown size={16} aria-hidden="true" className="mx-auto" />
                 </button>
@@ -584,6 +597,8 @@ export function RotaBuilderPreviewPage(): JSX.Element {
             state="draft"
             criticalCount={warnings.filter((w) => w.severity === 'critical').length}
             advisoryCount={warnings.filter((w) => w.severity !== 'critical').length}
+            criticalIssues={warnings.filter((w) => w.severity === 'critical')}
+            onGoToShift={() => undefined}
           />
 
           {/* Mirrors the live toolbar: below `xl` the filters collapse behind

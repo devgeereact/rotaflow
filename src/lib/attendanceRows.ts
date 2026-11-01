@@ -265,10 +265,12 @@ export const ATTENDANCE_SORTS: readonly SortSpec<AttendanceViewRow>[] = [
     label: 'Actual start',
     compare: (a, b) => (a.sortActual || '￿').localeCompare(b.sortActual || '￿'),
   },
-  { id: 'name', label: 'Name', compare: (a, b) => a.name.localeCompare(b.name) },
+  { id: 'name', label: 'Person', compare: (a, b) => a.name.localeCompare(b.name) },
   {
     id: 'severity',
-    label: 'Exception severity',
+    // "Status": the column shows the attendance status badge, sorted by how
+    // much it needs attention (design gap F20).
+    label: 'Status',
     compare: (a, b) => b.severity - a.severity,
   },
 ] as const;

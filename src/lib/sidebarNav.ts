@@ -48,7 +48,16 @@ export interface NavItem {
    * half of the product a row belongs to.
    */
   group?: 'my-work';
+  /**
+   * The labelled run this row belongs to in a manager's rail (design gap F22:
+   * eighteen rows with no headings). Rows keep their reasoned order; the
+   * sections are contiguous runs of it. Staff rows carry none: twelve rows
+   * read fine without headings.
+   */
+  section?: NavSection;
 }
+
+export type NavSection = 'Overview' | 'Scheduling' | 'Requests' | 'People' | 'Updates';
 
 export interface NavOptions {
   /** Management or personal. Defaults to management for anyone but staff. */
@@ -159,6 +168,11 @@ export function navItemsForRole(
     icon: Clock3,
     to: '/app/availability',
   });
+  if (isManager) {
+    // First in Requests, and so still above Team: it is the thing a manager
+    // opens first, the product's answer to "is anybody waiting on me".
+    items.push({ label: 'Approvals', icon: CheckCheck, to: '/app/approvals' });
+  }
   items.push({ label: 'Leave', icon: Umbrella, to: '/app/leave', badge: 'leave' });
   items.push({ label: 'Shift Swaps', icon: Repeat2, to: '/app/swaps', badge: 'swaps' });
   items.push({ label: 'Open Shifts', icon: CalendarPlus, to: '/app/open-shifts' });
@@ -177,9 +191,6 @@ export function navItemsForRole(
   }
 
   if (isManager) {
-    // Above Team, because it is the thing a manager opens first: the queue is
-    // the product's answer to "is anybody waiting on me".
-    items.push({ label: 'Approvals', icon: CheckCheck, to: '/app/approvals' });
     items.push({ label: 'Team', icon: Users, to: '/app/team' });
     items.push({ label: 'Locations', icon: MapPin, to: '/app/locations' });
   }
@@ -203,8 +214,33 @@ export function navItemsForRole(
     });
   }
 
-  return items;
+  return isManager
+    ? items.map((item) => ({ ...item, section: SECTION_OF[item.to] }))
+    : items;
 }
+
+/** Which section each manager row sits in. Contiguous in the order above. */
+const SECTION_OF: Record<string, NavSection> = {
+  '/app/dashboard': 'Overview',
+  '/app/setup': 'Overview',
+  '/app/rota': 'Scheduling',
+  '/app/schedule': 'Scheduling',
+  '/app/attendance': 'Scheduling',
+  '/app/timesheets': 'Scheduling',
+  '/app/availability': 'Scheduling',
+  '/app/approvals': 'Requests',
+  '/app/leave': 'Requests',
+  '/app/swaps': 'Requests',
+  '/app/open-shifts': 'Requests',
+  '/app/cover': 'Requests',
+  '/app/overtime': 'Requests',
+  '/app/compliance': 'People',
+  '/app/team': 'People',
+  '/app/locations': 'People',
+  '/app/announcements': 'Updates',
+  '/app/reports': 'Updates',
+  '/app/clock': 'Updates',
+};
 
 /**
  * The rail's second, quieter nav group: account-level destinations rather

@@ -1165,3 +1165,26 @@ Branch `design/gap-fixes`, local commit only. Closes F02 to F07, F09, F38 and F3
   replaced by a redirect check). `consent.spec.ts` 72 of 72 across four repeats.
 - `pnpm run typecheck`, `lint`, `format:check`, 132 files / 1796 tests pass. `check:php` not run (sandbox).
 
+## 2026-11-01: Design gaps, phase 4 (dashboard and publishing)
+
+Branch `design/gap-fixes`, local commit only. Closes F19 to F24.
+
+**Decisions taken while building**
+
+- Focused repair, not the review file's full redesign: the dashboard's drill-down links, attendance semantics and
+  `src/lib/attendance.ts` counting are unchanged; only the presentation moved (4 tiles + a linked summary line).
+- F24 corrected: the "nine days" in Week view are the deliberate three-week scrolling canvas (`src/lib/rotaCanvas.ts`
+  explains why), not a clipping bug. Kept; only the range label changed.
+- F22: the nav order and its reasons are kept; managers get section headings over contiguous runs. Staff rows (12)
+  get none. The blank profile only occurred in the preview, which has no signed-in user: no change.
+- The issue list in the publication panel shows from `sm` up; on a phone the panel keeps to the summary so the grid
+  still starts in the top two-thirds of the screen (`e2e/rota-grid.spec.ts`).
+
+**Evidence**
+
+- Playwright on 5043: `app-surface`, `rota-grid` 56 passed; `owner-workforce`, `staff-dashboard`, `a11y-fixes`,
+  `reports-responsive`, `responsive-and-motion`, `marketing`, `consent` 86 passed. No failures.
+- axe and overflow at 1440, 834 and 390 on the dashboard, rota builder, schedule, timesheets, leave, swaps and
+  settings previews: clean. Dashboard and rota builder checked by eye at 1440.
+- typecheck, lint, format and 132 files / 1796 unit tests pass.
+

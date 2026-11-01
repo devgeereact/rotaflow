@@ -13,6 +13,15 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Design gaps, phase 4: dashboard and publishing (branch `design/gap-fixes`, 1 November 2026).** The operations
+  dashboard leads with four tiles (Clocked in now "of N scheduled today", Late start, Open shifts, Pending approvals);
+  scheduled, on break, completed and tomorrow uncovered sit on one linked line beneath. Each item that needs a look is
+  a row with its own Open button. The attendance table (dashboard and Team Attendance) folds name, job title and site
+  into one Person column so it fits a 1440 screen without its last column scrolling away; sortable headers match the
+  others in capitals; the source reads "GPS". A manager's sidebar has section headings (Scheduling, Requests, People,
+  Updates), with Approvals first in Requests. The rota builder names each issue blocking publication with "Go to
+  shift", and Publish and its options are disabled with "Fix N first" beside them instead of failing after a click.
+  The week range reads "26 Oct – 1 Nov 2026". Findings F19 to F24, F26.
 - **Design gaps, phase 3: landing site (branch `design/gap-fixes`, 1 November 2026).** Every "Join the beta" now goes
   to the contact form instead of open sign-up: organisations are by invitation, so a prospect who signed up got an
   account with no organisation (F39). The contact page explains how joining works, and the closing call to action and

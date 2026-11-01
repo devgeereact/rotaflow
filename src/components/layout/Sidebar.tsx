@@ -40,7 +40,7 @@ function NavList({
 }): JSX.Element {
   return (
     <nav aria-label="Main" className="flex-1 space-y-0.5 overflow-y-auto px-3">
-      {items.map(({ label, icon: Icon, to, badge, group }, index) => {
+      {items.map(({ label, icon: Icon, to, badge, group, section }, index) => {
         const count = badge ? badges[badge] : 0;
         // The heading is drawn once, above the first row that belongs to the
         // group, so an opted-in manager can see at a glance which rows are
@@ -48,8 +48,23 @@ function NavList({
         // hold a list heading between links without breaking the link list,
         // so this is a plain labelled divider rather than a nested landmark.
         const startsMyWork = group === 'my-work' && items[index - 1]?.group !== 'my-work';
+        // Section headings for a manager's rail (F22), from the second
+        // section on: the first needs no label above Dashboard.
+        const startsSection =
+          !startsMyWork &&
+          section !== undefined &&
+          index > 0 &&
+          items[index - 1]?.section !== section;
         return (
           <div key={label}>
+            {startsSection && !collapsed && (
+              <p className="mb-0.5 mt-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-content-muted dark:text-content-muted-dark">
+                {section}
+              </p>
+            )}
+            {startsSection && collapsed && (
+              <hr className="my-2 border-surface-border dark:border-surface-border-dark" />
+            )}
             {startsMyWork && !collapsed && (
               <p className="mb-1 mt-3 border-t border-surface-border px-3 pt-3 text-xs font-semibold uppercase tracking-wider text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
                 My work
@@ -190,9 +205,6 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
                   <span className="text-primary-ink dark:text-primary-ink-dark">
                     Flow
                   </span>
-                </span>
-                <span className="block text-xs leading-tight text-content-muted dark:text-content-muted-dark">
-                  {BRAND.tagline}
                 </span>
               </span>
             )}

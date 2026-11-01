@@ -220,10 +220,14 @@ function formatWeekRange(dates: string[]): string {
   if (!first || !last) return '';
   const start = new Date(`${first}T00:00:00`);
   const end = new Date(`${last}T00:00:00`);
-  const sameMonth = start.getMonth() === end.getMonth();
+  // "26–31 Oct 2026" within a month, "26 Oct – 1 Nov 2026" across one: UK
+  // order with an en dash (design gap F24). Both branches used to be the same
+  // hyphenated string.
+  const sameMonth =
+    start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
   return sameMonth
-    ? `${format(start, 'd MMM')}-${format(end, 'd MMM yyyy')}`
-    : `${format(start, 'd MMM')}-${format(end, 'd MMM yyyy')}`;
+    ? `${format(start, 'd')}–${format(end, 'd MMM yyyy')}`
+    : `${format(start, 'd MMM')} – ${format(end, 'd MMM yyyy')}`;
 }
 
 export function RotaBuilderPage(): JSX.Element {
@@ -2255,6 +2259,14 @@ export function RotaBuilderPage(): JSX.Element {
               </Button>
             </MobileDisclosure>
 
+            {!readOnly && criticalWarnings.length > 0 && (
+              <span
+                id="publish-blocked-reason"
+                className="hidden text-xs text-content-muted sm:inline dark:text-content-muted-dark"
+              >
+                Fix {criticalWarnings.length} first
+              </span>
+            )}
             <div className="relative flex">
               {readOnly ? (
                 <Button
@@ -2270,7 +2282,15 @@ export function RotaBuilderPage(): JSX.Element {
                   size="sm"
                   className="rounded-r-none"
                   onClick={() => void handlePublish()}
-                  disabled={publishing || pendingShiftCount === 0}
+                  // Disabled while anything blocks it (design gap F23): it
+                  // used to stay blue and only explain itself after a click.
+                  // The server refuses the same cases.
+                  disabled={
+                    publishing || pendingShiftCount === 0 || criticalWarnings.length > 0
+                  }
+                  aria-describedby={
+                    criticalWarnings.length > 0 ? 'publish-blocked-reason' : undefined
+                  }
                   title={
                     pendingShiftCount === 0
                       ? 'Add at least one shift before publishing'
@@ -2288,10 +2308,12 @@ export function RotaBuilderPage(): JSX.Element {
                 type="button"
                 aria-label="Publish options"
                 onClick={() => setPublishMenuOpen((v) => !v)}
+                // Every option publishes, so it is off while Publish is (F23).
+                disabled={!readOnly && criticalWarnings.length > 0}
                 // `w-11` (44px): this was a 31px-wide sliver beside a full
                 // Publish button, and it is the only way to reach Publish
                 // without notifying, or to schedule one.
-                className="w-11 shrink-0 rounded-r-xl border-l border-primary-fg/20 bg-primary text-primary-fg hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
+                className="w-11 shrink-0 rounded-r-xl border-l border-primary-fg/20 bg-primary text-primary-fg hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronDown size={16} aria-hidden="true" className="mx-auto" />
               </button>
@@ -2348,6 +2370,13 @@ export function RotaBuilderPage(): JSX.Element {
           advisoryCount={warnings.length - criticalWarnings.length}
           publishError={publishError}
           issuesAnchorId={CONFLICTS_PANEL_ID}
+          criticalIssues={criticalWarnings}
+          onGoToShift={(shiftId) => {
+            const shift = shifts.find((s) => s.id === shiftId);
+            if (!shift) return;
+            setSelectedShiftId(shift.id);
+            setAssignModal({ open: true, context: null, shift });
+          }}
         />
 
         {/* ---- Filters row ----
