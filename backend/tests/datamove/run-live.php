@@ -48,6 +48,12 @@ ok("plan: the source version is read from its migration record ($v)", ($r['sourc
 $warn = array_column(problemsAt($r, 'warning'), 'what');
 $got = array_map(static fn (string $w): string => explode(';', $w)[0], $warn);
 ok('plan: exactly one plain warning per feature the source lacks (' . count($expect) . '), and nothing else but the seeded rotaflow.app address', $got === [...$expect, ...$other], json_encode($warn, JSON_UNESCAPED_SLASHES));
+$skipT = 'support_cases,support_case_messages,incidents,incident_updates';
+[$rc, $rs] = move($p, "plan $S --skip=$skipT");
+ok('plan --skip leaves those tables out of the move (the owner keeps old test cases and incidents on Supabase)', $rc === 0
+    && array_intersect(array_keys($rs['counts'] ?? []), explode(',', $skipT)) === [] && isset($rs['counts']['shifts']), json_encode(array_keys($rs['counts'] ?? [])));
+[$rc, , $out] = move($p, "plan $S --skip=support_casez");
+ok('a mistyped --skip table stops with a usage error, nothing read', $rc === 2 && str_contains($out, 'unknown table support_casez'), $out);
 ok('plan: every version warning names the source version', array_filter(array_diff($warn, $other), static fn ($w) => !str_starts_with($w, "source at $v: ")) === []);
 $c = $r['counts'] ?? [];
 ok('plan: 1 organisation, 2 users, 21 staff, 311 shifts, 1006 notifications, 381 audit rows', ($c['organisations']['planned'] ?? 0) === 1 && ($c['users']['planned'] ?? 0) === 2

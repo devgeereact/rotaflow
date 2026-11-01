@@ -131,6 +131,9 @@ echo "--exclude-demo-orgs\n";
 [$rc, $r] = move($priv, "plan --exclude-demo-orgs $S");
 ok('plan without the demo organisation: 2 organisations, its rows left behind, no broken reference', $rc === 0 && ($r['counts']['organisations']['planned'] ?? 0) === 2
     && ($r['counts']['shifts']['planned'] ?? 0) === ($counts['shifts']['planned'] - 1) && count($r['excluded_orgs'] ?? []) === 1);
+$demoAudit = (int) $src->query("SELECT count(*) FROM public.audit_logs a JOIN public.organisations o ON o.id = a.org_id WHERE o.is_demo")->fetchColumn();
+ok("audit entries about a left-behind organisation stay behind with it ($demoAudit of them); platform entries still move",
+    ($r['counts']['audit_logs']['planned'] ?? -1) === ($counts['audit_logs']['planned'] - $demoAudit), json_encode([$r['counts']['audit_logs'] ?? null, $counts['audit_logs'] ?? null, $demoAudit]));
 
 echo "files\n";
 $store = $root . '/.local-test/datamove/storage';

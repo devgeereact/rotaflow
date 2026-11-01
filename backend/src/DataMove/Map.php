@@ -336,7 +336,7 @@ final class Map
                     CASE a.severity WHEN 'notice' THEN 'info' ELSE a.severity END AS severity,
                     CASE a.visibility WHEN 'both' THEN 'org' ELSE a.visibility END AS visibility,
                     host(a.ip_address) AS ip_address, {ts:a.created_at} AS created_at
-                  FROM public.audit_logs a",
+                  FROM public.audit_logs a WHERE {org:a.org_id}",
                 'order' => 'a.created_at, a.id', 'dropped' => [],
             ],
         ];

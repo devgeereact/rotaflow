@@ -228,11 +228,16 @@ in the step 2 backup). Rollback: as step 6.
      && [ "$(grep -c "Content-Security-Policy" /tmp/htaccess.new)" -ge 1 ] && ! grep -q "supabase.co" /tmp/htaccess.new && echo COMPOSED-OK
    scp /tmp/htaccess.new cpanel:rotaflow.space/.htaccess.new && ssh cpanel 'chmod 644 ~/rotaflow.space/.htaccess.new && mv ~/rotaflow.space/.htaccess.new ~/rotaflow.space/.htaccess'
    ```
-4. Release (push-to-deploy stays OFF; this runs from the Mac):
+4. Release (push-to-deploy stays OFF; this runs from the Mac). The release refuses a tree with files git does not
+   track, and another session may be writing design skills under `.claude/skills/` (agent tooling, never uploaded).
+   Hide them from git for the release only, without touching them, and un-hide them afterwards:
    ```zsh
+   git status --porcelain                                    # only `?? .claude/skills/` may show; anything else: STOP
+   echo '/.claude/skills/  # cutover release only' >> .git/info/exclude
    pnpm release          # dry run: checks, the build with the pk_live key, the plan of every file per part
    pnpm release --go     # snapshot of every file it changes, upload (private app, api/index.php, then the site), smoke
    ssh cpanel 'cd ~/rotaflow-private/app && ROTAFLOW_PRIVATE_ROOT=$HOME/rotaflow-private php bin/doctor.php'   # exit 0
+   sed -i '' '/# cutover release only$/d' .git/info/exclude   # un-hide .claude/skills/ again
    ```
 Check: the release ends "Released <sha>" with 5 smoke checks passed (`/` 200, `/api/health` `"ok":true`, `/api/me` 401
 JSON, `/app/dashboard` the app shell, `/no-such-page` 404); doctor exit 0. A failed smoke restores the old files by itself.
