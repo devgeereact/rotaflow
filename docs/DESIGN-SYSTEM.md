@@ -115,6 +115,7 @@ one with a `dark:` variant using the dark column, e.g.
 | Surface subtle      | `bg-surface-subtle` / `dark:bg-surface-subtle-dark`         | `#F4F4F4`                | `#272A30`             | Nested panels, hover fills, sidebar                                                        |
 | Surface rail        | `bg-surface-rail` / `dark:bg-surface-rail-dark`             | `#F4F4F4`                | `#1B1E24`             | Navigation rail. Light matches `surface-subtle`; dark deliberately does not. See below     |
 | Surface border      | `border-surface-border` / `dark:border-surface-border-dark` | `#D0D1D2`                | `#393C41`             | Card/control outlines                                                                      |
+| Field border        | `border-field` / `dark:border-field-dark`                   | `#80858E`                | `#6B7079`             | Input, select and textarea edges (3:1, WCAG 1.4.11)        |
 | Divider             | `border-divider` / `dark:border-divider-dark`               | `#EEEEEE`                | `#2C2F35`             | Subtle in-list separators (lighter than border)                                            |
 | Primary             | `bg-primary` / `text-primary`                               | `#3B6FE0`                | `#3B6FE0`             | Brand, CTAs, active state, links                                                           |
 | Primary foreground  | `text-primary-fg`                                           | `#FFFFFF`                | `#FFFFFF`             | Text/icons on a solid primary fill                                                         |
@@ -265,6 +266,10 @@ times, hours, and payroll figures so columns align.
   add arbitrary radii (`rounded-[10px]`). `rounded-full` is **not** covered by
   this: it is a shape, not a radius. Avatars, status dots and pills stay round.
 - Separate with `border-surface-border` and a surface step, never a resting shadow.
+- Field edges use `border-field`, never `border-surface-border`: the card line measures 1.53:1 and a field edge
+  needs 3:1 against what it sits on. Text in a status or brand colour always uses the `-ink` shade (for example
+  `text-danger-ink dark:text-danger-ink-dark`); the bright shades are fills, dots and rings only. No text under
+  11 px and no opacity on text (1 November 2026, design gaps phase 1).
 
 ### Shadows (elevation)
 

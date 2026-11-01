@@ -167,11 +167,13 @@ const SEVERITY_TONE: Record<string, ActivityTone> = {
 };
 
 const ACTIVITY_TONE: Record<ActivityTone, string> = {
-  success: 'bg-success-wash text-success dark:bg-success-wash-dark',
+  success:
+    'bg-success-wash text-success-ink dark:text-success-ink-dark dark:bg-success-wash-dark',
   info: 'bg-primary-wash text-primary-ink dark:bg-primary-wash-dark dark:text-primary-ink-dark',
   warning:
     'bg-warning-wash text-warning-ink dark:bg-warning-wash-dark dark:text-warning-ink-dark',
-  danger: 'bg-danger-wash text-danger dark:bg-danger-wash-dark',
+  danger:
+    'bg-danger-wash text-danger-ink dark:text-danger-ink-dark dark:bg-danger-wash-dark',
 };
 
 const HEALTH_COLOUR: Record<string, string> = {

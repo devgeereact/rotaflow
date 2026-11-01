@@ -89,8 +89,8 @@ export function ToastProvider({ children }: { children: ReactNode }): JSX.Elemen
 }
 
 const VARIANT_STYLES: Record<ToastVariant, string> = {
-  success: 'border-success/30 bg-success/10 text-success',
-  error: 'border-danger/30 bg-danger/10 text-danger',
+  success: 'border-success/30 bg-success/10 text-success-ink dark:text-success-ink-dark',
+  error: 'border-danger/30 bg-danger/10 text-danger-ink dark:text-danger-ink-dark',
   info: 'border-surface-border bg-surface text-content dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark',
 };
 

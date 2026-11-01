@@ -39,14 +39,32 @@ import type { Notification } from '@/types';
 const TYPE_META: Record<string, { icon: LucideIcon; tone: string }> = {
   rota_published: {
     icon: Calendar,
-    tone: 'bg-primary/10 text-primary dark:text-primary-ink-dark',
+    tone: 'bg-primary/10 text-primary-ink dark:text-primary-ink-dark',
   },
-  leave_approved: { icon: Umbrella, tone: 'bg-success/10 text-success' },
-  leave_declined: { icon: Umbrella, tone: 'bg-danger/10 text-danger' },
-  swap_request: { icon: Repeat2, tone: 'bg-info/10 text-info' },
-  swap_approved: { icon: Repeat2, tone: 'bg-success/10 text-success' },
-  announcement: { icon: Megaphone, tone: 'bg-warning/10 text-warning' },
-  shift_reminder: { icon: AlarmClock, tone: 'bg-info/10 text-info' },
+  leave_approved: {
+    icon: Umbrella,
+    tone: 'bg-success/10 text-success-ink dark:text-success-ink-dark',
+  },
+  leave_declined: {
+    icon: Umbrella,
+    tone: 'bg-danger/10 text-danger-ink dark:text-danger-ink-dark',
+  },
+  swap_request: {
+    icon: Repeat2,
+    tone: 'bg-info/10 text-info-ink dark:text-info-ink-dark',
+  },
+  swap_approved: {
+    icon: Repeat2,
+    tone: 'bg-success/10 text-success-ink dark:text-success-ink-dark',
+  },
+  announcement: {
+    icon: Megaphone,
+    tone: 'bg-warning/10 text-warning-ink dark:text-warning-ink-dark',
+  },
+  shift_reminder: {
+    icon: AlarmClock,
+    tone: 'bg-info/10 text-info-ink dark:text-info-ink-dark',
+  },
 };
 const DEFAULT_TYPE_META = {
   icon: Bell,
@@ -263,7 +281,11 @@ export function NotificationsPage(): JSX.Element {
 
       {webPush.status !== 'granted' && (
         <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-info/30 bg-info/5 p-3.5 text-sm text-content-muted dark:text-content-muted-dark">
-          <Info size={16} className="mt-0.5 shrink-0 text-info" aria-hidden="true" />
+          <Info
+            size={16}
+            className="mt-0.5 shrink-0 text-info-ink dark:text-info-ink-dark"
+            aria-hidden="true"
+          />
           <p>
             Push notifications need permission from the browser. Without it, notifications
             still arrive in this list and by email — nothing is lost, it just is not

@@ -351,7 +351,7 @@ export function AdminIntegrationsPage(): JSX.Element {
                     <CheckCircle2
                       size={17}
                       aria-hidden="true"
-                      className="shrink-0 text-success"
+                      className="shrink-0 text-success-ink dark:text-success-ink-dark"
                     />
                   ) : (
                     <MinusCircle

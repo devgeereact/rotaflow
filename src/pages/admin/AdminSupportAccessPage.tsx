@@ -204,7 +204,7 @@ export function AdminSupportAccessPage(): JSX.Element {
           const status = sessionStatus(s, now);
           if (status !== 'active') return new Date(s.expiresAt).toLocaleString('en-GB');
           return (
-            <span className="font-medium text-warning">
+            <span className="font-medium text-warning-ink dark:text-warning-ink-dark">
               in {formatRemaining(millisecondsRemaining(s.expiresAt, now))}
             </span>
           );

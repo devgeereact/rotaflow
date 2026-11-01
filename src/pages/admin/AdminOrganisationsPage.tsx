@@ -361,7 +361,7 @@ export function AdminOrganisationsPage(): JSX.Element {
         sortable: true,
         cell: (org) => (
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/20 bg-primary-wash text-[0.65rem] font-semibold text-primary-ink dark:bg-primary-wash-dark dark:text-primary-ink-dark">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-primary/20 bg-primary-wash text-xs font-semibold text-primary-ink dark:bg-primary-wash-dark dark:text-primary-ink-dark">
               {org.name
                 .split(/\s+/)
                 .slice(0, 2)

@@ -21,10 +21,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       <select
         ref={ref}
         className={cn(
-          'w-full appearance-none rounded-control border border-surface-border bg-background px-3 py-2.5 pr-10 text-content outline-hidden',
+          'w-full appearance-none rounded-control border border-field bg-background px-3 py-2.5 pr-10 text-content outline-hidden',
           'focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary',
           'transition-[border-color,box-shadow] duration-control ease-control motion-reduce:transition-none',
-          'dark:border-surface-border-dark dark:bg-background-dark dark:text-content-dark',
+          'dark:border-field-dark dark:bg-background-dark dark:text-content-dark',
           Icon && 'pl-10',
           className,
         )}

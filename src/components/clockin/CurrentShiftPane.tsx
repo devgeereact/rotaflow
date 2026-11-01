@@ -136,7 +136,7 @@ export function CurrentShiftPane({
               <TriangleAlert
                 size={18}
                 aria-hidden="true"
-                className="mt-0.5 shrink-0 text-warning"
+                className="mt-0.5 shrink-0 text-warning-ink dark:text-warning-ink-dark"
               />
               <div>
                 <p className="text-base font-semibold text-content dark:text-content-dark">

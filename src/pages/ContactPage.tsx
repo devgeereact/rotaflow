@@ -153,7 +153,7 @@ export function ContactPage(): JSX.Element {
           <Card className="p-7 md:p-9">
             {phase.kind === 'sent' ? (
               <div className="py-8 text-center" role="status">
-                <span className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-full bg-success/10 text-success">
+                <span className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-full bg-success/10 text-success-ink dark:text-success-ink-dark">
                   <CheckCircle2 size={28} aria-hidden="true" />
                 </span>
                 <h2 className="font-display text-2xl font-bold text-content dark:text-content-dark">
@@ -367,7 +367,7 @@ export function ContactPage(): JSX.Element {
 
           <div className="space-y-5">
             <Card>
-              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
+              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary-ink dark:text-primary-ink-dark">
                 <Mail size={20} aria-hidden="true" />
               </span>
               <h2 className="font-display text-base font-semibold text-content dark:text-content-dark">
@@ -379,7 +379,7 @@ export function ContactPage(): JSX.Element {
             </Card>
 
             <Card>
-              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
+              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary-ink dark:text-primary-ink-dark">
                 <Rocket size={20} aria-hidden="true" />
               </span>
               <h2 className="font-display text-base font-semibold text-content dark:text-content-dark">
@@ -397,7 +397,7 @@ export function ContactPage(): JSX.Element {
             </Card>
 
             <Card>
-              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
+              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary-ink dark:text-primary-ink-dark">
                 <MessageSquare size={20} aria-hidden="true" />
               </span>
               <h2 className="font-display text-base font-semibold text-content dark:text-content-dark">

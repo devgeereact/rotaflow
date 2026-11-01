@@ -73,7 +73,7 @@ export function RequirePlatformAdmin({ children }: { children: ReactNode }): JSX
     return (
       <div className="grid min-h-screen place-items-center bg-surface-subtle p-6 dark:bg-surface-subtle-dark">
         <Card className="max-w-md text-center">
-          <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-danger/10 text-danger">
+          <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-danger/10 text-danger-ink dark:text-danger-ink-dark">
             <ShieldAlert size={22} aria-hidden="true" />
           </span>
           <h1 className="mb-2 font-display text-xl font-semibold text-content dark:text-content-dark">

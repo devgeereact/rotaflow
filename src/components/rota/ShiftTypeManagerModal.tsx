@@ -278,7 +278,7 @@ export function ShiftTypeManagerModal({
               type="checkbox"
               checked={form.isPaid}
               onChange={(e) => setForm((f) => ({ ...f, isPaid: e.target.checked }))}
-              className="h-4 w-4 rounded border-surface-border text-primary dark:text-primary-ink-dark focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+              className="h-4 w-4 rounded border-surface-border text-primary-ink dark:text-primary-ink-dark focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
             />
             Paid shift
           </label>

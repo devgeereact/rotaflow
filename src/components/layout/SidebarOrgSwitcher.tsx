@@ -108,7 +108,7 @@ export function SidebarOrgSwitcher({
               <Check
                 size={16}
                 aria-hidden="true"
-                className="shrink-0 text-primary dark:text-primary-ink-dark"
+                className="shrink-0 text-primary-ink dark:text-primary-ink-dark"
               />
             )}
           </button>

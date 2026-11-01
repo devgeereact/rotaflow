@@ -77,12 +77,12 @@ export function StepChoosePlan({
               <span className="flex items-center justify-center gap-2">
                 <span className="capitalize">{p}</span>
                 {p === 'yearly' && (
-                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-[0.65rem] font-semibold text-success">
+                  <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success-ink dark:text-success-ink-dark">
                     Best value
                   </span>
                 )}
               </span>
-              <span className="block text-xs font-normal opacity-80">
+              <span className="block text-xs font-normal">
                 {p === 'monthly' ? 'Pay monthly' : 'Save 2 months'}
               </span>
             </button>
@@ -106,7 +106,7 @@ export function StepChoosePlan({
                 )}
               >
                 {option.popular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-white">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-widest text-white">
                     Most popular
                   </span>
                 )}
@@ -143,7 +143,7 @@ export function StepChoosePlan({
                       <Check
                         size={15}
                         aria-hidden="true"
-                        className="mt-0.5 shrink-0 text-primary dark:text-primary-ink-dark"
+                        className="mt-0.5 shrink-0 text-primary-ink dark:text-primary-ink-dark"
                       />
                       {f}
                     </li>
@@ -155,7 +155,7 @@ export function StepChoosePlan({
                   className={cn(
                     'w-full',
                     !selected &&
-                      'border-primary text-primary dark:text-primary-ink-dark hover:bg-primary/5',
+                      'border-primary text-primary-ink dark:text-primary-ink-dark hover:bg-primary/5',
                   )}
                   title={
                     enquiryOnly

@@ -140,7 +140,7 @@ function FailedGroup({
       <div className="mb-3 flex items-start gap-2">
         <AlertTriangle
           size={18}
-          className="mt-0.5 shrink-0 text-danger"
+          className="mt-0.5 shrink-0 text-danger-ink dark:text-danger-ink-dark"
           aria-hidden="true"
         />
         <div>

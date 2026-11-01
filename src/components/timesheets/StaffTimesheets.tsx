@@ -45,7 +45,9 @@ export function StaffTimesheets({
           label="Your hours this week"
           value={
             overThresholdLabel ? (
-              <span className="text-warning">{hoursThisWeekLabel}</span>
+              <span className="text-warning-ink dark:text-warning-ink-dark">
+                {hoursThisWeekLabel}
+              </span>
             ) : (
               hoursThisWeekLabel
             )

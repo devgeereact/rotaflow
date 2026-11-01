@@ -28,7 +28,7 @@ const LINK_INACTIVE =
 const LINK_ACTIVE = 'bg-primary text-primary-fg';
 
 const EYEBROW =
-  'text-[0.625rem] font-semibold uppercase tracking-widest text-content-muted dark:text-content-muted-dark';
+  'text-xs font-semibold uppercase tracking-widest text-content-muted dark:text-content-muted-dark';
 
 /**
  * Which deployment this is.
@@ -118,7 +118,7 @@ function ConsoleIdentity(): JSX.Element {
       </div>
       <span
         className={cn(
-          'inline-block rounded-full px-[7px] py-[5px] font-mono text-[0.625rem] font-semibold uppercase leading-none tracking-[0.08em]',
+          'inline-block rounded-full px-[7px] py-[5px] font-mono text-xs font-semibold uppercase leading-none tracking-[0.08em]',
           badge.className,
         )}
       >
@@ -351,7 +351,7 @@ export function AdminShell(): JSX.Element {
               aria-expanded={mobileOpen}
               // 44px: on a phone this is the only way to reach any other
               // console screen, and it was a 32px square.
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-danger hover:bg-danger/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-danger md:hidden"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-danger-ink dark:text-danger-ink-dark hover:bg-danger/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-danger md:hidden"
             >
               <Menu size={18} aria-hidden="true" />
             </button>

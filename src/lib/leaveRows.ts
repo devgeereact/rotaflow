@@ -86,28 +86,29 @@ export function formatLeaveDuration(days: number): string {
 }
 
 /**
- * "28 May 2025" for one day, "9-13 June 2025" within a month, and
- * "30 May-1 June 2025" across one, exactly as the reference writes them.
+ * "28 May 2025" for one day, "9–13 June 2025" within a month, and
+ * "30 May – 1 June 2025" across one. En dashes, closed within a month and
+ * spaced across months (design gap F25, 1 Nov 2026).
  */
 export function formatLeaveRange(startIso: string, endIso: string): string {
   const start = parseDay(startIso);
   const end = parseDay(endIso);
   if (startIso === endIso) return format(start, 'd MMMM yyyy');
   if (isSameMonth(start, end) && isSameYear(start, end)) {
-    return `${format(start, 'd')}-${format(end, 'd MMMM yyyy')}`;
+    return `${format(start, 'd')}–${format(end, 'd MMMM yyyy')}`;
   }
   if (isSameYear(start, end)) {
-    return `${format(start, 'd MMMM')}-${format(end, 'd MMMM yyyy')}`;
+    return `${format(start, 'd MMMM')} – ${format(end, 'd MMMM yyyy')}`;
   }
-  return `${format(start, 'd MMMM yyyy')}-${format(end, 'd MMMM yyyy')}`;
+  return `${format(start, 'd MMMM yyyy')} – ${format(end, 'd MMMM yyyy')}`;
 }
 
-/** "Fri. Sun" / "Wed", the muted weekday span under the dates. */
+/** "Fri–Sun" / "Wed", the muted weekday span under the dates. */
 export function formatLeaveDays(startIso: string, endIso: string): string {
   const start = parseDay(startIso);
   const end = parseDay(endIso);
   if (startIso === endIso) return format(start, 'EEE');
-  return `${format(start, 'EEE')}-${format(end, 'EEE')}`;
+  return `${format(start, 'EEE')}–${format(end, 'EEE')}`;
 }
 
 /**

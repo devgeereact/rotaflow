@@ -49,7 +49,7 @@ export function TrustPage(): JSX.Element {
           <div className="mb-3 flex items-center gap-2">
             <Globe2
               size={18}
-              className="text-primary dark:text-primary-ink-dark"
+              className="text-primary-ink dark:text-primary-ink-dark"
               aria-hidden="true"
             />
             <h2 className="font-semibold text-content dark:text-content-dark">
@@ -155,7 +155,7 @@ export function TrustPage(): JSX.Element {
           <div className="mb-3 flex items-center gap-2">
             <AlertTriangle
               size={18}
-              className="text-primary dark:text-primary-ink-dark"
+              className="text-primary-ink dark:text-primary-ink-dark"
               aria-hidden="true"
             />
             <h2 className="font-semibold text-content dark:text-content-dark">
@@ -200,7 +200,7 @@ export function TrustPage(): JSX.Element {
           <div className="mb-3 flex items-center gap-2">
             <ShieldCheck
               size={18}
-              className="text-primary dark:text-primary-ink-dark"
+              className="text-primary-ink dark:text-primary-ink-dark"
               aria-hidden="true"
             />
             <h2 className="font-semibold text-content dark:text-content-dark">
@@ -211,7 +211,7 @@ export function TrustPage(): JSX.Element {
             If you have found a vulnerability, email{' '}
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="font-medium text-primary dark:text-primary-ink-dark hover:underline"
+              className="font-medium text-primary-ink dark:text-primary-ink-dark hover:underline"
             >
               {CONTACT_EMAIL}
             </a>{' '}
@@ -245,7 +245,7 @@ export function TrustPage(): JSX.Element {
             If you need a DPA signed before you can proceed, email{' '}
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="font-medium text-primary dark:text-primary-ink-dark hover:underline"
+              className="font-medium text-primary-ink dark:text-primary-ink-dark hover:underline"
             >
               {CONTACT_EMAIL}
             </a>{' '}

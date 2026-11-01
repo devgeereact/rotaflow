@@ -51,7 +51,7 @@ function NavList({
         return (
           <div key={label}>
             {startsMyWork && !collapsed && (
-              <p className="mb-1 mt-3 border-t border-surface-border px-3 pt-3 text-[10px] font-semibold uppercase tracking-wider text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+              <p className="mb-1 mt-3 border-t border-surface-border px-3 pt-3 text-xs font-semibold uppercase tracking-wider text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
                 My work
               </p>
             )}
@@ -187,9 +187,11 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
               <span className="min-w-0">
                 <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
                   Rota
-                  <span className="text-primary dark:text-primary-ink-dark">Flow</span>
+                  <span className="text-primary-ink dark:text-primary-ink-dark">
+                    Flow
+                  </span>
                 </span>
-                <span className="block text-[10.5px] leading-tight text-content-muted dark:text-content-muted-dark">
+                <span className="block text-xs leading-tight text-content-muted dark:text-content-muted-dark">
                   {BRAND.tagline}
                 </span>
               </span>
@@ -242,9 +244,11 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps): JSX.E
                 <span>
                   <span className="block font-display text-lg font-bold leading-tight text-content dark:text-content-dark">
                     Rota
-                    <span className="text-primary dark:text-primary-ink-dark">Flow</span>
+                    <span className="text-primary-ink dark:text-primary-ink-dark">
+                      Flow
+                    </span>
                   </span>
-                  <span className="block text-[10.5px] leading-tight text-content-muted dark:text-content-muted-dark">
+                  <span className="block text-xs leading-tight text-content-muted dark:text-content-muted-dark">
                     {BRAND.tagline}
                   </span>
                 </span>

@@ -2648,7 +2648,11 @@ export function RotaBuilderPage(): JSX.Element {
 
         {/* ---- Status bar ---- */}
         <div className="mt-4 flex items-center gap-1.5 text-sm text-content-muted dark:text-content-muted-dark">
-          <CalendarCheck size={14} aria-hidden="true" className="text-success" />
+          <CalendarCheck
+            size={14}
+            aria-hidden="true"
+            className="text-success-ink dark:text-success-ink-dark"
+          />
           {lastSavedAt
             ? `All changes saved · Last saved ${format(lastSavedAt, 'HH:mm')}`
             : 'All changes saved'}
@@ -2693,8 +2697,8 @@ export function RotaBuilderPage(): JSX.Element {
                       className={cn(
                         'mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full',
                         insight.severity === 'critical'
-                          ? 'bg-danger/10 text-danger'
-                          : 'bg-warning/10 text-warning',
+                          ? 'bg-danger/10 text-danger-ink dark:text-danger-ink-dark'
+                          : 'bg-warning/10 text-warning-ink dark:text-warning-ink-dark',
                       )}
                     >
                       <AlertTriangle size={13} aria-hidden="true" />
@@ -2866,7 +2870,7 @@ export function RotaBuilderPage(): JSX.Element {
               type="checkbox"
               checked={problemsOnly}
               onChange={(e) => setProblemsOnly(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary dark:text-primary-ink-dark focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary-ink dark:text-primary-ink-dark focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
             />
             <span>
               Only show shifts that need attention
@@ -2882,7 +2886,7 @@ export function RotaBuilderPage(): JSX.Element {
               type="checkbox"
               checked={hideEmptyStaff}
               onChange={(e) => setHideEmptyStaff(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary dark:text-primary-ink-dark focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+              className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary-ink dark:text-primary-ink-dark focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
             />
             <span>
               Hide staff with no shifts this week

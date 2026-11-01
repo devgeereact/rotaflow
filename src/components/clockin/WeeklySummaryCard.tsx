@@ -52,7 +52,7 @@ export function WeeklySummaryCard({
     <Card className="h-full rounded-xl p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary dark:text-primary-ink-dark dark:bg-primary/15">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary-ink dark:text-primary-ink-dark dark:bg-primary/15">
             <BarChart3 size={16} aria-hidden="true" />
           </span>
           <div>

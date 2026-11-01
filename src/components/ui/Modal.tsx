@@ -166,7 +166,7 @@ export function Modal({
             <AlertTriangle
               size={16}
               aria-hidden="true"
-              className="mt-0.5 shrink-0 text-warning"
+              className="mt-0.5 shrink-0 text-warning-ink dark:text-warning-ink-dark"
             />
             You have unsaved changes. Save them, or use Cancel to discard them.
           </p>

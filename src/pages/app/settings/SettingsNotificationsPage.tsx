@@ -207,7 +207,7 @@ export function SettingsNotificationsPage(): JSX.Element {
         <div className="flex gap-3">
           <MessageSquare
             size={18}
-            className="mt-0.5 shrink-0 text-info"
+            className="mt-0.5 shrink-0 text-info-ink dark:text-info-ink-dark"
             aria-hidden="true"
           />
           <div className="text-sm text-content-muted dark:text-content-muted-dark">
@@ -225,7 +225,11 @@ export function SettingsNotificationsPage(): JSX.Element {
 
       <Card className="bg-info/5">
         <div className="flex gap-3">
-          <Info size={18} className="mt-0.5 shrink-0 text-info" aria-hidden="true" />
+          <Info
+            size={18}
+            className="mt-0.5 shrink-0 text-info-ink dark:text-info-ink-dark"
+            aria-hidden="true"
+          />
           <div className="text-sm text-content-muted dark:text-content-muted-dark">
             <p className="font-medium text-content dark:text-content-dark">
               Editable templates are planned

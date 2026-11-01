@@ -30,7 +30,7 @@ export function StatsBand(): JSX.Element | null {
             <div key={label} className="text-center">
               <dt className="sr-only">{label}</dt>
               <dd>
-                <p className="font-display text-3xl font-medium tracking-tight text-primary dark:text-primary-ink-dark md:text-4xl">
+                <p className="font-display text-3xl font-medium tracking-tight text-primary-ink dark:text-primary-ink-dark md:text-4xl">
                   {value}
                 </p>
                 <p className="mt-2 font-medium text-content dark:text-content-dark">

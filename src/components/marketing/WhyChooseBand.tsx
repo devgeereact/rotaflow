@@ -27,7 +27,7 @@ export function WhyChooseBand(): JSX.Element {
         <ul className="space-y-6">
           {WHY_ROTAFLOW.map(({ title, body }) => (
             <li key={title} data-reveal className="flex gap-4">
-              <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-success/10 text-success">
+              <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-success/10 text-success-ink dark:text-success-ink-dark">
                 <Check size={16} aria-hidden="true" />
               </span>
               <div>

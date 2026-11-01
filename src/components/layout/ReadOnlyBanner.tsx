@@ -30,7 +30,11 @@ export function ReadOnlyBanner(): JSX.Element | null {
       className="border-b border-danger/30 bg-danger-wash px-6 py-3 md:px-10 dark:bg-danger-wash-dark"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <Lock size={18} className="shrink-0 text-danger" aria-hidden="true" />
+        <Lock
+          size={18}
+          className="shrink-0 text-danger-ink dark:text-danger-ink-dark"
+          aria-hidden="true"
+        />
         <p className="min-w-0 flex-1 text-sm text-content dark:text-content-dark">
           <span className="font-medium">{READ_ONLY_BANNER}</span> Everything already
           recorded is still here and can be exported. Staff can still clock in and request

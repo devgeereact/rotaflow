@@ -222,7 +222,7 @@ export function OperationsDashboard({
         >
           <span>
             {fetchedAt
-              ? `Updated ${format(new Date(fetchedAt), 'HH:mm:ss')}`
+              ? `Updated ${format(new Date(fetchedAt), 'HH:mm')}`
               : 'Not yet loaded'}
           </span>
           {stale && (
@@ -353,7 +353,7 @@ export function OperationsDashboard({
                 {/* Inherits the Callout's own ink rather than the page's
                     muted grey: `text-content-muted` on the warning wash
                     measures 4.34:1, just under the 4.5:1 body text needs. */}
-                <span className="opacity-80">
+                <span>
                   {[row.locationName, row.plannedLabel].filter(Boolean).join(' · ')}
                 </span>
                 <span>{row.issue}</span>
@@ -552,7 +552,7 @@ export function OperationsDashboard({
                 <CircleCheck
                   size={16}
                   aria-hidden="true"
-                  className="mt-0.5 shrink-0 text-success"
+                  className="mt-0.5 shrink-0 text-success-ink dark:text-success-ink-dark"
                 />
                 Nothing is waiting on you.
               </p>

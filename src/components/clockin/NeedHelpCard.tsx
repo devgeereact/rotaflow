@@ -32,7 +32,7 @@ export function NeedHelpCard({ links }: NeedHelpCardProps): JSX.Element {
               <link.icon
                 size={18}
                 aria-hidden="true"
-                className="shrink-0 text-primary dark:text-primary-ink-dark"
+                className="shrink-0 text-primary-ink dark:text-primary-ink-dark"
               />
               <span className="flex-1 text-sm text-content dark:text-content-dark">
                 {link.label}

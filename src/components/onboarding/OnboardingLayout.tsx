@@ -89,7 +89,7 @@ export function OnboardingLayout({
               <p className="font-display text-xl font-bold leading-none text-ink dark:text-content-dark">
                 Rota<span className="text-brand dark:text-brand-light">Flow</span>
               </p>
-              <p className="mt-1 text-[0.65rem] font-semibold uppercase tracking-lockup text-content-muted dark:text-content-muted-dark">
+              <p className="mt-1 text-xs font-semibold uppercase tracking-lockup text-content-muted dark:text-content-muted-dark">
                 Workforce Scheduling Platform
               </p>
             </div>

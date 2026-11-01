@@ -23,7 +23,7 @@ function Person({ party }: { party: SwapParty }): JSX.Element {
           {party.firstName} {party.lastName}
         </p>
         {party.jobTitle && (
-          <p className="truncate text-[0.68rem] leading-4 text-content-muted dark:text-content-muted-dark">
+          <p className="truncate text-xs leading-4 text-content-muted dark:text-content-muted-dark">
             {party.jobTitle}
           </p>
         )}

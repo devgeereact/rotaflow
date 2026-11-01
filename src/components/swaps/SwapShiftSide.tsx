@@ -9,8 +9,8 @@ interface SwapShiftSideProps {
 }
 
 const CHIP: Record<SwapShiftSideProps['side'], string> = {
-  giving: 'bg-danger/10 text-danger',
-  taking: 'bg-success/10 text-success',
+  giving: 'bg-danger/10 text-danger-ink dark:text-danger-ink-dark',
+  taking: 'bg-success/10 text-success-ink dark:text-success-ink-dark',
 };
 
 const CHIP_LABEL: Record<SwapShiftSideProps['side'], string> = {
@@ -39,7 +39,7 @@ export function SwapShiftSide({ side, shift }: SwapShiftSideProps): JSX.Element 
       <div className="mb-1.5 flex">
         <span
           className={cn(
-            'rounded-md px-2 py-px text-[0.64rem] font-semibold leading-4',
+            'rounded-md px-2 py-px text-xs font-semibold leading-4',
             CHIP[side],
           )}
         >
@@ -49,11 +49,11 @@ export function SwapShiftSide({ side, shift }: SwapShiftSideProps): JSX.Element 
       <p className="truncate text-[0.72rem] font-semibold leading-4 text-content dark:text-content-dark">
         {shift.dateLabel}
       </p>
-      <p className="truncate font-mono text-[0.68rem] leading-4 text-content dark:text-content-dark">
+      <p className="truncate font-mono text-xs leading-4 text-content dark:text-content-dark">
         {shift.timeLabel}
       </p>
       {shift.locationName && (
-        <p className="truncate text-[0.68rem] leading-4 text-content-muted dark:text-content-muted-dark">
+        <p className="truncate text-xs leading-4 text-content-muted dark:text-content-muted-dark">
           {shift.locationName}
         </p>
       )}

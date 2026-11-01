@@ -175,14 +175,18 @@ export function StepCreateOrg({
             )}
             {slugState === 'available' && (
               <>
-                <Check size={13} aria-hidden="true" className="text-success" />
-                <span className="text-success">
+                <Check
+                  size={13}
+                  aria-hidden="true"
+                  className="text-success-ink dark:text-success-ink-dark"
+                />
+                <span className="text-success-ink dark:text-success-ink-dark">
                   {values.slug}.{SLUG_DOMAIN} is available
                 </span>
               </>
             )}
             {slugState === 'taken' && (
-              <span className="text-danger">
+              <span className="text-danger-ink dark:text-danger-ink-dark">
                 &ldquo;{values.slug}&rdquo; is already taken. Try another
               </span>
             )}

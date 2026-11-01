@@ -137,7 +137,7 @@ export function ProductPreview(): JSX.Element {
                   key={label}
                   className="rounded-xl border border-surface-border p-3 dark:border-surface-border-dark"
                 >
-                  <p className="truncate text-[10px] uppercase tracking-wide text-content-muted dark:text-content-muted-dark">
+                  <p className="truncate text-xs uppercase tracking-wide text-content-muted dark:text-content-muted-dark">
                     {label}
                   </p>
                   <p className={`font-display text-xl font-medium ${tone}`}>{value}</p>
@@ -147,13 +147,13 @@ export function ProductPreview(): JSX.Element {
 
             <div className="overflow-hidden rounded-xl border border-surface-border dark:border-surface-border-dark">
               <div className="grid grid-cols-[minmax(5.5rem,1.4fr)_repeat(7,minmax(0,1fr))] border-b border-surface-border bg-surface-subtle dark:border-surface-border-dark dark:bg-surface-subtle-dark">
-                <span className="px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-content-muted dark:text-content-muted-dark">
+                <span className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-content-muted dark:text-content-muted-dark">
                   Staff
                 </span>
                 {DAYS.map((day, i) => (
                   <span
                     key={`${day}-${i}`}
-                    className="px-1 py-2 text-center text-[10px] font-medium text-content-muted dark:text-content-muted-dark"
+                    className="px-1 py-2 text-center text-xs font-medium text-content-muted dark:text-content-muted-dark"
                   >
                     {day}
                   </span>
@@ -204,9 +204,7 @@ export function ProductPreview(): JSX.Element {
           {/* Not `opacity-80`: white at 80% over solid `bg-primary` reads at
               3.56:1, under the 4.5:1 small-text minimum. Full `text-primary-fg`
               (the token this fill is designed to pair with) passes easily. */}
-          <p className="text-[10px] uppercase tracking-wide text-primary-fg">
-            My schedule
-          </p>
+          <p className="text-xs uppercase tracking-wide text-primary-fg">My schedule</p>
           <p className="font-display text-sm font-medium">11-17 May</p>
         </div>
         <div className="space-y-2 p-3">
@@ -216,14 +214,14 @@ export function ProductPreview(): JSX.Element {
               className="rounded-lg border border-surface-border p-2 dark:border-surface-border-dark"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-medium text-content dark:text-content-dark">
+                <span className="text-xs font-medium text-content dark:text-content-dark">
                   {day}
                 </span>
-                <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${chip}`}>
+                <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${chip}`}>
                   {role.split(' · ')[0]}
                 </span>
               </div>
-              <p className="mt-0.5 text-[10px] text-content-muted dark:text-content-muted-dark">
+              <p className="mt-0.5 text-xs text-content-muted dark:text-content-muted-dark">
                 {time}
               </p>
             </div>

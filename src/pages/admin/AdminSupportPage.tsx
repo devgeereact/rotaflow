@@ -326,7 +326,7 @@ export function AdminSupportPage(): JSX.Element {
                     <ShieldAlert
                       size={16}
                       aria-hidden="true"
-                      className="shrink-0 text-warning"
+                      className="shrink-0 text-warning-ink dark:text-warning-ink-dark"
                     />
                     <span className="text-sm font-medium text-content dark:text-content-dark">
                       {session.adminName}

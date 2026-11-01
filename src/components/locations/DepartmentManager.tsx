@@ -120,7 +120,7 @@ export function DepartmentManager({
                     type="button"
                     onClick={() => void saveEdit(dept.id)}
                     aria-label="Save"
-                    className="text-success"
+                    className="text-success-ink dark:text-success-ink-dark"
                   >
                     <Check size={16} />
                   </button>

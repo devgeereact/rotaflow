@@ -115,9 +115,7 @@ export function ShiftPatternLegend({
                 on top of an inherited colour is the exact bug this whole
                 pass has been fixing elsewhere. */}
             {patternRange(type) && (
-              <span className="font-mono text-[0.65rem] tabular-nums">
-                {patternRange(type)}
-              </span>
+              <span className="font-mono text-xs tabular-nums">{patternRange(type)}</span>
             )}
             <span className="tabular-nums">({count})</span>
           </button>

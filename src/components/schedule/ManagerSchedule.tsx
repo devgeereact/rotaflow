@@ -211,7 +211,9 @@ export function ManagerSchedule({
           value={weekly?.rotaStatus === 'published' ? 'Published' : 'Draft'}
           hint={
             weekly?.rotaStatus === 'published' ? (
-              <span className="text-success">staff notified</span>
+              <span className="text-success-ink dark:text-success-ink-dark">
+                staff notified
+              </span>
             ) : (
               <span className="text-danger-ink dark:text-danger-ink-dark">
                 not visible to staff
@@ -238,7 +240,7 @@ export function ManagerSchedule({
           <div className="divide-y divide-surface-border dark:divide-surface-border-dark">
             {groups.map((group) => (
               <div key={group.locationId} className="p-4">
-                <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-wider text-content-muted dark:text-content-muted-dark">
+                <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-content-muted dark:text-content-muted-dark">
                   {group.locationName} &middot; {group.people.length} on
                 </p>
                 <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">

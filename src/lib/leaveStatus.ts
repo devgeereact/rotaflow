@@ -28,18 +28,19 @@ export const LEAVE_STATUS_LABEL: Record<LeaveStatus, string> = {
 
 /** Pill fill + ink. */
 export const LEAVE_STATUS_TONE: Record<LeaveStatus, string> = {
-  pending: 'bg-warning/10 text-warning dark:bg-warning/20',
-  approved: 'bg-success/10 text-success dark:bg-success/20',
-  rejected: 'bg-danger/10 text-danger dark:bg-danger/20',
+  pending: 'bg-warning/10 text-warning-ink dark:text-warning-ink-dark dark:bg-warning/20',
+  approved:
+    'bg-success/10 text-success-ink dark:text-success-ink-dark dark:bg-success/20',
+  rejected: 'bg-danger/10 text-danger-ink dark:bg-danger/20 dark:text-danger-ink-dark',
   cancelled:
     'bg-divider text-content-muted dark:bg-surface-subtle-dark dark:text-content-muted-dark',
 };
 
 export const LEAVE_TYPE_LABEL: Record<LeaveTypeKey, string> = {
-  annual: 'Annual Leave',
-  sick: 'Sick Leave',
-  personal: 'Personal Leave',
-  carer: "Carer's Leave",
+  annual: 'Annual leave',
+  sick: 'Sick leave',
+  personal: 'Personal leave',
+  carer: "Carer's leave",
   other: 'Other',
 };
 

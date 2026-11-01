@@ -24,7 +24,7 @@ export interface ManagerLeaveTiles {
   oldestPendingOverdue: boolean;
   approvedNext30Days: number;
   sicknessDaysThisMonth: number;
-  /** "Aug 25-29", or "Clear" when no cover clash was found in the lookahead window. */
+  /** "25–29 Aug", or "Clear" when no cover clash was found in the lookahead window. */
   coverRiskLabel: string;
   /** "3 approved, 1 pending", null when the risk tile reads "Clear". */
   coverRiskSubLabel: string | null;
@@ -119,7 +119,9 @@ export function ManagerLeave({
           value={tiles.coverRiskLabel}
           hint={
             tiles.coverRiskSubLabel && (
-              <span className="text-danger">{tiles.coverRiskSubLabel}</span>
+              <span className="text-danger-ink dark:text-danger-ink-dark">
+                {tiles.coverRiskSubLabel}
+              </span>
             )
           }
         />

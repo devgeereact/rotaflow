@@ -28,7 +28,7 @@ export function NotFoundPage(): JSX.Element {
   return (
     <MarketingLayout title="Page not found" noindex>
       <div className="mx-auto grid max-w-2xl place-items-center px-6 py-24 text-center sm:py-32">
-        <p className="font-display text-7xl font-extrabold text-primary dark:text-primary-ink-dark">
+        <p className="font-display text-7xl font-extrabold text-primary-ink dark:text-primary-ink-dark">
           404
         </p>
         <h1 className="mt-6 font-display text-3xl font-bold text-content dark:text-content-dark">

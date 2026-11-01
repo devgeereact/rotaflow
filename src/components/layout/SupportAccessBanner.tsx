@@ -93,7 +93,11 @@ export function SupportAccessBanner(): JSX.Element | null {
     >
       {live.map((session) => (
         <div key={session.id} className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <ShieldAlert size={18} className="shrink-0 text-warning" aria-hidden="true" />
+          <ShieldAlert
+            size={18}
+            className="shrink-0 text-warning-ink dark:text-warning-ink-dark"
+            aria-hidden="true"
+          />
           <p className="min-w-0 flex-1 text-sm text-content dark:text-content-dark">
             <span className="font-semibold">RotaFlow support is viewing your data.</span>{' '}
             {session.adminName} opened a {SCOPE_LABELS[session.scope].toLowerCase()}{' '}

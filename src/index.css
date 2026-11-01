@@ -34,6 +34,15 @@
   /* card/control outlines (dark) */
   --color-surface-border-dark: #393c41;
   /*
+    Field edges: inputs, selects, textareas. WCAG 1.4.11 needs 3:1 against
+    what the field sits on. surface-border (#d0d1d2) is 1.53:1 on white, so
+    it stays for cards and dividers only. #80858e is 3.37:1 on the canvas
+    (#f4f4f4) and 3.7:1 on white; #6b7079 is 3.50:1 on background-dark.
+    Design gap F16, 1 Nov 2026.
+  */
+  --color-field: #80858e;
+  --color-field-dark: #6b7079;
+  /*
     Navigation rail. Light matches `subtle`; dark deliberately does not:
     `subtle-dark` is a *raised* panel and reads as a card floating over the
     canvas, where a rail should sit behind it. This value falls between

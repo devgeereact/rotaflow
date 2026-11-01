@@ -317,7 +317,7 @@ export function ReportsAnalyticsCard({
           <BarChart3
             size={16}
             aria-hidden="true"
-            className="text-primary dark:text-primary-ink-dark"
+            className="text-primary-ink dark:text-primary-ink-dark"
           />
           Workforce trends
         </h2>

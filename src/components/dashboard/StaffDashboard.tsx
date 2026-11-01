@@ -181,7 +181,7 @@ export function StaffDashboard({
                     className={cn(
                       'grid h-9 w-9 shrink-0 place-items-center rounded-full',
                       a.urgent
-                        ? 'bg-danger-wash text-danger dark:bg-danger-wash-dark'
+                        ? 'bg-danger-wash text-danger-ink dark:text-danger-ink-dark dark:bg-danger-wash-dark'
                         : 'bg-primary-wash text-primary-ink dark:bg-primary-wash-dark dark:text-primary-ink-dark',
                     )}
                   >

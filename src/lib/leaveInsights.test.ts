@@ -204,15 +204,15 @@ describe('findCoverRisk', () => {
 
 describe('formatCoverRiskRange', () => {
   it('formats a single day', () => {
-    expect(formatCoverRiskRange('2026-08-25', '2026-08-25')).toBe('Aug 25');
+    expect(formatCoverRiskRange('2026-08-25', '2026-08-25')).toBe('25 Aug');
   });
 
   it('formats a same-month range', () => {
-    expect(formatCoverRiskRange('2026-08-25', '2026-08-29')).toBe('Aug 25-29');
+    expect(formatCoverRiskRange('2026-08-25', '2026-08-29')).toBe('25–29 Aug');
   });
 
   it('formats a cross-month range', () => {
-    expect(formatCoverRiskRange('2026-08-30', '2026-09-02')).toBe('Aug 30-Sep 2');
+    expect(formatCoverRiskRange('2026-08-30', '2026-09-02')).toBe('30 Aug – 2 Sep');
   });
 });
 

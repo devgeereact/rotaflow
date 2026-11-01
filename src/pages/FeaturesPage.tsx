@@ -176,7 +176,7 @@ export function FeaturesPage(): JSX.Element {
                         <Check
                           size={16}
                           aria-hidden="true"
-                          className="mt-0.5 shrink-0 text-success"
+                          className="mt-0.5 shrink-0 text-success-ink dark:text-success-ink-dark"
                         />
                         <span className="text-content dark:text-content-dark">
                           {point}

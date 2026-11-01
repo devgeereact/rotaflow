@@ -236,7 +236,7 @@ export function BarChart({
           labels edge-to-edge while the bars are centred in fixed slots, so the
           first and last were offset and everything between was slightly wrong. */}
       <ul
-        className="mt-1.5 grid text-center text-[0.65rem] text-content-muted dark:text-content-muted-dark"
+        className="mt-1.5 grid text-center text-xs text-content-muted dark:text-content-muted-dark"
         style={{ gridTemplateColumns: `repeat(${Math.max(groups.length, 1)}, 1fr)` }}
       >
         {groups.map((group) => (

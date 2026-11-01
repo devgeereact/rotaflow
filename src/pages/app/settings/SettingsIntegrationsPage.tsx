@@ -403,7 +403,7 @@ export function SettingsIntegrationsPage(): JSX.Element {
                 </Button>
                 <Button
                   variant="ghost"
-                  className="text-danger hover:text-danger"
+                  className="text-danger-ink dark:text-danger-ink-dark hover:text-danger"
                   onClick={() => void handleRemove()}
                   disabled={saving || testing}
                 >

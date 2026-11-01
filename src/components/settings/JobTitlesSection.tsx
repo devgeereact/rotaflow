@@ -429,7 +429,7 @@ export function JobTitlesSection({
                     onManagedByChange(e.target.checked ? 'managers' : 'owner')
                   }
                   aria-describedby="job-titles-managed-by-hint"
-                  className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+                  className="mt-0.5 h-4 w-4 rounded border-surface-border text-primary-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
                 />
                 <span>
                   <label

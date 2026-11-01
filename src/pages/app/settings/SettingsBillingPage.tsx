@@ -306,7 +306,11 @@ export function SettingsBillingPage(): JSX.Element {
         <ul className="mt-6 space-y-2.5 border-t border-divider pt-5 text-sm dark:border-divider-dark">
           <li className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-2 text-content dark:text-content-dark">
-              <Check size={16} className="text-success" aria-hidden="true" />
+              <Check
+                size={16}
+                className="text-success-ink dark:text-success-ink-dark"
+                aria-hidden="true"
+              />
               Sites
             </span>
             <span className="tabular-nums text-content-muted dark:text-content-muted-dark">
@@ -315,7 +319,11 @@ export function SettingsBillingPage(): JSX.Element {
           </li>
           <li className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-2 text-content dark:text-content-dark">
-              <Check size={16} className="text-success" aria-hidden="true" />
+              <Check
+                size={16}
+                className="text-success-ink dark:text-success-ink-dark"
+                aria-hidden="true"
+              />
               Staff on the roster
             </span>
             <span className="tabular-nums text-content-muted dark:text-content-muted-dark">
@@ -325,7 +333,11 @@ export function SettingsBillingPage(): JSX.Element {
           {billingContact && (
             <li className="flex items-center justify-between gap-4">
               <span className="flex items-center gap-2 text-content dark:text-content-dark">
-                <Check size={16} className="text-success" aria-hidden="true" />
+                <Check
+                  size={16}
+                  className="text-success-ink dark:text-success-ink-dark"
+                  aria-hidden="true"
+                />
                 Billing contact
               </span>
               <span className="flex flex-wrap items-center justify-end gap-2 text-content-muted dark:text-content-muted-dark">
@@ -345,7 +357,11 @@ export function SettingsBillingPage(): JSX.Element {
           )}
           <li className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-2 text-content dark:text-content-dark">
-              <Check size={16} className="text-success" aria-hidden="true" />
+              <Check
+                size={16}
+                className="text-success-ink dark:text-success-ink-dark"
+                aria-hidden="true"
+              />
               Rotas and shifts
             </span>
             <span className="text-content-muted dark:text-content-muted-dark">
@@ -354,7 +370,11 @@ export function SettingsBillingPage(): JSX.Element {
           </li>
           <li className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-2 text-content dark:text-content-dark">
-              <Check size={16} className="text-success" aria-hidden="true" />
+              <Check
+                size={16}
+                className="text-success-ink dark:text-success-ink-dark"
+                aria-hidden="true"
+              />
               Reports and exports
             </span>
             <span className="text-content-muted dark:text-content-muted-dark">

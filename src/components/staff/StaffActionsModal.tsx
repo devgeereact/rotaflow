@@ -50,7 +50,7 @@ export function StaffActionsModal({
                 'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary',
                 'disabled:pointer-events-none disabled:opacity-50',
                 action.tone === 'danger'
-                  ? 'text-danger hover:bg-danger/10'
+                  ? 'text-danger-ink dark:text-danger-ink-dark hover:bg-danger/10'
                   : 'text-content hover:bg-surface-subtle dark:text-content-dark dark:hover:bg-surface-subtle-dark',
               )}
             >

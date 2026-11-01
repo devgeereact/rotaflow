@@ -318,7 +318,7 @@ export function AdminUserDetailPage(): JSX.Element {
                     </Row>
                     {detail.authFacts.bannedUntil && (
                       <Row label="Banned until">
-                        <span className="font-medium text-danger">
+                        <span className="font-medium text-danger-ink dark:text-danger-ink-dark">
                           {new Date(detail.authFacts.bannedUntil).toLocaleString('en-GB')}
                         </span>
                       </Row>

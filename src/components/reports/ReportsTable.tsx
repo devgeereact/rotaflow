@@ -106,7 +106,7 @@ export function ReportsTable({
                     aria-hidden="true"
                     className={cn(
                       row.favourite
-                        ? 'fill-warning text-warning'
+                        ? 'fill-warning text-warning-ink dark:text-warning-ink-dark'
                         : 'text-content-muted dark:text-content-muted-dark',
                     )}
                   />
@@ -169,7 +169,7 @@ export function ReportsTable({
                     aria-busy={runningId === row.id}
                     aria-label={`Run ${row.name}`}
                     title={row.runnable ? `Run ${row.name}` : 'Not available yet'}
-                    className={cn(ACTION, 'text-primary dark:text-primary-ink-dark')}
+                    className={cn(ACTION, 'text-primary-ink dark:text-primary-ink-dark')}
                   >
                     <Play
                       size={16}

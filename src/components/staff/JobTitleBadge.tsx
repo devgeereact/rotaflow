@@ -49,7 +49,7 @@ export function JobTitleBadge({
           at 80% measures 3.2:1, under the 4.5:1 text this size needs. The
           token pairs already carry the intended weight — docs/DESIGN-SYSTEM.md §2b. */}
       {showCode && (
-        <span aria-hidden="true" className="font-mono text-[10px] font-bold">
+        <span aria-hidden="true" className="font-mono text-xs font-bold">
           {jobTitleCode(name)}
         </span>
       )}

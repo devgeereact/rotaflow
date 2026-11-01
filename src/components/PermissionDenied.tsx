@@ -53,7 +53,7 @@ export function PermissionDenied({ area, allowed }: PermissionDeniedProps): JSX.
 
   return (
     <Card className="mx-auto max-w-lg text-center" role="alert" aria-live="polite">
-      <span className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-full bg-warning/10 text-warning">
+      <span className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-full bg-warning/10 text-warning-ink dark:text-warning-ink-dark">
         <ShieldAlert size={28} aria-hidden="true" />
       </span>
 

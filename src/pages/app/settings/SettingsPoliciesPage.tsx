@@ -475,7 +475,7 @@ export function SettingsPoliciesPage(): JSX.Element {
         <div className="flex gap-3">
           <AlertTriangle
             size={18}
-            className="mt-0.5 shrink-0 text-warning"
+            className="mt-0.5 shrink-0 text-warning-ink dark:text-warning-ink-dark"
             aria-hidden="true"
           />
           <div className="text-sm text-content-muted dark:text-content-muted-dark">

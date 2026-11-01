@@ -77,7 +77,7 @@ export function RecentReportsCard({
                 </span>
                 <ReportChip
                   tone={REPORT_FORMAT_TONE[item.format]}
-                  className="px-2 py-0.5 text-[0.68rem]"
+                  className="px-2 py-0.5 text-xs"
                 >
                   {item.format}
                 </ReportChip>

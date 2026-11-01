@@ -13,6 +13,14 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Design gaps, phase 1: colour and text (branch `design/gap-fixes`, 1 November 2026).** Every text use of the
+  bright status and brand colours now uses its `-ink` shade with the matching dark variant (`text-primary`,
+  `text-danger`, `text-success`, `text-warning`, `text-info` as text: 140 places), so blue, red, green, amber and info
+  text meet 4.5:1; the fills are unchanged. Inputs and selects get a new `field` border token (`#80858e`, 3.37:1 on
+  the canvas; `#6b7079` dark), replacing the 1.53:1 card line. No text under 11 px (34 places raised to 12 px), no
+  opacity on text. Dates read day first with en dashes ("25–29 Aug", "9–13 June 2025", "Fri–Sun"), leave types in
+  sentence case ("Annual leave"), and the dashboard's updated time drops its seconds. Findings F14 to F17, F25, F26
+  in the design review file.
 - **Local-live walk and the cutover branch (branch `release/cutover`, 31 October 2026).** The cutover now ships the
   whole stack from `release/cutover` with every R2 flag off. A repeatable local walk of every screen as owner, manager,
   staff and platform admin (`pnpm run e2e:walk`, `scripts/walk.sh`, demo data from `backend/bin/seed-demo.php`) found

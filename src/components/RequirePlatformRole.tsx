@@ -55,7 +55,7 @@ export function RequirePlatformRole({
   if (!platformRole || !allow.includes(platformRole)) {
     return (
       <Card className="max-w-xl">
-        <span className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-warning/15 text-warning">
+        <span className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-warning/15 text-warning-ink dark:text-warning-ink-dark">
           <Lock size={20} aria-hidden="true" />
         </span>
         <h1 className="mb-2 font-display text-card-heading font-semibold text-content dark:text-content-dark">

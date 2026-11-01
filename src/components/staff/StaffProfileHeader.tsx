@@ -70,7 +70,7 @@ export function StaffProfileHeader({
         <button
           type="button"
           onClick={onEditProfile}
-          className={cn(ACTION, 'text-primary dark:text-primary-ink-dark')}
+          className={cn(ACTION, 'text-primary-ink dark:text-primary-ink-dark')}
         >
           <Pencil size={16} aria-hidden="true" />
           Edit Profile

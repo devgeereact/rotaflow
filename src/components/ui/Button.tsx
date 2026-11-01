@@ -57,7 +57,7 @@ const VARIANTS: Record<Variant, string> = {
   clock:
     'bg-clock text-primary-fg hover:bg-clock-fg focus-visible:ring-clock focus-visible:ring-offset-2',
   'danger-outline':
-    'bg-transparent text-danger-ink border-danger/40 hover:bg-danger-wash ' +
+    'bg-transparent text-danger-ink dark:text-danger-ink-dark border-danger/40 hover:bg-danger-wash ' +
     'dark:text-danger-ink-dark dark:hover:bg-danger-wash-dark',
 };
 

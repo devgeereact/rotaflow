@@ -33,22 +33,22 @@ interface CalloutProps {
 const TONES: Record<CalloutTone, { wrap: string; icon: string; Icon: typeof Info }> = {
   info: {
     wrap: 'bg-info-wash border-info/30 dark:bg-info-wash-dark',
-    icon: 'text-info',
+    icon: 'text-info-ink dark:text-info-ink-dark',
     Icon: Info,
   },
   warning: {
     wrap: 'bg-warning-wash border-warning/34 dark:bg-warning-wash-dark',
-    icon: 'text-warning',
+    icon: 'text-warning-ink dark:text-warning-ink-dark',
     Icon: AlertTriangle,
   },
   danger: {
     wrap: 'bg-danger-wash border-danger/34 dark:bg-danger-wash-dark',
-    icon: 'text-danger',
+    icon: 'text-danger-ink dark:text-danger-ink-dark',
     Icon: ShieldAlert,
   },
   success: {
     wrap: 'bg-success-wash border-success/34 dark:bg-success-wash-dark',
-    icon: 'text-success',
+    icon: 'text-success-ink dark:text-success-ink-dark',
     Icon: CheckCircle2,
   },
 };

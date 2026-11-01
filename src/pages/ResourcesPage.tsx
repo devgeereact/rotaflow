@@ -213,7 +213,7 @@ export function ResourcesPage(): JSX.Element {
 
       <section id="getting-started" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-20">
         <div className="mx-auto mb-12 max-w-2xl text-center">
-          <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
+          <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary-ink dark:text-primary-ink-dark">
             <BookOpen size={20} aria-hidden="true" />
           </span>
           <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
@@ -227,7 +227,7 @@ export function ResourcesPage(): JSX.Element {
         <div className="grid gap-6 md:grid-cols-2">
           {GUIDES.map(({ icon: Icon, title, body, steps }) => (
             <Card key={title} className="h-full">
-              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
+              <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary-ink dark:text-primary-ink-dark">
                 <Icon size={20} aria-hidden="true" />
               </span>
               <h3 className="font-display text-lg font-semibold text-content dark:text-content-dark">
@@ -239,7 +239,7 @@ export function ResourcesPage(): JSX.Element {
               <ol className="mt-4 space-y-2.5 border-t border-surface-border pt-4 dark:border-surface-border-dark">
                 {steps.map((step, i) => (
                   <li key={step} className="flex gap-3 text-sm">
-                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-bold text-primary dark:text-primary-ink-dark">
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-bold text-primary-ink dark:text-primary-ink-dark">
                       {i + 1}
                     </span>
                     <span className="text-content dark:text-content-dark">{step}</span>
@@ -254,7 +254,7 @@ export function ResourcesPage(): JSX.Element {
       <section className="border-y border-surface-border bg-surface-subtle py-20 dark:border-surface-border-dark dark:bg-surface-subtle-dark">
         <div className="mx-auto max-w-5xl px-6">
           <div className="mx-auto mb-12 max-w-2xl text-center">
-            <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
+            <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary-ink dark:text-primary-ink-dark">
               <CircleDashed size={20} aria-hidden="true" />
             </span>
             <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
@@ -298,7 +298,7 @@ export function ResourcesPage(): JSX.Element {
 
       <section id="product-updates" className="mx-auto max-w-3xl scroll-mt-20 px-6 py-20">
         <div className="mx-auto mb-12 max-w-2xl text-center">
-          <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
+          <span className="mb-3 inline-grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary-ink dark:text-primary-ink-dark">
             <Megaphone size={20} aria-hidden="true" />
           </span>
           <h2 className="font-display text-3xl font-bold text-content md:text-4xl dark:text-content-dark">
@@ -333,7 +333,7 @@ export function ResourcesPage(): JSX.Element {
       <section className="mx-auto max-w-4xl px-6 py-20">
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
-            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
+            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary-ink dark:text-primary-ink-dark">
               <Smartphone size={20} aria-hidden="true" />
             </span>
             <h2 className="font-display text-lg font-semibold text-content dark:text-content-dark">
@@ -349,7 +349,7 @@ export function ResourcesPage(): JSX.Element {
           </Card>
 
           <Card>
-            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary dark:text-primary-ink-dark">
+            <span className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary-ink dark:text-primary-ink-dark">
               <LifeBuoy size={20} aria-hidden="true" />
             </span>
             <h2 className="font-display text-lg font-semibold text-content dark:text-content-dark">

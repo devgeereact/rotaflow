@@ -29,12 +29,12 @@ const TONES: Record<
   warning: {
     wash: 'bg-warning/10 dark:bg-warning/15',
     icon: TriangleAlert,
-    fill: 'text-warning',
+    fill: 'text-warning-ink dark:text-warning-ink-dark',
   },
   bad: {
     wash: 'bg-danger/10 dark:bg-danger/15',
     icon: CircleAlert,
-    fill: 'text-danger',
+    fill: 'text-danger-ink dark:text-danger-ink-dark',
   },
 };
 

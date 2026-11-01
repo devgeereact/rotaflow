@@ -616,7 +616,7 @@ export function AdminBillingPage(): JSX.Element {
                         <AlertTriangle
                           size={15}
                           aria-hidden="true"
-                          className="shrink-0 text-danger"
+                          className="shrink-0 text-danger-ink dark:text-danger-ink-dark"
                         />
                         {invoice.org_name ? (
                           <Link

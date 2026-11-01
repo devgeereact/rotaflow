@@ -94,7 +94,7 @@ export function StepComplete({
         <ShieldCheck
           size={20}
           aria-hidden="true"
-          className="mt-0.5 shrink-0 text-success"
+          className="mt-0.5 shrink-0 text-success-ink dark:text-success-ink-dark"
         />
         <div>
           <p className="text-sm font-semibold text-ink dark:text-content-dark">

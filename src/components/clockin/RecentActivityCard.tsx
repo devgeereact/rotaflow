@@ -13,8 +13,8 @@ interface RecentActivityCardProps {
 /** Break events are not in the reference; amber keeps them distinct from both. */
 const KINDS: Record<ClockActivityEntry['kind'], string> = {
   in: 'text-clock',
-  out: 'text-danger',
-  break: 'text-warning',
+  out: 'text-danger-ink dark:text-danger-ink-dark',
+  break: 'text-warning-ink dark:text-warning-ink-dark',
 };
 
 /** "Recent Activity" rail card. The last few clock events. */

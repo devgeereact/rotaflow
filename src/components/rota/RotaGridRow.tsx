@@ -53,8 +53,8 @@ export const ROTA_STICKY_STAFF_COL =
   '-mr-1.5 sticky left-0 z-10 border-r border-surface-border bg-surface pr-1.5 dark:border-surface-border-dark dark:bg-surface-dark';
 
 const WEEK_TOTAL_TONE_CLASS: Record<WeekTotalTone, string> = {
-  over_limit: 'text-danger',
-  over_contract: 'text-warning',
+  over_limit: 'text-danger-ink dark:text-danger-ink-dark',
+  over_contract: 'text-warning-ink dark:text-warning-ink-dark',
   normal: 'text-content dark:text-content-dark',
 };
 
@@ -233,7 +233,7 @@ export function RotaGridRow({
               {hoursLabel(weekMinutes / 60)}
             </span>
             {staff.weekly_hours != null && (
-              <span className="text-[0.65rem] text-content-muted dark:text-content-muted-dark">
+              <span className="text-xs text-content-muted dark:text-content-muted-dark">
                 /{staff.weekly_hours}h
               </span>
             )}

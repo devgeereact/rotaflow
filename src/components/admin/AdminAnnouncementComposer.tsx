@@ -300,7 +300,7 @@ export function AdminAnnouncementComposer({
                           : current.filter((code) => code !== plan.code),
                       )
                     }
-                    className="h-4 w-4 rounded border-surface-border text-primary focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
+                    className="h-4 w-4 rounded border-surface-border text-primary-ink focus-visible:ring-2 focus-visible:ring-primary dark:border-surface-border-dark"
                   />
                   {plan.name}
                 </label>

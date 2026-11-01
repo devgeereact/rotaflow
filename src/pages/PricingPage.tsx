@@ -58,7 +58,11 @@ export function PricingPage(): JSX.Element {
           role="note"
           className="mx-auto mb-12 flex max-w-3xl gap-3 rounded-2xl border border-info/30 bg-info/5 p-4"
         >
-          <Info size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-info" />
+          <Info
+            size={20}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-info-ink dark:text-info-ink-dark"
+          />
           <p className="text-sm leading-relaxed text-content dark:text-content-dark">
             <span className="font-semibold">No card required to sign up.</span> Signing up
             collects no payment details. You choose and pay for a plan afterwards, from
@@ -103,7 +107,7 @@ export function PricingPage(): JSX.Element {
                     <Check
                       size={16}
                       aria-hidden="true"
-                      className="mt-0.5 shrink-0 text-success"
+                      className="mt-0.5 shrink-0 text-success-ink dark:text-success-ink-dark"
                     />
                     <span className="text-content dark:text-content-dark">{feature}</span>
                   </li>

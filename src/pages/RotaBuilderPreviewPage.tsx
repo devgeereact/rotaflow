@@ -461,7 +461,7 @@ export function RotaBuilderPreviewPage(): JSX.Element {
         placeholder="Search staff, skills, shifts…"
         className="w-full rounded-xl border border-surface-border bg-surface py-2.5 pl-10 pr-16 text-sm text-content outline-hidden sm:w-80 dark:border-surface-border-dark dark:bg-surface-dark dark:text-content-dark"
       />
-      <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-[0.65rem] font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
+      <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-surface-border px-1.5 py-0.5 font-sans text-xs font-medium text-content-muted dark:border-surface-border-dark dark:text-content-muted-dark">
         ⌘ K
       </kbd>
     </>
@@ -692,7 +692,11 @@ export function RotaBuilderPreviewPage(): JSX.Element {
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
             <span className="flex items-center gap-1.5 text-content-muted dark:text-content-muted-dark">
-              <CalendarCheck size={14} aria-hidden="true" className="text-success" />
+              <CalendarCheck
+                size={14}
+                aria-hidden="true"
+                className="text-success-ink dark:text-success-ink-dark"
+              />
               All changes saved
             </span>
             <div className="flex flex-wrap items-center gap-5 text-xs text-content-muted dark:text-content-muted-dark">

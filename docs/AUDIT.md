@@ -1086,3 +1086,30 @@ and policies only.
 
 **NOT TESTED**: the real live schema beyond the metadata above (a hand-made column would show as a coverage warning or a
 record/schema mismatch); real erasure cases, medical notes or documents (live has none).
+
+## 2026-11-01: Design gaps, phase 1 (colour and text)
+
+Branch `design/gap-fixes` (worktree `.local-state/worktrees/design`), local commit only. Closes F14, F15, F16, F17,
+F25 and F26 from the design review file (artifact "RotaFlow design gaps", v2).
+
+**What changed**
+
+- Text in brand and status colours uses the `-ink` shades with dark variants (140 places in `src/`). Fills unchanged.
+- New `field` token for input and select borders: `#80858e` (3.37:1 on `#f4f4f4`), dark `#6b7079` (3.50:1 on
+  `#171a20`). The planned `#8a8f98` was rejected during the build: it is 2.95:1 on the canvas the fields sit on.
+- 34 sizes under 11 px raised to 12 px; opacity removed from text on the plan step and the dashboard alert.
+- Dates: `formatCoverRiskRange` and `formatLeaveRange` write day first with en dashes; leave type labels in sentence
+  case; "Updated HH:mm" without seconds; the leave preview's hard-coded "Aug 25-29" corrected.
+
+**Evidence**
+
+- axe-core at 1440 and 390 on 24 screens (13 workspace previews, dashboard, 4 settings, onboarding plan step, home,
+  pricing, login), dev server on port 5043: zero violations. Before, 24 of these captures failed colour contrast.
+- `pnpm run check`: lint, format, typecheck, 132 test files / 1796 tests, build, bundle, migrations, docs and export
+  checks pass.
+
+**Not tested**
+
+- `check:php`: the local test database could not create its socket in this sandbox. No PHP changed.
+- Dark mode by eye; Playwright and pgTAP (need Docker).
+

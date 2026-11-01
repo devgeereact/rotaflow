@@ -283,7 +283,7 @@ export function HelpPage(): JSX.Element {
                 key={q}
                 className="flex gap-3 border-b border-surface-border p-4 last:border-0 dark:border-surface-border-dark"
               >
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-info/10 text-info">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-info/10 text-info-ink dark:text-info-ink-dark">
                   <Info size={15} aria-hidden="true" />
                 </span>
                 <span className="min-w-0">
@@ -304,7 +304,7 @@ export function HelpPage(): JSX.Element {
             <div className="mb-3 flex items-center gap-2">
               <ShieldCheck
                 size={18}
-                className="text-primary dark:text-primary-ink-dark"
+                className="text-primary-ink dark:text-primary-ink-dark"
                 aria-hidden="true"
               />
               <h2 className="font-semibold text-content dark:text-content-dark">
@@ -324,7 +324,7 @@ export function HelpPage(): JSX.Element {
             <div className="mb-3 flex items-center gap-2">
               <MessageSquarePlus
                 size={18}
-                className="text-primary dark:text-primary-ink-dark"
+                className="text-primary-ink dark:text-primary-ink-dark"
                 aria-hidden="true"
               />
               <h2 className="font-semibold text-content dark:text-content-dark">

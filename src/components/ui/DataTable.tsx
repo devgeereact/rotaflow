@@ -182,7 +182,7 @@ export function DataTable<Row, Key extends string = string>({
                         aria-hidden="true"
                         className={
                           active
-                            ? 'text-primary dark:text-primary-ink-dark'
+                            ? 'text-primary-ink dark:text-primary-ink-dark'
                             : 'text-content-muted dark:text-content-muted-dark'
                         }
                       />

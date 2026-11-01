@@ -138,7 +138,9 @@ export function ManagerTimesheets({
                 below plan
               </span>
             ) : (
-              <span className="text-success">on or above plan</span>
+              <span className="text-success-ink dark:text-success-ink-dark">
+                on or above plan
+              </span>
             )
           }
         />

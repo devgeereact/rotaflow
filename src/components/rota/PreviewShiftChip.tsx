@@ -27,7 +27,7 @@ export function PreviewShiftChip({
       )}
     >
       <span className="block truncate">{label}</span>
-      <span className="block font-mono text-[10px]">
+      <span className="block font-mono text-xs">
         {formatTimeRange(startTime, endTime, { overnight: 'compact' })}
       </span>
     </div>

@@ -156,8 +156,8 @@ export function GlobalSearch({
         <kbd
           className={
             variant === 'rail'
-              ? 'shrink-0 rounded border border-surface-border bg-surface-subtle px-1.5 py-0.5 font-mono text-[10px] font-semibold dark:border-surface-border-dark dark:bg-surface-subtle-dark'
-              : 'ml-2 hidden rounded border border-surface-border px-1.5 py-0.5 font-mono text-[10px] lg:inline dark:border-surface-border-dark'
+              ? 'shrink-0 rounded border border-surface-border bg-surface-subtle px-1.5 py-0.5 font-mono text-xs font-semibold dark:border-surface-border-dark dark:bg-surface-subtle-dark'
+              : 'ml-2 hidden rounded border border-surface-border px-1.5 py-0.5 font-mono text-xs lg:inline dark:border-surface-border-dark'
           }
         >
           ⌘K
@@ -247,7 +247,7 @@ export function GlobalSearch({
                           className={cn(
                             'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm',
                             isActive
-                              ? 'bg-primary/10 text-primary dark:text-primary-ink-dark'
+                              ? 'bg-primary/10 text-primary-ink dark:text-primary-ink-dark'
                               : 'text-content dark:text-content-dark',
                           )}
                         >

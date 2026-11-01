@@ -12,7 +12,7 @@ interface StaffAvatarProps {
 }
 
 const SIZES: Record<NonNullable<StaffAvatarProps['size']>, string> = {
-  sm: 'h-7 w-7 text-[0.65rem]',
+  sm: 'h-7 w-7 text-xs',
   md: 'h-9 w-9 text-xs',
   lg: 'h-10 w-10 text-sm',
   xl: 'h-14 w-14 text-lg',

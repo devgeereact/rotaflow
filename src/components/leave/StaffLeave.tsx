@@ -100,7 +100,9 @@ export function StaffLeave({
           value={tiles.remainingLabel}
           hint={
             tiles.remainingSubLabel && (
-              <span className="text-success">{tiles.remainingSubLabel}</span>
+              <span className="text-success-ink dark:text-success-ink-dark">
+                {tiles.remainingSubLabel}
+              </span>
             )
           }
         />

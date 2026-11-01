@@ -179,14 +179,14 @@ export function ShiftChip({
             it to `23:00–07:0…` — hiding a digit of the time to make room for
             the note explaining the time is exactly the wrong trade. The type
             line has the room. */}
-        <span className="block truncate text-[0.68rem] font-semibold leading-4 tracking-tight tabular-nums">
+        <span className="block truncate text-xs font-semibold leading-4 tracking-tight tabular-nums">
           {formatTimeRange(startTime, endTime, { overnight: 'none' })}
         </span>
         {/* Not `opacity-80`: the shift-palette `-fg` tokens are already
             calibrated to read against their own tint at full opacity (see
             `shiftPalette.ts`); fading it on top dropped several colours
             under the 4.5:1 minimum. */}
-        <span className="block truncate text-[0.63rem] font-medium leading-4">
+        <span className="block truncate text-xs font-medium leading-4">
           {shiftType?.name ?? 'Shift'}
           {crossesMidnight(startTime, endTime) && (
             <>

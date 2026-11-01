@@ -421,7 +421,7 @@ export function RotaAssistantPanel({
             <Sparkles
               size={15}
               aria-hidden="true"
-              className="mt-0.5 shrink-0 text-primary dark:text-primary-ink-dark"
+              className="mt-0.5 shrink-0 text-primary-ink dark:text-primary-ink-dark"
             />
             {contextLoading ? 'Reading the rota…' : overview.headline}
           </p>

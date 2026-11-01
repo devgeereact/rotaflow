@@ -78,16 +78,16 @@ describe('formatLeaveRange', () => {
   });
 
   it('collapses the month when a range stays inside one', () => {
-    expect(formatLeaveRange('2025-06-09', '2025-06-13')).toBe('9-13 June 2025');
+    expect(formatLeaveRange('2025-06-09', '2025-06-13')).toBe('9–13 June 2025');
   });
 
   it('names both months when a range crosses one', () => {
-    expect(formatLeaveRange('2025-05-30', '2025-06-01')).toBe('30 May-1 June 2025');
+    expect(formatLeaveRange('2025-05-30', '2025-06-01')).toBe('30 May – 1 June 2025');
   });
 
   it('names both years when a range crosses one', () => {
     expect(formatLeaveRange('2025-12-30', '2026-01-02')).toBe(
-      '30 December 2025-2 January 2026',
+      '30 December 2025 – 2 January 2026',
     );
   });
 
@@ -104,8 +104,8 @@ describe('formatLeaveDays', () => {
   });
 
   it('renders a weekday span for a range', () => {
-    expect(formatLeaveDays('2025-05-30', '2025-06-01')).toBe('Fri-Sun');
-    expect(formatLeaveDays('2025-06-09', '2025-06-13')).toBe('Mon-Fri');
+    expect(formatLeaveDays('2025-05-30', '2025-06-01')).toBe('Fri–Sun');
+    expect(formatLeaveDays('2025-06-09', '2025-06-13')).toBe('Mon–Fri');
   });
 });
 

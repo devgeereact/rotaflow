@@ -91,7 +91,7 @@ export function PublicationStatus({
             <AlertTriangle
               size={18}
               aria-hidden="true"
-              className="mt-px shrink-0 text-danger"
+              className="mt-px shrink-0 text-danger-ink dark:text-danger-ink-dark"
             />
             {criticalCount} {criticalCount === 1 ? 'issue blocks' : 'issues block'}{' '}
             publication

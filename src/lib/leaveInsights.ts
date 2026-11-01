@@ -152,15 +152,18 @@ export function findCoverRisk(
   };
 }
 
-/** "Aug 25-29" (same month), "Aug 30-Sep 2" (crossing one) or "Aug 25" (one day). */
+/**
+ * UK order with an en dash: "25 Aug" (one day), "25–29 Aug" (same month) or
+ * "30 Aug – 2 Sep" (crossing one). Design gap F25: the tile read "Aug 25-29".
+ */
 export function formatCoverRiskRange(startIso: string, endIso: string): string {
   const start = parseDay(startIso);
   const end = parseDay(endIso);
-  if (startIso === endIso) return format(start, 'MMM d');
+  if (startIso === endIso) return format(start, 'd MMM');
   if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-    return `${format(start, 'MMM d')}-${format(end, 'd')}`;
+    return `${format(start, 'd')}–${format(end, 'd MMM')}`;
   }
-  return `${format(start, 'MMM d')}-${format(end, 'MMM d')}`;
+  return `${format(start, 'd MMM')} – ${format(end, 'd MMM')}`;
 }
 
 /**
