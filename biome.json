@@ -17,6 +17,7 @@
       "!!**/coverage",
       "!!**/.local-test",
       "!!**/.local-state",
+      "!!**/.claude",
       "!!**/graphify-out",
       "!!**/backend/vendor"
     ]

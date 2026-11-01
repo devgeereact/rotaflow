@@ -33,6 +33,8 @@ export default tseslint.config(
       'node_modules',
       // Local scratch and recovery (gitignored), including the walk's production build in .local-state/walk-dist.
       '.local-state',
+      // Agent tooling (Claude skills, design references): not app code, often written while another session works.
+      '.claude',
       '.local-test',
       'postcss.config.js',
       'supabase/functions', // Deno runtime (npm:/jsr: specifiers) — not tsc/ESLint compatible
