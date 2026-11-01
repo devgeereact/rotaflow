@@ -1003,3 +1003,86 @@ pending Supabase login deletions closed as abandoned; enquiries marked notified;
   linking a moved person, Google-only people receiving codes.
 - Stripe webhook switch (test and live), the cron line, web push to subscriptions moved from Supabase (same VAPID keys assumed).
 - The walk's `flags`, `csp` specs and two `actions` cases on moved data (seed-demo fixtures); browsers other than Chromium.
+
+## 2026-11-01: The data move reads the live source at 0156, on branch `release/cutover`
+
+**Why.** The first live dry run (step 0.5) stopped on `relation "public.account_deletions" does not exist`. Metadata read
+through Supabase's API (no data) showed production's `supabase_migrations` at **0001 to 0156**; the repo's
+`supabase/migrations` goes to 0164, and 0157-0164 were never applied there. The map had been written against 0164.
+Nothing was connected to the real Supabase or the cPanel database for this work; everything below ran on throwaway local
+databases.
+
+**What changed.** `backend/src/DataMove/SourceSchema.php` reads the source's own record
+(`supabase_migrations.schema_migrations`, highest four-digit version) for the report, and probes `information_schema`
+for every public table and column; the probe decides what the SQL may name. `Map.php` reads the five later additions
+through `{src:table.column;expr;default}`; `Mover` leaves a mapped table the source lacks out of the plan, and `Files` and
+`blockedObjects` skip what is not there. A schema difference is one plain warning in the plan report
+(`source at 0156: <feature> not present, nothing to move; <what the move does>`), never an error. A record older than 0156
+is an error (not rehearsed); newer than 0164, or a record that disagrees with the schema, is a warning. The report header
+gains a `Source schema:` line and the CLI prints the version above its result line. The only differences between a 0156 and
+a 0164 schema (diffed column by column on two local builds) are the ones below; 0157, 0158, 0160 and 0161 change functions
+and policies only.
+
+**Decisions, one per difference** (privacy first; the same rule as the migration that introduced the change):
+
+- **A-DM-1, private document store (0159).** At 0156 `documents` has no `storage_path`, `file_url` is required, and there is
+  no `staff-documents` bucket: every document is a pasted link to a host nobody here controls. The move carries the link
+  as it is (the target keeps such rows as "moved from before stored files", migration 015), exactly the exposure the old site
+  had; a Supabase-hosted link is still a warning. No file to copy; any Storage object is reported as orphan or other bucket
+  and stays only in the step 2 backup. Live: 0 documents.
+- **A-DM-2, medical notes (0164).** At 0156 `emergency_contacts.medical_notes` still exists. 0164 drops it under decision
+  D5 (Article 9 data about someone with no rights channel here). The move applies the same rule: the column is listed as
+  dropped (NEVER moved), the target has no such column, and the plan reports only a **count** of non-blank notes, never a
+  value. If the count is above 0, the notes stay behind on the frozen Supabase project; exporting them first is the owner's
+  call (O11). Live: 0 emergency contacts.
+- **A-DM-3, a login goes with a completed erasure (0162).** Before 0162 closing an erasure case as `completed` left the
+  subject's login in place, so at 0156 such a person is still an ordinary account. The move applies 0162's rule at every
+  source version: a user whose login existed when an erasure case for their address was closed `completed` is moved only
+  under `<id>@removed.rotaflow.invalid`, with no name or avatar (never linkable to a Clerk sign-in), like a pending erasure.
+  Someone who signed up again after the case closed is not caught (their login is newer than the closure). 0162 refuses to
+  close a case for the only owner of an organisation or a platform-role holder; at 0156 nothing refused, so such a person
+  is moved unlinkable **and** reported as a warning (the role needs a new holder after the move). Live: 0 requests.
+- **A-DM-4, erasure and storage queues (0159, 0162).** `storage_deletions` and `account_deletions` do not exist at 0156:
+  nothing to move, one warning each; no file is held back as queued for deletion (none can be queued at 0156).
+- **A-DM-5, staff photos (0162).** No `photo_path` at 0156: photos are pasted links (`photo_url`), moved as before; no
+  photo file to copy.
+- **A-DM-6, personal preferences (0163).** No `time_format`, `week_start`, `digest_frequency` at 0156: everyone gets the
+  values the app showed before they existed (24h, monday, immediate), which are also the target's defaults.
+
+**Evidence** (local, 1 November 2026)
+
+- `pnpm run test:datamove` exit 0, ending `DATAMOVE: all rehearsals passed`. `scripts/datamove-test.sh` builds a source
+  from migrations 0001 to N (`build_schema db N`, recording each in `supabase_migrations.schema_migrations` as the
+  Supabase CLI does) and runs:
+  - the full synthetic source at 0164 (`run.php`, unchanged cases plus "at 0164 by its own record, nothing absent"):
+    **65 passed, 0 failed**;
+  - the **live-shaped** source (`seed-live-shape.sql`: 1 organisation, 2 logins, 21 staff of whom 20 have no login, 2
+    sites, 6 rotas, 311 shifts across the October clock change, 8 clock events and timesheets, 1 correction, 1,006
+    notifications, 381 audit rows, and 54,696 health samples, 3,018 delivery-log rows, 370 retention runs, 215 drained
+    outbox rows that are not moved) at **0156: 28 passed, 0 failed** (plan with exactly the six version warnings and the
+    seeded `rotaflow.app` one, 0 errors; apply; plain-SQL counts; preferences defaulted; verify every checksum; second apply
+    refused; `--resume` changes nothing; an interrupted move finished by `--resume` verifies; then `seed-before-0164.sql`:
+    2 of 3 contacts with notes counted and the text nowhere in the plan, report or target; two closed-erasure people moved
+    unlinkable, the owner among them reported; a later sign-up with an erased address left alone; a pasted document link
+    moved as a link; verify; a files dry run counting a legacy-bucket object and copying nothing) and at **0164: 18 passed,
+    0 failed** (no version warnings);
+  - a dry run of the live-shaped source at **each of 0157 to 0163: 8 passed, 0 failed** each (the expected warnings for
+    exactly the features each version lacks, the queue tables planned from the version that adds them).
+- Mutation check: disabling the closed-erasure rule fails 2 checks at 0156 (the owner warning and the unlinkable
+  placeholders).
+- Suite `275-datamove-map` 34 -> **45** (+11): the newest repo migration matches `SourceSchema::REPO_LATEST`; every
+  optional table or column is named by the migration said to add or purge it; every `{src:...}` in the map names a listed
+  feature; at 0156 the preferences expand to defaults and nothing reads `account_deletions`; exactly six warnings at 0156,
+  none at 0164; a non-zero medical-notes count is reported without values; older than 0156 refused, newer warned; no
+  record read from the schema; a record that disagrees reported.
+- `pnpm run check` exit 0.
+
+**For the owner**
+
+- The live listing's row counts are estimates: it showed 0 `plans`, `feature_flags` and `platform_settings` beside 1
+  `feature_flag_changes` and 1 `platform_announcement_deliveries` row, which their foreign keys (ON DELETE CASCADE, NOT NULL)
+  make impossible. The plan's `source` counts are exact; read them in step 0.5.
+- Do not apply 0157-0164 on Supabase for the move. If someone does, the move still works (rehearsed at every version).
+
+**NOT TESTED**: the real live schema beyond the metadata above (a hand-made column would show as a coverage warning or a
+record/schema mismatch); real erasure cases, medical notes or documents (live has none).

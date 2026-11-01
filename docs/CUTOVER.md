@@ -12,7 +12,7 @@ Commands run on your Mac (zsh) in `~/Developer/Projects/rotaflow`, or on the ser
 | # | Check | How |
 | - | ----- | --- |
 | 1 | `cutover/data-move` merged into `release/cutover` and pushed; `pnpm run check` green on it | Step 0 |
-| 2 | Data move rehearsed locally: `pnpm run test:datamove` prints `DATAMOVE: 64 passed, 0 failed` | Step 0 |
+| 2 | Data move rehearsed locally: `pnpm run test:datamove` ends `DATAMOVE: all rehearsals passed` (full synthetic 65, live-shaped at 0156 28 and at 0164 18, dry runs 0157 to 0163 8 each; every one `0 failed`) | Step 0 |
 | 3 | Dry run against the live Supabase (read-only) shows **0 errors**, and every warning has been read | Step 0.5 |
 | 4 | cPanel database `devgeereact_rotaflow` exists, empty (0 tables), users `devgeereact_rf_app` and `devgeereact_rf_mig` (with TRIGGER) | Step 3 check |
 | 5 | `~/rotaflow-private/config/config.php` and `migrate.php` exist (mode 600) with `secret_key`, `clerk_issuer` `https://clerk.rotaflow.space`, `clerk_authorized_parties` incl. `https://rotaflow.space`; optional keys (smtp, vapid, stripe test, clerk_secret_key, openrouter, turnstile) placed or knowingly left out | Step 4 |
@@ -70,6 +70,43 @@ and read every warning and the "Mappings applied" counts (they list, for example
 banned people, the legacy admin flag, documents still linking to a Supabase URL). Fix errors on Supabase, or decide; then
 run it again. If the tunnel is refused (`Access denied ... '127.0.0.1'`), see "If the tunnel is refused" at the end.
 Rollback: nothing was written.
+
+### Source version: the live project is at 0156, not 0164
+
+Found 1 November 2026 (metadata only, through Supabase's API: no data read): production's `supabase_migrations` lists
+**0001 to 0156**. The repo's `supabase/migrations` goes to 0164; **0157 to 0164 were never applied there**, and the first
+live `plan` stopped on `relation "public.account_deletions" does not exist`. The move now reads the version from the
+source's own record (and probes the schema, which decides what the SQL may name), so any source from 0156 to 0164 works.
+Do **not** apply 0157-0164 on Supabase for the move: nothing needs them, and the old project is about to be frozen.
+
+The line just above `plan: OK ...` (and `apply:`, `verify:`) names it: `source at 0156`. The report's header has a
+`Source schema:` line, and these **six warnings** are expected at 0156 (plain warnings, never errors; each is one line,
+shown here without the `source at 0156:` prefix):
+
+| Warning | What the move does (docs/AUDIT.md, A-DM-1 to A-DM-6) |
+| ------- | ----------------------------------------------------- |
+| the storage deletion queue (storage_deletions, added by 0159) not present, nothing to move | No file is held back as queued for deletion |
+| privately stored documents (documents.storage_path, added by 0159) not present, nothing to move | Every document is a pasted link (`file_url`) and moves as one; no document file to copy (live: 0 documents) |
+| privately stored staff photos (staff_profiles.photo_path, added by 0162) not present, nothing to move | Photos stay pasted links (`photo_url`); no photo file to copy |
+| the erasure queue (account_deletions, added by 0162) not present, nothing to move | A completed erasure case still makes its person unlinkable, as 0162 would have (live: 0 data-protection requests) |
+| personal time and week preferences (app_settings.time_format, week_start, digest_frequency, added by 0163) not present, nothing to move | Everyone gets what the app showed before 0163: 24h, monday, immediate |
+| medical notes on emergency contacts (emergency_contacts.medical_notes, purged by 0164) still present, never moved: 0 rows hold a note | The column is never read or written; only a count of non-blank notes (live: 0 emergency contacts) |
+
+Also expected, not about the version: `support_email names rotaflow.app (not ours)` if the live platform settings still
+carry the migration's address. If the medical-notes line says **more than 0**, the move leaves those notes behind on
+Supabase (decision D5); export them first only if you decide to (owner action O11). If a warning says an erasure case was
+completed for someone who **still owns an organisation or holds a platform role**, that person is moved unlinkable: give the
+role to someone else after the move. A warning that the migration record and the schema disagree means someone changed the
+schema by hand; the move follows the schema, but read it before going on. Step 7 at 0156: nothing in the database points at
+a stored file, so `would_copy 0`; any object in Storage is reported (other bucket or orphan) and is in the step 2 backup.
+
+The live table listing's counts are estimates (it showed 0 plans, flags and settings beside 1 flag change and 1
+announcement delivery, which their foreign keys make impossible); the plan's own `source` counts are exact. The rehearsal
+`pnpm run test:datamove` builds a source from 0001-0156 only and one from 0001-0164, fills both in the live shape
+(`backend/tests/datamove/seed-live-shape.sql`: 1 organisation, 2 logins, 21 staff, 311 shifts, 1,006 notifications, 381
+audit rows, and 54,696 health samples, 3,018 delivery-log rows and 370 retention runs that are not moved) and runs plan,
+apply, verify, a refused second apply, `--resume` and an interrupted move against each; at 0156 it then adds the pre-0164
+privacy cases (`seed-before-0164.sql`) and checks them.
 
 ## Step 1: freeze writes on the old site (downtime starts)
 
@@ -144,7 +181,7 @@ phpMyAdmin or restore `pre-migrate-<utc>.sql`. The old site is untouched.
 
 ```zsh
 S="--source-uri-file=$HOME/rotaflow-cutover/secrets/supabase-db-uri"
-ROTAFLOW_PRIVATE_ROOT=~/rotaflow-cutover/private php backend/bin/datamove.php plan $S     # 0 errors, the same warnings as in 0.5
+ROTAFLOW_PRIVATE_ROOT=~/rotaflow-cutover/private php backend/bin/datamove.php plan $S     # 0 errors, the same warnings as in 0.5 (six "source at 0156" ones)
 ROTAFLOW_PRIVATE_ROOT=~/rotaflow-cutover/private php backend/bin/datamove.php apply $S    # apply: OK
 ROTAFLOW_PRIVATE_ROOT=~/rotaflow-cutover/private php backend/bin/datamove.php verify $S   # verify: OK
 ```
@@ -304,17 +341,17 @@ listed as dropped. Ids (UUIDs) and timestamps (UTC) are kept; money is integer p
 
 | Source | Target | Notes |
 | ------ | ------ | ----- |
-| `auth.users` + `profiles` | `users` | Login email (lower-case) wins over a drifted profile email; `last_sign_in_at` -> `last_seen_at`; `clerk_user_id` empty until first sign-in. Only people with a profile, plus authors referenced by rotas, timesheets, corrections or credits. Deleted, pending-erasure, profile-less or email-less people get `<id>@removed.rotaflow.invalid` and no name or avatar. An avatar that is not https is dropped |
-| `organisations`, `memberships`, `invites`, `platform_admins`, `role_delegations`, `app_settings`, `push_subscriptions` | same | `last_activity_at`, `is_demo` not kept (demo orgs move unless `--exclude-demo-orgs`); invite `accepted_by`; `endpoint_hash` computed. Pending invitation links keep working (same SHA-256 scheme) |
-| `locations`, `departments`, `job_titles`, `staff_profiles`, `staff_locations`, `staff_pay_rates`, `emergency_contacts` | same | `skills` text[] -> JSON array; a photo file name the private store refuses is renamed (`<clean>-<8 hex>.<ext>`, same on the file); pay-rate `note` and `created_by` LOSSY (counted) |
+| `auth.users` + `profiles` | `users` | Login email (lower-case) wins over a drifted profile email; `last_sign_in_at` -> `last_seen_at`; `clerk_user_id` empty until first sign-in. Only people with a profile, plus authors referenced by rotas, timesheets, corrections or credits. Deleted, pending-erasure, profile-less or email-less people get `<id>@removed.rotaflow.invalid` and no name or avatar; so does anyone whose login existed when an erasure case for their address was closed `completed` (0162's rule, applied at every source version: before 0162 closing the case left the login). An avatar that is not https is dropped |
+| `organisations`, `memberships`, `invites`, `platform_admins`, `role_delegations`, `app_settings`, `push_subscriptions` | same | `last_activity_at`, `is_demo` not kept (demo orgs move unless `--exclude-demo-orgs`); invite `accepted_by`; `endpoint_hash` computed. Pending invitation links keep working (same SHA-256 scheme). Before 0163 `app_settings` has no time or week preferences: everyone gets 24h, monday, immediate |
+| `locations`, `departments`, `job_titles`, `staff_profiles`, `staff_locations`, `staff_pay_rates`, `emergency_contacts` | same | `skills` text[] -> JSON array; a photo file name the private store refuses is renamed (`<clean>-<8 hex>.<ext>`, same on the file); pay-rate `note` and `created_by` LOSSY (counted); `emergency_contacts.medical_notes` (present before 0164) is **never** moved, only counted |
 | `shift_types`, `rotas`, `shifts`, `availability`, `minimum_cover_rules` | same | `site_key` computed; instants kept in UTC (both 2026 clock-change nights checked) |
 | `clock_events`, `clock_event_corrections`, `leave_requests`, `overtime_requests`, `shift_swaps`, `timesheets` | same | Clock times kept to the millisecond (DATETIME(3)): microseconds cut, not rounded |
 | `notification_templates`, `notifications`, `announcements`, `announcement_reads`, `org_smtp_settings` | same | SMTP password encrypted with the target `secret_key` |
-| `documents` | `documents` | Status `approved` (as migration 015 defines for moved rows); `mime` from the Storage object; unsafe file names renamed as for photos; a document whose link is a Supabase URL is a warning (download and upload it again) |
+| `documents` | `documents` | Status `approved` (as migration 015 defines for moved rows); `mime` from the Storage object; unsafe file names renamed as for photos; a document whose link is a Supabase URL is a warning (download and upload it again). Before 0159 there is no `storage_path`: every document is a pasted link and moves as one |
 | `plans`, `feature_flags`, `support_sla_targets`, `retention_policies`, `platform_settings` | reference rows | Only update what the target seeded: Stripe price ids; flag state for flags both sides know (the five R2 flags stay off); SLA minutes; platform name, support email, URL, time zone, registration. Never `maintenance_mode`; a value naming `rotaflow.app` is not copied |
 | `subscriptions`, `invoices`, `invoice_credits`, `billing_events` | same | Stripe customer, subscription and invoice ids kept |
 | `feature_flag_targets`, `feature_flag_changes`, `support_access_sessions`, `support_cases` (+messages), `incidents` (+updates), `enquiries`, `platform_announcements` (+deliveries, opt-outs) | same | Flags the target does not know are skipped; missing SLA due times filled; `incidents.is_public` and announcement `channel` LOSSY; enquiries marked notified (not announced again); delivery `outbox_id` cleared |
-| `gdpr_requests`, `account_deletions`, `storage_deletions` | same | A pending Supabase login deletion is closed `abandoned` (the login goes with the project); an in-flight file deletion is re-queued `pending` and its file is not copied |
+| `gdpr_requests`, `account_deletions`, `storage_deletions` | same | A pending Supabase login deletion is closed `abandoned` (the login goes with the project); an in-flight file deletion is re-queued `pending` and its file is not copied. Before 0159 (`storage_deletions`) and 0162 (`account_deletions`) the queues do not exist: nothing to move, one warning each |
 | `audit_logs` | `audit_logs` | New numeric id; the source uuid, scope, actor email/name, user agent, before/after and any mapped value are kept in `metadata._moved`; severity `notice` -> `info`, visibility `both` -> `org` |
 | `calendar_feed_tokens` | not moved | Old feed URLs stop; people subscribe again from Account |
 | `notification_outbox`, `notification_deliveries`, `background_jobs`, `rate_limit_events`, `retention_runs`, `platform_health_*`, integrations, `platform_ip_allowlist` | not moved | Queues, logs and cut features (counted in the report) |
