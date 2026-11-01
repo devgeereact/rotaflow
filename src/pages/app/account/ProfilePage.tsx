@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { getProfile, updateProfile } from '@/services/profileService';
 import { getMyStaffProfile, updateStaffProfile } from '@/services/staffService';
+import { listEmergencyContacts } from '@/services/emergencyContactService';
+import { EmergencyContactsModal } from '@/components/staff/EmergencyContactsModal';
 import { removeStaffPhoto, uploadStaffPhoto } from '@/services/staffPhotoService';
 import { PHOTO_ACCEPT, photoFileProblem, photoSource } from '@/lib/staffPhoto';
 import { roleLabels, type SystemRole } from '@/lib/orgPreferences';
@@ -75,6 +77,11 @@ export function ProfilePage(): JSX.Element {
   const [phone, setPhone] = useState('');
   const [labels, setLabels] = useState<Record<SystemRole, string> | null>(null);
   const [activity, setActivity] = useState<AuditLogEntry[]>([]);
+  // Your own emergency contacts (design gap F33). The API has always let the
+  // person manage them (`docs/API-SPEC.md`, emergency contacts: "the person,
+  // owner, manager"); only a manager's screen offered it.
+  const [contactCount, setContactCount] = useState<number | null>(null);
+  const [contactsOpen, setContactsOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -108,6 +115,17 @@ export function ProfilePage(): JSX.Element {
       active = false;
     };
   }, [user, orgId, showError]);
+
+  const staffId = staff?.id ?? null;
+  const loadContactCount = useCallback((): void => {
+    if (!orgId || !staffId) return;
+    listEmergencyContacts(orgId, staffId)
+      .then((contacts) => setContactCount(contacts.length))
+      .catch(() => setContactCount(null));
+  }, [orgId, staffId]);
+  useEffect(() => {
+    loadContactCount();
+  }, [loadContactCount]);
 
   const handleSaveAccount = useCallback(async (): Promise<void> => {
     if (!user || !fullName.trim()) return;
@@ -211,7 +229,14 @@ export function ProfilePage(): JSX.Element {
               <Label htmlFor="profile-email">Email address</Label>
               <Input id="profile-email" icon={Mail} value={email} disabled readOnly />
               <p className="mt-1.5 text-xs text-content-muted dark:text-content-muted-dark">
-                Contact your administrator to change the address you sign in with.
+                Change the address you sign in with under{' '}
+                <Link
+                  to="/app/account/security"
+                  className="font-medium text-primary-ink underline underline-offset-2 dark:text-primary-ink-dark"
+                >
+                  Security
+                </Link>
+                .
               </p>
             </div>
           </div>
@@ -284,6 +309,26 @@ export function ProfilePage(): JSX.Element {
                     setPhone(e.target.value)
                   }
                 />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-content dark:text-content-dark">
+                  Emergency contacts
+                </p>
+                <p className="mt-1 text-sm text-content-muted dark:text-content-muted-dark">
+                  {contactCount === null
+                    ? 'Who your employer calls if something happens at work.'
+                    : contactCount === 0
+                      ? 'None saved yet. Add someone your employer can call.'
+                      : `${contactCount} saved. Only you and your managers can see them.`}
+                </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => setContactsOpen(true)}
+                >
+                  Manage emergency contacts
+                </Button>
               </div>
             </div>
             <div className="mt-6 flex justify-end">
@@ -379,6 +424,18 @@ export function ProfilePage(): JSX.Element {
           </Link>
         </SettingsSection>
       </div>
+      {staff && orgId && (
+        <EmergencyContactsModal
+          open={contactsOpen}
+          onClose={() => {
+            setContactsOpen(false);
+            loadContactCount();
+          }}
+          orgId={orgId}
+          staffProfileId={staff.id}
+          staffName={`${staff.first_name} ${staff.last_name}`}
+        />
+      )}
     </div>
   );
 }

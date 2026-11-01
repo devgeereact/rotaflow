@@ -13,6 +13,12 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Design gaps, phase 6: self-service (branch `design/gap-fixes`, 1 November 2026).** Staff can now manage their own
+  emergency contacts from My account → Profile, in the Contact details card's empty second column, through the same
+  window a manager uses (the API always allowed it). The Profile email field points to Security, where Clerk changes
+  the sign-in address, instead of telling people to ask an administrator. UX-SPEC §7 corrected: uploads (photos and
+  documents) and email change were already built. QR clock-in is deferred to a planned slice after the cutover (it
+  needs a migration, a route and a camera scanner). Findings F32 to F35, F10.
 - **Design gaps, phase 5: module match pass (branch `design/gap-fixes`, 1 November 2026).** The review file is now in
   the repository as `docs/design/RF-GAPS.html`, the design reference UX-SPEC §7a to §7d point to. Matched in code:
   Compliance's disabled Approve and Not accepted, and Open shifts' "clashes with your rota" Take it, now state their

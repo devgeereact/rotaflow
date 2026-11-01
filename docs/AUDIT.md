@@ -1202,3 +1202,27 @@ Branch `design/gap-fixes`, local commit only. Closes F28 to F31 and F36.
 - `docs/design/RF-GAPS.html` added (the approved review file, sample data only) and cited from UX-SPEC §7a to §7d.
 - Unit tests 132 files / 1796 pass; lint and format clean.
 
+## 2026-11-01: Design gaps, phase 6 (backend-dependent items) and the closing decisions
+
+Branch `design/gap-fixes`, local commit only. Every finding in the review file is now closed, built or decided.
+
+**Decisions**
+
+- F32 upload, F34 email change: already built on the API (S8c-2 photos, S8 documents, Clerk's profile on Security).
+  The review file and UX-SPEC §7 were out of date; UX-SPEC corrected. No code needed.
+- F33 my details: phone and photo were built; own emergency contacts were not, although `docs/API-SPEC.md` allows the
+  person. Built on My account → Profile with `EmergencyContactsModal`; `ProfilePage.test.tsx` covers the count, the
+  empty state, opening the editor and the Security link (3 tests).
+- F35 QR clock-in: deferred. It needs a migration, an API route and a camera scanner, during the cutover and with
+  `check:php` unavailable in this sandbox. Designed in `docs/design/RF-GAPS.html` page 11 for the slice that builds it.
+- F10 new modules on the Features page: no change while their flags are off; add them when each flag goes on.
+- F08 legal pages: with the cutover owner (see the phase 3 entry). F37 (the HTML reference's own contrast): superseded
+  by `RF-GAPS.html` and `docs/DESIGN-SYSTEM.md` for status colour.
+
+**Evidence**
+
+- `/settings-preview/account/profile` and `/account/security` at 1440, 390 and 320: no overflow, axe clean. The profile
+  preview cannot load a profile on old or new code (its fixtures predate the API), so the new section is proven by the
+  unit test rather than a screenshot.
+- `pnpm run check` to `check:php`, plus 3 new tests.
+
