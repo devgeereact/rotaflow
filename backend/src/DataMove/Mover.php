@@ -919,8 +919,9 @@ final class Mover
     private function defs(): array
     {
         $only = $this->opts['only'] ?? [];
+        $skip = $this->opts['skip'] ?? [];
         // A table a later migration added and this source lacks has nothing to move (reported once by SourceSchema).
-        return array_values(array_filter(Map::tables(), fn (array $d): bool => ($only === [] || in_array($d['table'], $only, true)) && $this->schema->has($d['source'])));
+        return array_values(array_filter(Map::tables(), fn (array $d): bool => ($only === [] || in_array($d['table'], $only, true)) && !in_array($d['table'], $skip, true) && $this->schema->has($d['source'])));
     }
 
     private function expand(string $sql): string

@@ -19,7 +19,8 @@ declare(strict_types=1);
 // (DataMove/SourceSchema.php; docs/CUTOVER.md "Source version").
 // Target: the API's private config, ROTAFLOW_PRIVATE_ROOT/config/$ROTAFLOW_CONFIG_FILE (default config.php, the runtime user).
 // Files: SUPABASE_URL (or --supabase-url=) and the service key from --service-key-file=PATH (0600) or SUPABASE_SERVICE_ROLE_KEY.
-// Options: --resume, --exclude-org=<uuid>[,<uuid>], --exclude-demo-orgs, --sample=N (default 25), --report=PATH, --only=table[,table]
+// Options: --resume, --exclude-org=<uuid>[,<uuid>], --exclude-demo-orgs, --sample=N (default 25), --report=PATH, --only=table[,table],
+//   --skip=table[,table] (leave those tables behind; plan, apply and verify all honour it)
 // Exit: 0 done and clean, 1 problems found (see the report), 2 usage or configuration.
 if (PHP_SAPI !== 'cli') {
     exit(1);
@@ -42,7 +43,7 @@ foreach ($args as $a) {
         exit(2);
     }
 }
-$known = ['source-uri-file', 'resume', 'exclude-org', 'exclude-demo-orgs', 'sample', 'report', 'only', 'apply', 'supabase-url', 'service-key-file', 'backup'];
+$known = ['source-uri-file', 'resume', 'exclude-org', 'exclude-demo-orgs', 'sample', 'report', 'only', 'skip', 'apply', 'supabase-url', 'service-key-file', 'backup'];
 foreach (array_keys($opt) as $k) {
     if (!in_array($k, $known, true)) {
         fwrite(STDERR, "unknown option --$k\n");
@@ -88,10 +89,20 @@ $opts = [
     'exclude_demo' => isset($opt['exclude-demo-orgs']),
     'sample' => (int) ($opt['sample'] ?? 25),
     'only' => is_string($opt['only'] ?? null) ? array_filter(explode(',', $opt['only'])) : [],
+    // Tables deliberately left behind on Supabase (e.g. --skip=support_cases,support_case_messages,incidents,incident_updates).
+    'skip' => is_string($opt['skip'] ?? null) ? array_filter(explode(',', $opt['skip'])) : [],
 ];
 foreach ($opts['exclude_orgs'] as $o) {
     if (preg_match('/^[0-9a-f-]{36}$/i', $o) !== 1) {
         fwrite(STDERR, "--exclude-org takes organisation ids\n");
+        exit(2);
+    }
+}
+
+$knownTables = array_column(\RotaFlow\DataMove\Map::tables(), 'table');
+foreach ([...$opts['only'], ...$opts['skip']] as $t) {
+    if (!in_array($t, $knownTables, true)) {
+        fwrite(STDERR, "--only/--skip: unknown table $t\n");
         exit(2);
     }
 }
