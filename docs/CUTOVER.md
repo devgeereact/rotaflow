@@ -53,6 +53,8 @@ Check: `check` exit 0; `DATAMOVE: ... 0 failed`. Rollback: nothing changed anywh
 
 ## Step 0.5: dry run against the live Supabase (read-only, any time before)
 
+The dry run compares against the target schema, so run **step 5 (migrations on the new, empty cPanel database) first**; nothing reads that database yet, so this is safe days ahead (found 1 Nov 2026: `schema_migrations doesn't exist`).
+
 The source connection is one `REPEATABLE READ READ ONLY` transaction: it cannot write to Supabase.
 ```zsh
 cd ~/Developer/Projects/rotaflow
