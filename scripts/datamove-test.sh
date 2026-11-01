@@ -6,8 +6,12 @@
 #   scripts/datamove-test.sh restore-dump <file> [db]  load a pg_dump (data only, custom format) into a local database built
 #                                                 from supabase/migrations: the dump path of bin/datamove.php
 #   scripts/datamove-test.sh target               recreate MariaDB database rotaflow_test_move (127.0.0.1:3308), migrations 001-020
+#   scripts/datamove-test.sh schema <db> [ver]    an empty source schema from migrations 0001 to <ver> (default: all)
+#   scripts/datamove-test.sh live-source <db> <ver>  a source at <ver> in the LIVE project's shape (seed-live-shape.sql)
+#   scripts/datamove-test.sh live <ver> [plan]    live-source, then backend/tests/datamove/run-live.php at that version
 #   scripts/datamove-test.sh all                  pg-up, source, target, then backend/tests/datamove/run.php (dry run, apply, verify,
-#                                                 re-run, resume, files) and print the report path
+#                                                 re-run, resume, files); then `live 0156` (production's version) and
+#                                                 `live 0164` end to end, and `live <v> plan` for 0157 to 0163
 # Needs: Homebrew postgresql@17 (initdb, pg_ctl, psql, pg_dump), MariaDB (scripts/test-db.sh), PHP with pdo_pgsql and pdo_mysql.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -20,20 +24,28 @@ PRIV="$ROOT/.local-test/datamove-private"
 SOCK="$ROOT/.local-test/mariadb/mysqld.sock"
 export PGHOST=127.0.0.1 PGPORT PGUSER=postgres
 
-# Builds database $1 from the Supabase shim and the 164 migrations (the source schema as production has it).
+# Builds database $1 from the Supabase shim and supabase/migrations up to and including version $2 (default: all of
+# them). Production stops at 0156 (1 Nov 2026: 0157-0164 were never applied there), so the rehearsal builds both.
+# Each applied file is recorded in supabase_migrations.schema_migrations, as the Supabase CLI records it, so the data
+# move reads the source version the way it does on the live project.
 build_schema() {
-  local db="$1"
+  local db="$1" upto="${2:-9999}"
   "$PGBIN/psql" -X -q -d postgres -c "DROP DATABASE IF EXISTS $db" -c "CREATE DATABASE $db" 2>/dev/null
   "$PGBIN/psql" -X -q -d postgres -c "ALTER DATABASE $db SET search_path = public, extensions" >/dev/null
   "$PGBIN/psql" -X -q -v ON_ERROR_STOP=1 -d "$db" -f "$ROOT/backend/tests/datamove/supabase-shim.sql" >/dev/null 2>&1
-  local n=0 f
+  "$PGBIN/psql" -X -q -v ON_ERROR_STOP=1 -d "$db" -c "CREATE SCHEMA IF NOT EXISTS supabase_migrations;
+    CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations (version text PRIMARY KEY, statements text[], name text);" >/dev/null
+  local n=0 f v last=""
   for f in "$ROOT"/supabase/migrations/*.sql; do
+    v="$(basename "$f" | cut -d_ -f1)"
+    [ "$((10#$v))" -le "$((10#$upto))" ] || continue
     # pg_cron and pg_net are Supabase's; the shim provides the schemas and the functions the migrations call.
     sed -E '/create extension if not exists (pg_cron|pg_net)/Id' "$f" | "$PGBIN/psql" -X -q -v ON_ERROR_STOP=1 -d "$db" -f - >/dev/null 2>"$PGDIR/last-migration.err" || {
       echo "FAILED applying $(basename "$f")" >&2; cat "$PGDIR/last-migration.err" >&2; exit 1; }
-    n=$((n + 1))
+    "$PGBIN/psql" -X -q -v ON_ERROR_STOP=1 -d "$db" -c "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('$v', '$(basename "$f" .sql | cut -d_ -f2-)')" >/dev/null
+    n=$((n + 1)) last="$v"
   done
-  echo "$db: schema from $n migrations"
+  echo "$db: schema from $n migrations (0001 to ${last:-none})"
 }
 
 pg_running() { "$PGBIN/pg_ctl" -D "$PGDIR/data" status >/dev/null 2>&1; }
@@ -52,6 +64,23 @@ case "${1:-}" in
     ;;
   pg-down)
     if pg_running; then "$PGBIN/pg_ctl" -D "$PGDIR/data" -m fast stop >/dev/null; echo "postgres stopped"; else echo "postgres not running"; fi
+    ;;
+  schema)
+    # An empty source schema only: schema <database> [up-to version], e.g. schema rotaflow_source_0156 0156.
+    db="${2:?usage: schema <database> [version]}"
+    case "$db" in *source*) ;; *) echo "database name must contain source" >&2; exit 2 ;; esac
+    "$0" pg-up >/dev/null
+    build_schema "$db" "${3:-9999}"
+    ;;
+  live-source)
+    # The live-shaped source: live-source <database> <version>, built from migrations 0001 to <version> and filled with
+    # backend/tests/datamove/seed-live-shape.sql (the live project's row counts, synthetic values).
+    db="${2:?usage: live-source <database> <version>}"; v="${3:?usage: live-source <database> <version>}"
+    case "$db" in *source*) ;; *) echo "database name must contain source" >&2; exit 2 ;; esac
+    "$0" pg-up >/dev/null
+    build_schema "$db" "$v"
+    "$PGBIN/psql" -X -q -v ON_ERROR_STOP=1 --single-transaction -d "$db" -f "$ROOT/backend/tests/datamove/seed-live-shape.sql" >/dev/null
+    echo "$db: seeded in the live shape"
     ;;
   source)
     "$0" pg-up >/dev/null
@@ -140,11 +169,27 @@ SQL
     ROTAFLOW_PRIVATE_ROOT="$WPRIV" php "$ROOT/backend/bin/datamove.php" apply --source-uri-file="$WPRIV/source-uri" | tail -2
     ROTAFLOW_PRIVATE_ROOT="$WPRIV" php "$ROOT/backend/bin/datamove.php" verify --source-uri-file="$WPRIV/source-uri" | tail -2
     ;;
+  live)
+    # The live-shaped rehearsal at one version: live <version> [plan]. Full (plan, apply, verify, resume, and the
+    # pre-0164 privacy cases) unless "plan" is given.
+    v="${2:?usage: live <version> [plan]}"
+    "$0" live-source "rotaflow_source_live_$v" "$v"
+    bash "$ROOT/scripts/test-db.sh" up >/dev/null
+    DATAMOVE_PG_PORT="$PGPORT" PGBIN="$PGBIN" DATAMOVE_LIVE_DB="rotaflow_source_live_$v" DATAMOVE_LIVE_VERSION="$v" DATAMOVE_LIVE_MODE="${3:-full}" \
+      php "$ROOT/backend/tests/datamove/run-live.php"
+    ;;
   all)
+    # 1. the full synthetic source at the repo's newest version (0164); 2. the live-shaped source at 0156 (where
+    # production stops) and at 0164, end to end; 3. a dry run of the live-shaped source at every version between.
     "$0" pg-up
     "$0" source "${@:2}"
     "$0" target
-    DATAMOVE_PG_PORT="$PGPORT" ROTAFLOW_PRIVATE_ROOT="$PRIV" PGBIN="$PGBIN" php "$ROOT/backend/tests/datamove/run.php"
+    rc=0
+    DATAMOVE_PG_PORT="$PGPORT" ROTAFLOW_PRIVATE_ROOT="$PRIV" PGBIN="$PGBIN" php "$ROOT/backend/tests/datamove/run.php" || rc=1
+    for v in 0156 0164; do "$0" live "$v" || rc=1; done
+    for v in 0157 0158 0159 0160 0161 0162 0163; do "$0" live "$v" plan || rc=1; done
+    [ "$rc" = 0 ] && echo "DATAMOVE: all rehearsals passed (full synthetic at 0164; live-shaped at 0156 and 0164; dry runs 0157-0163)" || echo "DATAMOVE: a rehearsal FAILED (see above)"
+    exit $rc
     ;;
-  *) sed -n '2,10p' "$0"; exit 2 ;;
+  *) sed -n '2,14p' "$0"; exit 2 ;;
 esac
