@@ -165,7 +165,7 @@ final class Enquiries implements Module
     private function salt(): string
     {
         $s = $this->ctx->config['enquiry_ip_salt'] ?? null;
-        return is_string($s) && $s !== '' ? $s : hash_hmac('sha256', 'enquiry-ip', (string) ($this->ctx->config['secret_key'] ?? 'unconfigured'));
+        return is_string($s) && $s !== '' ? $s : hash_hmac('sha256', 'enquiry-ip', \RotaFlow\Secret::hmacKey($this->ctx->config));
     }
 
     // ---- the inbox ---------------------------------------------------------------------------------

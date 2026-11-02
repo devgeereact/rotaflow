@@ -67,3 +67,9 @@ check('a manager reopens it; it keeps who approved it and when', $s === 200 && $
 check('a reopened period can be submitted again', call($api, 'sam', 'POST', "/orgs/$org/timesheets/submit", $P + ['total_minutes' => 2500])[1]['timesheet']['status'] === 'submitted');
 check('another organisation\'s timesheet id is 404', call($api, 'zed', 'POST', "/orgs/$other/timesheets/$t1/reopen")[0] === 404 && call($api, 'zed', 'POST', "/orgs/$org/timesheets/$t1/reopen")[0] === 404);
 check('approvals and reopenings are audited', (int) $pdo->query("SELECT COUNT(*) FROM audit_logs WHERE org_id = '$org' AND action IN ('timesheet.approved','timesheet.reopened','timesheet.submitted')")->fetchColumn() >= 6);
+
+// Four eyes (audit): a manager does not approve their own hours, which feed payroll; the owner may.
+$own = $approve('mark', [['staff_profile_id' => $staff['mark'], 'total_minutes' => 6000]], ['period_start' => '2031-03-03', 'period_end' => '2031-03-09']);
+check('a manager cannot approve their own timesheet', $own[0] === 403 && $own[1]['error']['code'] === 'own_timesheet', json_encode($own));
+check('the owner can approve it', $approve('olga', [['staff_profile_id' => $staff['mark'], 'total_minutes' => 600]], ['period_start' => '2031-03-03', 'period_end' => '2031-03-09'])[0] === 200);
+

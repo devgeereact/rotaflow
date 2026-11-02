@@ -16,7 +16,9 @@ final class Staff implements Module
 {
     private const PALETTE = ['indigo', 'sky', 'teal', 'moss', 'olive', 'amber', 'clay', 'rose', 'magenta', 'violet', 'slate', 'cocoa'];
     private const SENSITIVE = ['payroll_id', 'start_date', 'phone', 'email', 'holiday_allowance'];
-    private const SELF_EDITABLE = ['phone', 'photo_url'];
+    // photo_url left this list (security audit, 1 Nov 2026): a self-set link to any https host made every colleague's
+    // browser call it (a tracking image). People upload their own photo instead (Photos.php).
+    private const SELF_EDITABLE = ['phone'];
     private const FIELDS = ['first_name', 'last_name', 'email', 'job_title', 'job_title_id', 'department_id', 'contract_type', 'weekly_hours', 'holiday_allowance', 'skills', 'payroll_id', 'start_date', 'phone', 'photo_url', 'active'];
 
     public function __construct(private readonly Ctx $ctx) {}
@@ -245,7 +247,7 @@ final class Staff implements Module
         if (!$manager) {
             foreach ($f as $k => $v) {
                 if (!in_array($k, self::SELF_EDITABLE, true) && !$this->same($k, $cur[$k] ?? null, $v)) {
-                    throw new HttpError(403, 'self_edit_restricted', 'You can only update your phone number and photo on your own profile');
+                    throw new HttpError(403, 'self_edit_restricted', 'You can only update your phone number on your own profile; upload a photo instead of linking one');
                 }
             }
             $f = array_intersect_key($f, array_flip(self::SELF_EDITABLE));

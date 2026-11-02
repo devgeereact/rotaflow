@@ -114,3 +114,19 @@ describe('scrubBreadcrumb', () => {
     expect(scrubBreadcrumb(crumb)).toBe(crumb);
   });
 });
+
+describe('secrets in paths and navigation breadcrumbs (security audit, 1 Nov 2026)', () => {
+  it('replaces an invitation token in the path', () => {
+    expect(stripQueryString('https://rotaflow.space/invite/abc123secret?x=1')).toBe(
+      'https://rotaflow.space/invite/:token',
+    );
+  });
+
+  it('scrubs from and to on navigation breadcrumbs', () => {
+    const b = scrubBreadcrumb({
+      category: 'navigation',
+      data: { from: '/invite/tok1', to: '/legal/cookies?secret=s' },
+    });
+    expect(b?.data).toEqual({ from: '/invite/:token', to: '/legal/cookies' });
+  });
+});

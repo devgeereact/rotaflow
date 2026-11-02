@@ -51,14 +51,19 @@ final class CalendarFeed implements Module
         $pdo->beginTransaction();
         try {
             $pdo->prepare('UPDATE calendar_feed_tokens SET revoked_at = UTC_TIMESTAMP() WHERE org_id = ? AND staff_profile_id = ? AND revoked_at IS NULL')->execute([$o, $own]);
-            $pdo->prepare('INSERT INTO calendar_feed_tokens (id, org_id, staff_profile_id, token_hash) VALUES (?, ?, ?, ?)')->execute([Db::uuid(), $o, $own, hash('sha256', $token)]);
+            $tid = Db::uuid();
+            $pdo->prepare('INSERT INTO calendar_feed_tokens (id, org_id, staff_profile_id, token_hash) VALUES (?, ?, ?, ?)')->execute([$tid, $o, $own, hash('sha256', $token)]);
             Audit::log($pdo, $o, $user['id'], 'calendar_feed.issued', 'calendar_feed_tokens', null, [], 'info', 'org', $ip);
             $pdo->commit();
         } catch (\Throwable $e) {
             $pdo->rollBack();
             throw $e;
         }
-        return [201, ['token' => $token, 'path' => '/api/ics?token=' . $token]];
+        // created_at lets the browser tie the link it keeps to this exact feed, so a shared device never shows one
+        // person's link to the next (security audit, 1 Nov 2026).
+        $c = $pdo->prepare('SELECT created_at FROM calendar_feed_tokens WHERE id = ?');
+        $c->execute([$tid]);
+        return [201, ['token' => $token, 'path' => '/api/ics?token=' . $token, 'created_at' => Time::iso((string) $c->fetchColumn())]];
     }
 
     private function revoke(array $user, array $in, string $ip, string $o): array
@@ -79,7 +84,15 @@ final class CalendarFeed implements Module
         if (preg_match('/^[A-Za-z0-9_-]{43}$/', $token) !== 1) {
             throw HttpError::notFound();
         }
-        $q = $pdo->prepare('SELECT id, org_id, staff_profile_id, COALESCE(last_used_at, created_at) AS seen FROM calendar_feed_tokens WHERE token_hash = ? AND revoked_at IS NULL');
+        // The feed stops when its person is suspended or removed, not only when the token is revoked (security audit,
+        // 1 Nov 2026): an active staff record whose person still holds an active membership of that organisation.
+        $q = $pdo->prepare(
+            "SELECT t.id, t.org_id, t.staff_profile_id, COALESCE(t.last_used_at, t.created_at) AS seen
+               FROM calendar_feed_tokens t
+               JOIN staff_profiles sp ON sp.id = t.staff_profile_id AND sp.org_id = t.org_id AND sp.active = 1
+               JOIN memberships m ON m.org_id = t.org_id AND m.user_id = sp.user_id AND m.status = 'active'
+              WHERE t.token_hash = ? AND t.revoked_at IS NULL"
+        );
         $q->execute([hash('sha256', $token)]);
         $t = $q->fetch();
         if ($t === false) {

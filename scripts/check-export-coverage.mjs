@@ -54,7 +54,7 @@ function tablesWithColumn(column) {
       const [, name, body] = match;
       // The column declared on this table, not a mention in a comment or a
       // foreign key on some other table's column.
-      if (new RegExp(`^\\s*${column}\\s+uuid`, 'm').test(body)) found.add(name);
+      if (new RegExp(`^\\s*${column}\\s+uuid`, 'm').test(body)) found.add(name); // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- build-time or test code; the pattern is built from this repository's own names, never user input
     }
 
     // Migrations are read in order, so a table dropped later is not a tenant

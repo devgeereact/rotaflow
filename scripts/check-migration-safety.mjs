@@ -254,7 +254,7 @@ for (const file of files) {
   // Declarations are read from the RAW file: they live in a comment.
   const declaredAll = /--\s*SAFETY\s*:/i.test(raw);
   const declaredFor = (id) =>
-    declaredAll || new RegExp(`--\\s*SAFETY\\(${id}\\)\\s*:`, 'i').test(raw);
+    declaredAll || new RegExp(`--\\s*SAFETY\\(${id}\\)\\s*:`, 'i').test(raw); // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- build-time or test code; the pattern is built from this repository's own names, never user input
 
   const flagged = [];
   for (const statement of statements(sql)) {

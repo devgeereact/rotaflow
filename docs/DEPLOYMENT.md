@@ -277,6 +277,13 @@ below (merge, never overwrite):
 The build needs `VITE_CLERK_PUBLISHABLE_KEY` (the GitHub variable already holds the live `pk_live_…`); without it
 the build renders signed out. `VITE_SUPABASE_*`, `VITE_IMAGEKIT_*` and `VITE_ENABLE_OAUTH` are no longer read.
 
+**Folder `.htaccess` files ship with the release (2 November 2026).** `public/assets/`, `public/icons/` and
+`public/fonts/` each carry an `.htaccess` with `Options -Indexes`, so the host's directory listing is off where the
+release can reach. `release.json` allows `.htaccess` in the dist part; the build step and `scripts/release.mjs` both
+refuse a `dist/.htaccess`, so the web-root file stays hand-composed. A smoke check expects `/assets/` to answer 403.
+The PHP entry point removes `X-Powered-By` itself. Still only in the composed root file: `ServerSignature Off`,
+unsetting `X-Turbo-Charged-By`, and the origin lock (see `docs/SECURITY.md` open items).
+
 NOT TESTED: this `.htaccess` behind Apache and Cloudflare. Verify after the cutover deploy: `/api/health` answers
 JSON 200, `/api/me` without a token answers 401 JSON (not HTML), and sign-in loads with no CSP violation.
 

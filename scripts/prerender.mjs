@@ -67,6 +67,7 @@ function escapeText(value) {
 /** Replaces one `<meta>` tag's content, and fails loudly if it is missing. */
 function setMeta(html, attribute, key, value) {
   const pattern = new RegExp(
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- build-time or test code; the pattern is built from this repository's own names, never user input
     `<meta\\s+${attribute}="${key.replace(/[.:]/g, '\\$&')}"\\s+content="[^"]*"\\s*/?>`,
   );
   if (!pattern.test(html)) fail(`index.html has no <meta ${attribute}="${key}">`);

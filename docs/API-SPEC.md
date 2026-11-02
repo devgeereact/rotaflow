@@ -367,7 +367,7 @@ routes, 600 per minute per person elsewhere, request body 256 KB.
 | `POST /orgs/{o}/delegations` | owner, manager (real role) | `{membership_id, ends_at, note?}`; at most 90 days; replaces any live cover for the pair | `invalid_input` 422 |
 | `POST /orgs/{o}/delegations/{d}/revoke` | lender, or real owner or manager | End cover now | |
 | `GET /orgs/{o}/invites` | owner, manager | Invitations with a derived `state`; never a token | |
-| `POST /orgs/{o}/invites` | owner, manager | `{email, role: manager|staff}`; returns the token once. 60 per hour per organisation, 3 per address per day | `invite_pending`, `already_member` 409 |
+| `POST /orgs/{o}/invites` | owner, manager | `{email, role: manager|staff}`; returns the token once. A manager invitation needs the caller's own (real) manager or owner role: delegated cover or a support session gets 403. 60 per hour per organisation, 3 per address per day | `invite_pending`, `already_member` 409 |
 | `POST /orgs/{o}/invites/{i}/revoke` | owner, manager | Revoke a pending invitation | |
 | `POST /platform/orgs` | platform owner, admin (everyone else 404) | `{name, owner_email}`: creates an organisation with no members and an owner invitation; returns the token once. 20 per hour | `invalid_input` 422 |
 | `POST /platform/orgs/{o}/owner-invites` | platform owner, admin | `{owner_email}`: replaces the pending owner invitation, only while the organisation has no members | `org_has_members` 409 |
@@ -391,7 +391,7 @@ All under `/api`, all org-scoped (`{o}`); `{l}` location, `{d}` department, `{t}
 | `GET /orgs/{o}/job-titles`, `POST /orgs/{o}/job-titles`, `POST .../{t}`, `POST .../{t}/delete` | read: member; write: owner, or manager if the organisation allows | The catalogue. `title_exists` and `colour_in_use` 409. Renaming updates the text copy on staff |
 | `GET /orgs/{o}/staff[?active=1]`, `GET .../{s}` | member | Staff records. Payroll id, start date, phone, email and holiday allowance are `null` unless the caller is an owner or manager or the record is theirs. `location_ids` included |
 | `POST /orgs/{o}/staff` | owner, manager | Create. A matching member without a record is linked. `payroll_id_taken` 409 |
-| `POST /orgs/{o}/staff/{s}` | owner, manager; or the person for `phone` and `photo_url` only | Update. Other fields from the person: `self_edit_restricted` 403. Payroll id once set: `payroll_id_locked` 409 |
+| `POST /orgs/{o}/staff/{s}` | owner, manager; or the person for `phone` only (a photo is uploaded, not linked) | Update. Other fields from the person: `self_edit_restricted` 403. Payroll id once set: `payroll_id_locked` 409 |
 | `POST /orgs/{o}/staff/{s}/locations` | owner, manager | `{location_ids}` replaces the set |
 | `GET/POST /orgs/{o}/staff/{s}/pay-rates` | read: owner, manager, the person; write: owner, manager | History of whole-pence hourly rates by start date. `rate_exists` 409 |
 | `GET/POST /orgs/{o}/staff/{s}/emergency-contacts`, `POST .../{c}`, `POST .../{c}/delete` | the person, owner, manager | Name and phone required |
@@ -452,7 +452,7 @@ Nothing about a unique index is exposed. A member reads only their own records o
 | `POST /orgs/{o}/open-shifts/{h}/claim` | a member with a staff record | `shift_taken`, `already_working` 409; `not_published`, `already_started` 403 |
 | `GET /orgs/{o}/timesheets[?period_start&period_end&staff_profile_id&status]` | member (own), owner, manager | |
 | `POST /orgs/{o}/timesheets/submit` | the person | `{period_start, period_end, total_minutes}`; `timesheet_locked` 409 once approved or exported |
-| `POST /orgs/{o}/timesheets/approve` | owner, manager | `{period_start, period_end, approvals: [{staff_profile_id, total_minutes}]}`, up to 500, all or nothing; bumps `version`, clears `recalculation_required_at` |
+| `POST /orgs/{o}/timesheets/approve` | owner, manager | `{period_start, period_end, approvals: [{staff_profile_id, total_minutes}]}`, up to 500, all or nothing; bumps `version`, clears `recalculation_required_at`. A non-owner cannot approve their own line: `own_timesheet` 403 |
 | `POST /orgs/{o}/timesheets/{t}/reopen` | owner, manager | Back to `open`; the approval history stays |
 
 Deleting a shift removes the swaps that offered it; clock events that pointed at it keep their record and lose the link.
@@ -465,10 +465,10 @@ Placeholders: `{n}` announcement. The Dispatcher and the cron entry have no HTTP
 | --------------- | --- | ---- |
 | `GET /orgs/{o}/notifications[?unread=1&limit]` | the person (own) | Inbox, newest first, with `unread_count` |
 | `POST /orgs/{o}/notifications/read` | the person (own) | `{all: true}` or `{ids: [up to 100]}` |
-| `POST /me/push-subscriptions` | the person | `{endpoint (https), keys: {p256dh, auth}}`; registering a device another person had takes it over |
+| `POST /me/push-subscriptions` | the person | `{endpoint (https on 443, a browser push service host only), keys: {p256dh, auth}}`; other hosts 422. At most 10 devices per person (the oldest is dropped). Registering a device another person had takes it over |
 | `POST /me/push-subscriptions/delete` | the person | `{endpoint}`; only their own |
 | `POST /orgs/{o}/settings` | owner | `{notification_defaults?, job_titles_managed_by?}`; the matrix is 5 events (`rota_published`, `shift_reminder`, `swap_requests`, `leave_updates`, `announcements`) by 3 channels (`in_app`, `email`, `push`), booleans only |
-| `GET/POST /orgs/{o}/smtp`, `POST .../smtp/test`, `POST .../smtp/delete` | owner | The organisation's own mail account. A read says `has_password`, never the password. Saving without `smtp_pass` keeps the stored one; changing host, port, user or password clears `verified_at`. The test mails only the owner's own address and returns `{ok}` or a short `error` |
+| `GET/POST /orgs/{o}/smtp`, `POST .../smtp/test`, `POST .../smtp/delete` | owner | The organisation's own mail account. A read says `has_password`, never the password. Saving without `smtp_pass` keeps the stored one; changing host, port, user or password clears `verified_at`. The host must resolve to public addresses and the port be 25, 465, 587 or 2525 (422 otherwise). The test mails only the owner's own address and returns `{ok}` or a short `error` (`smtp_rejected`, `smtp_timeout`, `connect_failed`), never the server's banner |
 | `GET/POST /orgs/{o}/announcements`, `POST .../{n}`, `.../{n}/publish`, `.../{n}/delete` | read: member (staff see published only); write: owner, manager | `{title, body, urgent?, scope: org|location|department, location_id?, department_id?, publish?}`. Publishing the first time notifies the audience once |
 | `POST .../announcements/{n}/read` | a member with a staff record | Idempotent |
 | `GET .../announcements/{n}/reads`, `POST .../{n}/remind` | owner, manager | Who has read it and how many in the audience have not; remind those who have not (6 an hour) |

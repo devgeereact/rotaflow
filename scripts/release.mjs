@@ -51,7 +51,7 @@ function fail(message) {
 const step = (m) => console.log(`\n> ${m}`);
 
 function run(cmd, args, opts = {}) {
-  const r = spawnSync(cmd, args, { cwd: root, encoding: 'utf8', stdio: opts.inherit ? 'inherit' : 'pipe', env: opts.env ?? process.env, input: opts.input, shell: opts.shell ?? false });
+  const r = spawnSync(cmd, args, { cwd: root, encoding: 'utf8', stdio: opts.inherit ? 'inherit' : 'pipe', env: opts.env ?? process.env, input: opts.input, shell: opts.shell ?? false });  // nosemgrep: javascript.lang.security.audit.spawn-shell-true.spawn-shell-true -- shell defaults to false; only the operator build command from release.json opts in
   if (r.status !== 0 && !opts.allowFail) fail(`${cmd} ${args.join(' ')} failed (exit ${r.status}).\n${(r.stderr ?? '').trim()}`);
   return { status: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
 }
@@ -68,6 +68,13 @@ function remote(script, opts = {}) {
 const dest = (to) => (isLocal ? `${process.env.HOME}/${to}/` : `${cfg.host}:${to}/`);
 const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
 // A part may "allow" a protected name it builds itself (e.g. an app folder's own .htaccess); never the web root's.
+// A part that allows `.htaccess` ships sub-folder files only (e.g. dist/assets/.htaccess with Options -Indexes).
+// The web root's own .htaccess is hand-composed on the server and must never be overwritten by a release.
+for (const part of cfg.parts ?? []) {
+  if ((part.allow ?? []).includes('.htaccess') && existsSync(path.join(root, part.from, '.htaccess'))) {
+    fail(`${part.from}/.htaccess exists: a release never sends the web root's .htaccess.`);
+  }
+}
 const excludes = (part) => [...protect.filter((p) => !(part.allow ?? []).includes(p)), ...(part.exclude ?? [])].flatMap((p) => ['--exclude', p]);
 
 function rsync(args) {

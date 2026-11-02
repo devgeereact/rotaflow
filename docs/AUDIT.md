@@ -1273,3 +1273,32 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   overflow clean on six public pages at 1440 and 390.
 - Rollback: `pnpm release --rollback --go` restores the snapshot.
 
+
+## 2026-11-02: Security audit (full, source-first) and fixes
+
+- Scope: PHP API, React client, release and web-server configuration, CI workflows, dependencies, git history. Four
+  read-only hunters (authorisation, input and files, client side, deployment), then fixes with regression tests.
+  Full artifacts (findings, coverage ledger, report) are kept outside the repository in
+  `.local-state/security-audit/run-1/`.
+- **Confirmed and fixed (17, none critical or high).** Medium: delegated cover could invite a permanent manager;
+  managers could approve their own timesheets and leave; a kept calendar link showed to the next person on a shared
+  device; staff photos kept EXIF location; workflow actions on movable tags (including the job holding the SSH key).
+  Low: contact form refused every submission (headers not passed to handlers), feed survived suspension, no disk or
+  organisation cap on uploads, document links without a scheme check, self-set photo link as a tracking image, invite
+  tokens in Sentry, SMTP host could reach private addresses, push endpoint any https host, directory listing on
+  `/assets/` and `/icons/`. Informational: the signing key fallback, `X-Powered-By: PHP/8.4.27`, no CI secret scan.
+- **Verified clean.** JWT (RS256 pinned, iss, azp, exp), tenant scoping on every foreign id, platform routes guarded
+  server-side, all SQL prepared, CSV/ICS/email injection defences, `display_errors` off, CORS same-origin (live: no
+  `Access-Control-Allow-Origin` for a foreign Origin), rate limits, Cloudflare client IP trusted only from Cloudflare
+  ranges, tokens hashed, SMTP passwords AES-GCM, no passwords stored (Clerk), source maps not uploaded.
+- **Secrets.** gitleaks over all 471 commits: no leaks; `docs/ACCOUNTS.md` never tracked. Semgrep at error and
+  warning: clean after fixes; each remaining marker is inline `nosemgrep` with its reason.
+- **Dependencies.** Minor updates (Biome 2.6.4, react-router-dom, typescript-eslint, lucide-react, postcss and
+  others) and a `serialize-javascript ^7.1.3` override. Not applicable: Clerk GHSA-w24r-5266-9c3c (no Clerk
+  organisation, billing or reverification checks are used). Accepted: glob, minimatch, deepmerge (build time only).
+  Planned majors, not drive-by: `@clerk/react`, ESLint 10, TypeScript 7, Sentry 11. No unused packages.
+- **Needs the owner** (in `docs/SECURITY.md` open items): replace the forgeable CF-RAY origin lock; copy the header
+  block (`ServerSignature Off`, unset `X-Turbo-Charged-By`) into the live root `.htaccess`; add `email_verified` to
+  the Clerk session token. Clerk `redirect_url` is now limited to this origin; confirm by hand after release.
+- Checks: `pnpm run check` (unit, build, bundle, docs, export, PHP suite on the isolated test database) and
+  Playwright 142 passed, 0 failed, on the local dev server. NOT TESTED: Docker suites, real phones.

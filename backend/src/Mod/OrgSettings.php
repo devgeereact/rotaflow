@@ -202,6 +202,7 @@ final class OrgSettings implements Module
         if (preg_match('/^[A-Za-z0-9.-]{1,253}$/', $host) !== 1 || $port !== floor($port) || !SmtpMailer::validEmail($from)) {
             throw HttpError::invalid('smtp_host, smtp_port or from_email is not valid');
         }
+        $this->guardSmtpHost($host, (int) $port);
         $q = $pdo->prepare('SELECT smtp_host, smtp_port, smtp_user, smtp_pass_enc FROM org_smtp_settings WHERE org_id = ?');
         $q->execute([$o]);
         $cur = $q->fetch();
@@ -220,16 +221,42 @@ final class OrgSettings implements Module
     }
 
     /** Sends one message to the owner's own address through the saved account; success stamps `verified_at`. */
+    /**
+     * An organisation's own mail server must be a public host on a mail port. Without this an owner could point
+     * RotaFlow at the hosting server's own ports or its internal network and read back what answers
+     * (security audit, 1 Nov 2026). `allow_private_smtp_hosts` exists for the tests' local fake server only.
+     */
+    private function guardSmtpHost(string $host, int $port): void
+    {
+        if (($this->ctx->config['allow_private_smtp_hosts'] ?? false) === true) {
+            return;
+        }
+        if (!in_array($port, [25, 465, 587, 2525], true)) {
+            throw HttpError::invalid('smtp_port must be 25, 465, 587 or 2525');
+        }
+        $ips = filter_var($host, FILTER_VALIDATE_IP) !== false ? [$host] : (gethostbynamel($host) ?: []);
+        if (strtolower($host) === 'localhost' || str_ends_with(strtolower($host), '.localhost')) {
+            $ips[] = '127.0.0.1';
+        }
+        foreach ($ips as $a) {
+            if (filter_var($a, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                throw HttpError::invalid('smtp_host must be a public mail server');
+            }
+        }
+    }
+
     private function testSmtp(array $user, array $in, string $ip, string $o): array
     {
         $pdo = $this->ctx->pdo;
         $this->owner($user, $o, true);
         $this->ctx->limits->hit('smtp-test', $o, 10, 3600);
-        $q = $pdo->prepare('SELECT 1 FROM org_smtp_settings WHERE org_id = ?');
+        $q = $pdo->prepare('SELECT smtp_host, smtp_port FROM org_smtp_settings WHERE org_id = ?');
         $q->execute([$o]);
-        if ($q->fetchColumn() === false) {
+        $saved = $q->fetch();
+        if ($saved === false) {
             throw HttpError::conflict('smtp_not_set', 'Save an SMTP account first');
         }
+        $this->guardSmtpHost((string) $saved['smtp_host'], (int) $saved['smtp_port']); // checked again: DNS can change
         $mail = Mail::forOrg($this->ctx, $o);
         $own = $pdo->prepare('SELECT email FROM users WHERE id = ?');
         $own->execute([$user['id']]);
@@ -239,7 +266,9 @@ final class OrgSettings implements Module
         // Only ever to the signed-in owner's own address: the endpoint cannot be used to mail a third party.
         $ok = $mail['mailer']->send((string) $own->fetchColumn(), 'RotaFlow test email', "This is a test from RotaFlow.\n\nIf you can read it, your organisation's mail settings work.");
         if (!$ok) {
-            return [200, ['ok' => false, 'error' => $mail['mailer']->lastError()]];
+            // A server's reply code is not passed on: with any host allowed it read back other services' banners.
+            $err = (string) $mail['mailer']->lastError();
+            return [200, ['ok' => false, 'error' => str_starts_with($err, 'smtp_') && $err !== 'smtp_timeout' ? 'smtp_rejected' : $err]];
         }
         $pdo->prepare('UPDATE org_smtp_settings SET verified_at = UTC_TIMESTAMP() WHERE org_id = ?')->execute([$o]);
         return [200, ['ok' => true]];

@@ -526,6 +526,13 @@ turn itself off when a session ends; that part of D8 is not built.
    once the retention periods themselves are confirmed against legal advice.
 5. **Build a subject-access export** that assembles one package instead of a
    manual per-table pull (§4).
+6. **Replace the CF-RAY origin lock** with Cloudflare Authenticated Origin Pulls or a Cloudflare IP-range lock in
+   the composed root `.htaccess`: the `CF-RAY` header can be sent by anyone who reaches the server's IP directly
+   (security audit, 2 November 2026).
+7. **Copy the header block into the live root `.htaccess`**: `ServerSignature Off` and unsetting
+   `X-Turbo-Charged-By` / `X-Powered-By` (the repository copy has them; the release never ships the root file).
+8. **Add `email_verified` to the Clerk session token** and require it in `Users::linkOrCreate`, now that Google
+   sign-in is enabled beside the email code.
 
 ## Privacy data map
 

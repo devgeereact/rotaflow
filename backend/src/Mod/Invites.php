@@ -59,6 +59,11 @@ final class Invites implements Module
         if (!in_array($role, ['manager', 'staff'], true)) {
             throw HttpError::invalid("Role must be 'manager' or 'staff'");
         }
+        if ($role === 'manager') {
+            // A delegate or a support session acts as manager for a while; it must not mint a permanent manager
+            // that outlives the cover or the session (security audit, 1 Nov 2026).
+            Scope::requireReal($m, Scope::MANAGERS);
+        }
         $dept = Input::optStr($in, 'department_id', 36);
         $loc = Input::optStr($in, 'location_id', 36);
         foreach (['departments' => $dept, 'locations' => $loc] as $table => $id) {

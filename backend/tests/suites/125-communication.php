@@ -7,7 +7,7 @@ use RotaFlow\Mod\CalendarFeed;
 
 $smtp = start_fake_smtp();
 $platformSmtp = ['smtp' => ['host' => '127.0.0.1', 'port' => $smtp['port'], 'secure' => false, 'user' => 'u', 'password' => 'p', 'from_email' => 'noreply@rotaflow.example.test', 'from_name' => 'RotaFlow']];
-$api = test_api($pdo, null, 'open', $platformSmtp + ['allow_plain_smtp' => true]);
+$api = test_api($pdo, null, 'open', $platformSmtp + ['allow_plain_smtp' => true, 'allow_private_smtp_hosts' => true]);
 $org = call($api, 'olga', 'POST', '/orgs', ['name' => 'Comms Org'])[1]['org']['id'];
 $other = call($api, 'zed', 'POST', '/orgs', ['name' => 'Elsewhere'])[1]['org']['id'];
 $user = $staff = [];
@@ -66,7 +66,7 @@ call($api, 'olga', 'POST', "/orgs/$org/smtp", $bounce);
 check('a test that cannot connect reports a short reason, not details', $s === 200 && $r['ok'] === false && $r['error'] === 'connect_failed', json_encode($r));
 call($api, 'olga', 'POST', "/orgs/$org/smtp", $acct);
 check('the account is used for the organisation\'s own mail (its From address)', (function () use ($pdo, $smtp, $user, $org, $platformSmtp): bool {
-    $ctx = test_ctx($pdo, $platformSmtp + ['allow_plain_smtp' => true]);
+    $ctx = test_ctx($pdo, $platformSmtp + ['allow_plain_smtp' => true, 'allow_private_smtp_hosts' => true]);
     RotaFlow\Notify::enqueue($pdo, $org, 'leave/reviewed', [$user['sam']], 'leave', 'Via the org account');
     (new RotaFlow\Dispatcher($ctx))->drain();
     $m = array_values(array_filter($smtp['messages'](), static fn ($x) => str_contains($x['raw'], 'Via the org account')));
@@ -148,6 +148,11 @@ check('it has this person\'s published, uncancelled shift only', substr_count($b
 $unfolded = preg_replace("/\r\n /", '', $body);
 check('notes are escaped and cannot add a property line', str_contains($unfolded, 'Bring ID\; side door\, ask for "Jo"\nSecond line') && !preg_match('/^Second line/m', $body), $unfolded);
 check('every line ends CRLF and none is longer than 75 octets', !preg_match('/(?<!\r)\n/', $body) && max(array_map('strlen', explode("\r\n", $body))) <= 75);
+// The feed stops when its person is suspended, not only when the token is revoked (audit: calendar-feed-ignores-membership).
+$pdo->prepare("UPDATE memberships SET status = 'suspended' WHERE org_id = ? AND user_id = (SELECT sp.user_id FROM staff_profiles sp JOIN calendar_feed_tokens t ON t.staff_profile_id = sp.id WHERE t.token_hash = ?)")->execute([$org, hash('sha256', $tok)]);
+check('a suspended person\'s feed answers 404', $feed($tok)[0] === 404);
+$pdo->prepare("UPDATE memberships SET status = 'active' WHERE org_id = ? AND user_id = (SELECT sp.user_id FROM staff_profiles sp JOIN calendar_feed_tokens t ON t.staff_profile_id = sp.id WHERE t.token_hash = ?)")->execute([$org, hash('sha256', $tok)]);
+check('and works again once they are reinstated', $feed($tok)[0] === 200);
 check('times are UTC with a Z', preg_match('/^DTSTART:\d{8}T\d{6}Z\r?$/m', $body) === 1);
 check('a bad, short or unknown token is a bare 404 with no detail', $feed('nope')[0] === 404 && $feed(str_repeat('a', 43))[0] === 404 && $feed(str_repeat('a', 43))[1]['error']['code'] === 'not_found');
 check('guessing is rate limited (from one address)', (function () use ($api): bool { $codes = []; for ($i = 0; $i < 40; $i++) { $codes[] = $api->handle('GET', '/ics', [], '', '198.51.100.7', ['token' => str_repeat('b', 43)])[0]; } return in_array(429, $codes, true) && $codes[0] === 404; })());
@@ -180,3 +185,10 @@ check('with no mail account the invitation is still created, with the link, and 
 $refusing = test_api($pdo, null, 'open', ['smtp' => $platformSmtp['smtp']]);
 [$s, $r] = call($refusing, 'olga', 'POST', "/orgs/$org/invites", ['email' => 'bounce@example.test', 'role' => 'staff']);
 check('a refusing mail server does not lose the invitation either', $s === 201 && $r['email_sent'] === false && str_starts_with((string) $r['email_error'], 'smtp_550') && $r['token'] !== '');
+
+// An organisation's SMTP host must be public, on a mail port (audit C-02). Without the test switch:
+$strict = test_api($pdo, null, 'open', $platformSmtp + ['allow_plain_smtp' => true]);
+foreach ([['127.0.0.1', 587], ['10.0.0.5', 587], ['localhost', 587], ['169.254.169.254', 587], ['smtp.gmail.com', 3306]] as $i => [$h, $p]) {
+    check("an org SMTP host on a private address or odd port is refused ($i)", call($strict, 'olga', 'POST', "/orgs/$org/smtp", array_merge($acct, ['smtp_host' => $h, 'smtp_port' => $p]))[0] === 422);
+}
+

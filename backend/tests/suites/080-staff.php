@@ -59,7 +59,8 @@ check('the active filter hides leavers', count(call($api, 'pat', 'GET', "/orgs/$
 // ---- updating: managers, and the self-edit limit --------------------------------------------------------------
 check('a manager edits a record', call($api, 'mark', 'POST', "/orgs/$org/staff/$samStaff", ['weekly_hours' => 30])[0] === 200 && (float) $pdo->query("SELECT weekly_hours FROM staff_profiles WHERE id = '$samStaff'")->fetchColumn() === 30.0);
 check('a person updates their own phone', call($api, 'sam', 'POST', "/orgs/$org/staff/$samStaff", ['phone' => '07700 111111'])[0] === 200 && $pdo->query("SELECT phone FROM staff_profiles WHERE id = '$samStaff'")->fetchColumn() === '07700 111111');
-check('and photo', call($api, 'sam', 'POST', "/orgs/$org/staff/$samStaff", ['photo_url' => 'https://img.example.test/sam.jpg'])[0] === 200);
+// A self-set photo link is refused (audit CS-03): people upload their photo; a link to any host was a tracking image.
+check('but not a photo link', call($api, 'sam', 'POST', "/orgs/$org/staff/$samStaff", ['photo_url' => 'https://img.example.test/sam.jpg'])[0] === 403);
 [$s, $r] = call($api, 'sam', 'POST', "/orgs/$org/staff/$samStaff", ['first_name' => 'Samuel']);
 check('but not their own name', $s === 403 && $r['error']['code'] === 'self_edit_restricted', json_encode($r));
 check('nor their hours, payroll id, or active flag', call($api, 'sam', 'POST', "/orgs/$org/staff/$samStaff", ['weekly_hours' => 60])[0] === 403 && call($api, 'sam', 'POST', "/orgs/$org/staff/$samStaff", ['payroll_id' => 'P-999'])[0] === 403 && call($api, 'sam', 'POST', "/orgs/$org/staff/$samStaff", ['active' => false])[0] === 403);

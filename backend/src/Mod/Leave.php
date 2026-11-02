@@ -302,11 +302,16 @@ final class Leave implements Module
         }
         $pdo->beginTransaction();
         try {
-            $q = $pdo->prepare("SELECT status FROM $table WHERE id = ? AND org_id = ? FOR UPDATE"); // $table is a literal from this class
+            $q = $pdo->prepare("SELECT status, staff_profile_id FROM $table WHERE id = ? AND org_id = ? FOR UPDATE"); // $table is a literal from this class
             $q->execute([$id, $o]);
-            $cur = $q->fetchColumn();
-            if ($cur === false) {
+            $req = $q->fetch();
+            if ($req === false) {
                 throw HttpError::notFound();
+            }
+            $cur = $req['status'];
+            // Four eyes: a manager or delegate does not decide their own request; an owner may (security audit).
+            if ($m['role'] !== 'owner' && $req['staff_profile_id'] === Scope::staffProfileId($pdo, $o, $user['id'])) {
+                throw new HttpError(403, "own_$noun", "Someone else must decide your own $noun request");
             }
             if ($cur !== 'pending') {
                 throw HttpError::conflict('already_decided', "That $noun request has already been $cur");

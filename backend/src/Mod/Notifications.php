@@ -11,6 +11,29 @@ use RotaFlow\{Ctx, Db, Dispatcher, HttpError, Input, Module, Notify, Scope, Time
  */
 final class Notifications implements Module
 {
+    /** Devices kept per person; the oldest beyond this is dropped. */
+    private const MAX_DEVICES = 10;
+    /** The push services browsers use (Chrome/Edge via FCM, Firefox, Windows, Safari). Host or a subdomain of it. */
+    private const PUSH_HOSTS = ['fcm.googleapis.com', 'android.googleapis.com', 'push.services.mozilla.com', 'notify.windows.com', 'push.apple.com'];
+
+    public static function isPushService(string $endpoint): bool
+    {
+        if (preg_match('#^https://#', $endpoint) !== 1) {
+            return false;
+        }
+        $host = strtolower((string) parse_url($endpoint, PHP_URL_HOST));
+        $port = parse_url($endpoint, PHP_URL_PORT);
+        if ($host === '' || ($port !== null && $port !== 443)) {
+            return false;
+        }
+        foreach (self::PUSH_HOSTS as $h) {
+            if ($host === $h || str_ends_with($host, '.' . $h)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private const MISSED_AFTER_MIN = 30;
     private const MISSED_WINDOW_HOURS = 12;
 
@@ -79,9 +102,18 @@ final class Notifications implements Module
         if (preg_match('#^https://#', $endpoint) !== 1 || preg_match('/^[A-Za-z0-9_-]{20,200}$/', $p256dh) !== 1 || preg_match('/^[A-Za-z0-9_-]{8,100}$/', $auth) !== 1) {
             throw HttpError::invalid('endpoint (https) and keys.p256dh / keys.auth are required');
         }
+        if (!self::isPushService($endpoint)) {
+            // The server POSTs to every stored endpoint, so an arbitrary https URL made it a request forwarder
+            // (security audit, 1 Nov 2026). Browsers only ever hand out these push services' endpoints.
+            throw HttpError::invalid('endpoint must be a browser push service');
+        }
         $this->ctx->limits->hit('push-subscribe', $user['id'], 30, 3600);
-        $this->ctx->pdo->prepare('INSERT INTO push_subscriptions (id, user_id, endpoint, endpoint_hash, p256dh, auth_key) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), p256dh = VALUES(p256dh), auth_key = VALUES(auth_key)')
+        $pdo = $this->ctx->pdo;
+        $pdo->prepare('INSERT INTO push_subscriptions (id, user_id, endpoint, endpoint_hash, p256dh, auth_key) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), p256dh = VALUES(p256dh), auth_key = VALUES(auth_key)')
             ->execute([Db::uuid(), $user['id'], $endpoint, hash('sha256', $endpoint), $p256dh, $auth]);
+        // At most MAX_DEVICES per person, newest kept: each one costs the notification cron a request.
+        $pdo->prepare('DELETE FROM push_subscriptions WHERE user_id = ? AND id NOT IN (SELECT id FROM (SELECT id FROM push_subscriptions WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ' . self::MAX_DEVICES . ') keep)')
+            ->execute([$user['id'], $user['id']]);
         return [200, ['ok' => true]];
     }
 

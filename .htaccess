@@ -101,6 +101,10 @@
   AddType font/woff2 .woff2
 </IfModule>
 
+# No server version on Apache-generated error pages (ServerTokens cannot be set
+# in .htaccess; Cloudflare replaces the Server header in every response).
+ServerSignature Off
+
 # ---- Compression ----------------------------------------------
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/css text/javascript \
@@ -126,6 +130,14 @@
   </FilesMatch>
 
   # Baseline security headers
+  # No software or version banners (security audit, 1 Nov 2026). The origin's
+  # Server header is already replaced by Cloudflare; `X-Powered-By` (PHP) and
+  # LiteSpeed's `X-Turbo-Charged-By` are dropped here. `always` also covers
+  # error responses. backend/public/api/index.php removes X-Powered-By too.
+  Header always unset X-Powered-By
+  Header unset X-Powered-By
+  Header always unset X-Turbo-Charged-By
+  Header unset X-Turbo-Charged-By
   Header set X-Content-Type-Options "nosniff"
   Header set X-Frame-Options "SAMEORIGIN"
   Header set Referrer-Policy "strict-origin-when-cross-origin"

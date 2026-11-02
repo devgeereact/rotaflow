@@ -10,6 +10,7 @@ namespace RotaFlow;
  */
 final class FileStore
 {
+    private const RESERVE_BYTES = 1073741824;
     public const DOCUMENTS = 'staff-documents';
     public const PHOTOS = 'staff-photos';
     public const BUCKETS = [self::DOCUMENTS, self::PHOTOS];
@@ -34,6 +35,11 @@ final class FileStore
 
     public function put(string $bucket, string $path, string $bytes): void
     {
+        // Keep 1 GiB free for the database and logs on a shared host (security audit, 1 Nov 2026).
+        $free = @disk_free_space(is_dir($this->root) ? $this->root : dirname($this->root));
+        if ($free !== false && $free - strlen($bytes) < self::RESERVE_BYTES) {
+            throw new HttpError(507, 'storage_full', 'Storage is full. Try again later');
+        }
         $abs = $this->resolve($bucket, $path, false);
         if (!is_dir(dirname($abs)) && !mkdir(dirname($abs), 0700, true) && !is_dir(dirname($abs))) {
             throw new \RuntimeException('store not writable');
@@ -69,7 +75,7 @@ final class FileStore
         if (is_link($abs)) {
             throw new \RuntimeException('refusing a link');
         }
-        $folder ? $this->rmTree($abs) : (unlink($abs) ?: throw new \RuntimeException('could not remove'));
+        $folder ? $this->rmTree($abs) : (unlink($abs) ?: throw new \RuntimeException('could not remove'));  // nosemgrep: php.lang.security.unlink-use.unlink-use -- path comes from resolve(): fixed bucket allowlist plus a strict UUID/UUID/name pattern, symlinks refused
     }
 
     private function resolve(string $bucket, string $path, bool $folder): string
@@ -90,7 +96,7 @@ final class FileStore
             if (is_link($p)) {
                 throw new \RuntimeException('refusing a link');
             }
-            is_dir($p) ? $this->rmTree($p) : (unlink($p) ?: throw new \RuntimeException('could not remove'));
+            is_dir($p) ? $this->rmTree($p) : (unlink($p) ?: throw new \RuntimeException('could not remove'));  // nosemgrep: php.lang.security.unlink-use.unlink-use -- walks a folder already resolved and pattern-checked by resolve(); symlinks refused
         }
         rmdir($dir) ?: throw new \RuntimeException('could not remove');
     }

@@ -117,7 +117,7 @@ final class Jwt
         if (@file_put_contents($tmp, json_encode(['fetched_at' => $now, 'keys' => $doc['keys']])) !== false) {
             @rename($tmp, $file); // atomic: a concurrent reader sees the old or the new file, never half of one
         }
-        @unlink($failFile);
+        @unlink($failFile);  // nosemgrep: php.lang.security.unlink-use.unlink-use -- fixed cache file under the private root, not request input
         return $doc['keys'];
     }
 

@@ -13,6 +13,7 @@ use RotaFlow\{Audit, Ctx, Db, FileStore, HttpError, Input, Module, Scope};
 final class Photos implements Module
 {
     private const MAX_BYTES = 2097152;
+    private const MAX_SIDE = 4096;
     private const LINK_SECONDS = 3600;
     private const TYPES = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
 
@@ -28,6 +29,40 @@ final class Photos implements Module
         ];
     }
 
+    /**
+     * Decode and re-encode the picture with GD. Colleagues see every staff photo, and a phone picture carries EXIF:
+     * GPS position, device and time (security audit, 1 Nov 2026). Re-encoding drops all metadata and anything
+     * hidden after the image data. The size check stops a small file that decodes to an enormous picture.
+     */
+    public static function reencode(string $bytes, string $type): string
+    {
+        if (!function_exists('imagecreatefromstring')) {
+            throw new HttpError(503, 'unavailable', 'Photo processing is not available');
+        }
+        $size = @getimagesizefromstring($bytes);
+        if ($size === false || $size[0] < 1 || $size[1] < 1) {
+            throw new HttpError(415, 'photo_type', 'That picture could not be read');
+        }
+        if ($size[0] > self::MAX_SIDE || $size[1] > self::MAX_SIDE) {
+            throw new HttpError(422, 'photo_dimensions', 'A photo can be at most ' . self::MAX_SIDE . ' pixels on each side');
+        }
+        $img = @imagecreatefromstring($bytes);
+        if ($img === false) {
+            throw new HttpError(415, 'photo_type', 'That picture could not be read');
+        }
+        ob_start();
+        $ok = match ($type) {
+            'image/png' => imagesavealpha($img, true) && imagepng($img, null, 6),
+            'image/webp' => imagewebp($img, null, 88),
+            default => imagejpeg($img, null, 88),
+        };
+        $out = (string) ob_get_clean();
+        if (!$ok || $out === '') {
+            throw new HttpError(415, 'photo_type', 'That picture could not be read');
+        }
+        return $out;
+    }
+
     /** The image type the bytes really are, or null. */
     public static function sniff(string $bytes): ?string
     {
@@ -41,7 +76,7 @@ final class Photos implements Module
 
     public static function sign(array $config, string $bucket, string $path, int $expires): string
     {
-        return hash_hmac('sha256', "$bucket|$path|$expires", hash_hmac('sha256', 'file-link', (string) ($config['secret_key'] ?? 'unconfigured')));
+        return hash_hmac('sha256', "$bucket|$path|$expires", hash_hmac('sha256', 'file-link', \RotaFlow\Secret::hmacKey($config)));
     }
 
     /** @return array{0:array<string,mixed>,1:array<string,mixed>} the membership and the staff row */
@@ -78,6 +113,7 @@ final class Photos implements Module
             throw new HttpError(415, 'photo_type', 'A photo must be a JPEG, PNG or WebP picture');
         }
         $this->ctx->limits->hit('photo-upload', $user['id'], 20, 3600);
+        $bytes = self::reencode($bytes, $type);
         $path = "$o/$s/" . bin2hex(random_bytes(12)) . '.' . self::TYPES[$type];
         $store = FileStore::forCtx($this->ctx);
         $pdo = $this->ctx->pdo;

@@ -14,7 +14,7 @@ describe('CHART_TOKENS', () => {
   it.each(Object.entries(CHART_TOKENS))(
     '%s matches its --color token in index.css',
     (name, hex) => {
-      const match = new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})\\s*;`).exec(css);
+      const match = new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})\\s*;`).exec(css); // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- build-time or test code; the pattern is built from this repository's own names, never user input
       expect(match, `--color-${name} not found in index.css`).not.toBeNull();
       expect(match?.[1]?.toLowerCase()).toBe(hex.toLowerCase());
     },

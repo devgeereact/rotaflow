@@ -60,3 +60,14 @@ $ctx = new Ctx($pdo, $rl);
 $ctx->log('noop');
 check('Ctx logging without a logger is a no-op', true);
 check('the error body helper nests code and message', HttpError::body('x', 'y') === ['error' => ['code' => 'x', 'message' => 'y']]);
+
+// The headers a handler can see come from Bootstrap::requestHeaders, the function index.php calls. The enquiry
+// form's Content-Type and Origin checks were dead in production because this list once lacked them (audit C-01).
+$h = RotaFlow\Bootstrap::requestHeaders([
+    'CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'https://rotaflow.space', 'HTTP_USER_AGENT' => 'UA/1',
+    'REDIRECT_HTTP_AUTHORIZATION' => 'Bearer abc', 'HTTP_STRIPE_SIGNATURE' => 't=1,v1=x', 'HTTP_COOKIE' => 'secret=1',
+]);
+check('request headers include content-type, origin and user-agent for handlers', ($h['content-type'] ?? '') === 'application/json' && ($h['origin'] ?? '') === 'https://rotaflow.space' && ($h['user-agent'] ?? '') === 'UA/1', json_encode($h));
+check('request headers keep the cPanel authorization fallback and the Stripe signature', ($h['authorization'] ?? '') === 'Bearer abc' && ($h['stripe-signature'] ?? '') === 't=1,v1=x');
+check('request headers pass nothing that is not listed (no cookies)', !isset($h['cookie']) && count($h) === 5, json_encode(array_keys($h)));
+

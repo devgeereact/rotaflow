@@ -4,6 +4,9 @@ declare(strict_types=1);
 // Public entrypoint. All other application code and configuration live in the private root.
 // A PHP notice printed before the JSON would make every response unreadable: diagnostics go to the log, never the body.
 ini_set('display_errors', '0');
+// No version banner: PHP adds `X-Powered-By: PHP/8.x` when the host's expose_php is on (it is on this
+// host, 1 Nov 2026), and expose_php cannot be changed per directory. Removing it here works on any host.
+header_remove('X-Powered-By');
 // Local dev: src/ sits beside public/. On the host: the app is uploaded to <private root>/app/src.
 $autoload = is_file(__DIR__ . '/../../src/Autoload.php')
     ? __DIR__ . '/../../src/Autoload.php'
@@ -42,15 +45,7 @@ try {
     $config = Bootstrap::config($root);
     $pdo = Db::connect($config);
     $jwt = Bootstrap::jwt($config, $root);
-    $headers = [];
-    if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-        $headers['authorization'] = (string) $_SERVER['HTTP_AUTHORIZATION'];
-    } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-        $headers['authorization'] = (string) $_SERVER['REDIRECT_HTTP_AUTHORIZATION']; // cPanel/Apache quirk
-    }
-    if (isset($_SERVER['HTTP_STRIPE_SIGNATURE'])) {
-        $headers['stripe-signature'] = (string) $_SERVER['HTTP_STRIPE_SIGNATURE'];
-    }
+    $headers = Bootstrap::requestHeaders($_SERVER);
     $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
     $ip = (($config['trust_cf_connecting_ip'] ?? false) && Bootstrap::fromCloudflare($remote) && isset($_SERVER['HTTP_CF_CONNECTING_IP'])) ? (string) $_SERVER['HTTP_CF_CONNECTING_IP'] : $remote;
     $limits = new RateLimiter($pdo);
@@ -65,7 +60,7 @@ try {
         foreach (Api::rawHeaders($r) as $line) {
             header($line);
         }
-        echo $r['body'];
+        echo $r['body'];  // nosemgrep: php.lang.security.injection.echoed-request.echoed-request -- a module-built file/ICS/CSV body; Content-Type from an allowlist plus nosniff (Api::rawHeaders), not request input
         exit;
     }
     $respond($status, $payload);

@@ -248,7 +248,28 @@ export async function documentOpenUrl(orgId: string, docId: string): Promise<str
     orgPath(orgId, `/documents/${seg(docId)}/link`),
   );
   if (!r.url) throw new Error('This document has no file.');
-  return r.url;
+  return safeDocumentUrl(r.url);
+}
+
+/**
+ * Only an https link, or a path on this site, is opened. The caller opens it in a window that shares the app's
+ * origin, so a `javascript:` or `data:` value would run as the app (security audit, 1 Nov 2026).
+ */
+export function safeDocumentUrl(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url, window.location.origin);
+  } catch {
+    throw new Error('This document link cannot be opened.');
+  }
+  const sameSite = parsed.origin === window.location.origin;
+  if (
+    parsed.protocol !== 'https:' &&
+    !(sameSite && parsed.protocol === window.location.protocol)
+  ) {
+    throw new Error('This document link cannot be opened.');
+  }
+  return parsed.href;
 }
 
 export async function reviewQueue(orgId: string): Promise<QueuedDocument[]> {

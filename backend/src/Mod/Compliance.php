@@ -390,6 +390,7 @@ final class Compliance implements Module
         $m = $this->member($u, $o);
         Scope::requireWritable($m);
         $this->ctx->limits->hit('compliance-doc', $u['id'], 60, 3600);
+        $this->ctx->limits->hit('compliance-doc-org', $o, 500, 86400); // no single organisation fills the disk
         $mine = Scope::staffProfileId($this->pdo, $o, $u['id']);
         $target = $in['staff_profile_id'] ?? $mine;
         if (!is_string($target) || preg_match('/^[0-9a-f-]{36}$/', $target) !== 1) {
@@ -589,7 +590,10 @@ final class Compliance implements Module
             throw HttpError::notFound();
         }
         if ($doc['storage_path'] === null) {
-            return [200, ['url' => $doc['file_url'], 'expires_at' => null]];
+            // A legacy pasted link is only handed out if it is https: the app opens it in a window of its own origin,
+            // so a `javascript:` value would run as the app (security audit, 1 Nov 2026).
+            $legacy = is_string($doc['file_url']) && preg_match('#^https://#i', $doc['file_url']) === 1 ? $doc['file_url'] : null;
+            return [200, ['url' => $legacy, 'expires_at' => null]];
         }
         $exp = time() + self::LINK_SECONDS;
         $sig = Photos::sign($this->ctx->config, FileStore::DOCUMENTS, $doc['storage_path'], $exp);

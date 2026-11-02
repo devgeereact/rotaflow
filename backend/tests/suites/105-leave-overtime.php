@@ -114,3 +114,10 @@ check('staff read their own badge counts, not the organisation\'s', $s === 200
     && $r['leave_pending'] < (int) $pdo->query("SELECT COUNT(*) FROM leave_requests WHERE status = 'pending'")->fetchColumn(), json_encode($r));
 check('a member with no staff record reads zeros', call($api, 'nora', 'GET', "/orgs/$org/attention")[1] === ['leave_pending' => 0, 'overtime_pending' => 0, 'swaps_pending' => 0]);
 check('a stranger still gets 404', call($api, 'zed', 'GET', "/orgs/$org/attention")[0] === 404);
+
+// Four eyes (audit): a manager does not decide their own request; the owner may.
+[$s0, $r0] = $leave('mark', ['start_date' => '2031-02-02', 'end_date' => '2031-02-03']);
+$own = $r0['leave']['id'] ?? '';
+check('a manager cannot approve their own leave', $s0 === 201 && call($api, 'mark', 'POST', "/orgs/$org/leave/$own/review", ['status' => 'approved'])[1]['error']['code'] === 'own_leave');
+check('the owner can approve it', call($api, 'olga', 'POST', "/orgs/$org/leave/$own/review", ['status' => 'approved'])[0] === 200);
+

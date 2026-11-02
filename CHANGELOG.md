@@ -13,6 +13,19 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Security audit and fixes (2 November 2026).** Seventeen confirmed findings fixed, none critical or high. Access:
+  delegated cover can no longer invite a permanent manager; managers cannot approve their own timesheets or leave;
+  a calendar feed stops when the person is suspended. Server requests: push endpoints limited to browser push
+  services (10 devices each); an organisation's SMTP host must be public and on a mail port, with no banner echoed.
+  Files: photos re-encoded (location data stripped, 4096 px cap); staff can no longer link their own photo; uploads
+  keep 1 GiB of disk free and stop at 500 per organisation per day; signed links refuse to work without a real key.
+  Browser: a kept calendar link is shown only to its owner; document links must be https; invite tokens and
+  navigation URLs are scrubbed before Sentry; Clerk redirects stay on this site. Web server: `X-Powered-By` removed,
+  directory listing off in `assets/`, `icons/` and `fonts/`. Fixed while there: the contact form refused every
+  submission (headers were not passed to the API), and every prerendered page said "You're offline". CI: every
+  workflow action pinned to a commit, gitleaks and Semgrep added. Dependencies: minor updates and a
+  `serialize-javascript` override. Report: `docs/AUDIT.md`.
+
 - **Legal pages follow the cutover: data in the UK, Clerk named, cookies told truthfully (1 November 2026).** The owner
   confirmed the server is in Namecheap's UK data centre. The Trust page and the Privacy FAQ now say the data lives in
   the United Kingdom (was the EU, Supabase eu-west-1), name all three US sub-processors (OpenRouter, Stripe and Clerk)

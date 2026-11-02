@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 const css = readFileSync(resolve(__dirname, '../index.css'), 'utf8');
 
 function token(name: string): string {
-  const match = new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})\\s*;`).exec(css);
+  const match = new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})\\s*;`).exec(css); // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- build-time or test code; the pattern is built from this repository's own names, never user input
   if (!match?.[1])
     throw new Error(`--color-${name} not found as a 6-digit hex in index.css`);
   return match[1];

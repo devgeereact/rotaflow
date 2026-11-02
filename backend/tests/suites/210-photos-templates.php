@@ -6,9 +6,11 @@ use RotaFlow\{Db, FileStore};
 use RotaFlow\Mod\Photos;
 
 $api = test_api($pdo);
-$jpeg = "\xFF\xD8\xFF\xE0" . str_repeat('J', 200);
-$png = "\x89PNG\r\n\x1a\n" . str_repeat('P', 200);
-$webp = 'RIFF' . "\x10\x00\x00\x00" . 'WEBP' . str_repeat('W', 100);
+// Real pictures: uploads are decoded and re-encoded (audit C-05), so magic bytes alone no longer pass.
+$img = static function (string $t): string { $i = imagecreatetruecolor(6, 4); imagefill($i, 0, 0, imagecolorallocate($i, 20, 120, 220)); ob_start(); match ($t) { 'png' => imagepng($i), 'webp' => imagewebp($i), default => imagejpeg($i) }; return (string) ob_get_clean(); };
+$jpeg = $img('jpeg');
+$png = $img('png');
+$webp = $img('webp');
 check('the image type comes from the bytes', Photos::sniff($jpeg) === 'image/jpeg' && Photos::sniff($png) === 'image/png' && Photos::sniff($webp) === 'image/webp' && Photos::sniff('<?php echo 1;') === null && Photos::sniff('GIF89a....') === null && Photos::sniff('') === null && Photos::sniff('<svg onload=alert(1)>') === null);
 
 $org = call($api, 'olga', 'POST', '/orgs', ['name' => 'Photo Org'])[1]['org']['id'];
@@ -32,7 +34,7 @@ check('over 2 MB is 413', $up('sam', $staff['sam'], $jpeg . str_repeat('x', 2097
 check('a picture just under the limit is fine, and the api allows a body that big', $up('sam', $staff['sam'], $jpeg . str_repeat('x', 2097152 - strlen($jpeg) - 1))[0] === 200);
 [$s, $r] = $up('sam', $staff['sam'], $png);
 $row = $pdo->query("SELECT photo_path, photo_url FROM staff_profiles WHERE id = '{$staff['sam']}'")->fetch();
-check('the person uploads their own; the path is in their own folder and the extension follows the bytes', $s === 200 && preg_match('#^' . $org . '/' . $staff['sam'] . '/[0-9a-f]{24}\.png$#', (string) $row['photo_path']) === 1 && $row['photo_url'] === null && $store->get(FileStore::PHOTOS, $row['photo_path']) === $png);
+check('the person uploads their own; the path is in their own folder and the extension follows the bytes', $s === 200 && preg_match('#^' . $org . '/' . $staff['sam'] . '/[0-9a-f]{24}\.png$#', (string) $row['photo_path']) === 1 && $row['photo_url'] === null && Photos::sniff((string) $store->get(FileStore::PHOTOS, $row['photo_path'])) === 'image/png');
 check('the stored file is private (mode 600)', (fileperms(test_private_root() . '/uploads/staff-photos/' . $row['photo_path']) & 0777) === 0600);
 $first = $row['photo_path'];
 check('a manager and an owner may change anyone\'s', $up('mark', $staff['pat'], $webp)[0] === 200 && $up('olga', $staff['pat'], $jpeg)[0] === 200);
@@ -50,11 +52,11 @@ check('a stranger gets 404; a person with no photo gets null', call($api, 'zed',
 parse_str((string) parse_url($r['url'], PHP_URL_QUERY), $q);
 $get = static fn (array $q) => $GLOBALS['api']->handle('GET', '/files', [], '', '198.51.100.5', $q);
 [$s, $f] = $get($q);
-check('the link serves the picture, with its real type, privately cached, no sign-in needed', $s === 200 && $f['__raw']['mime'] === 'image/jpeg' && $f['__raw']['body'] === $jpeg && str_starts_with($f['__raw']['cache'], 'private'));
+check('the link serves the picture, with its real type, privately cached, no sign-in needed', $s === 200 && $f['__raw']['mime'] === 'image/jpeg' && Photos::sniff($f['__raw']['body']) === 'image/jpeg' && getimagesizefromstring($f['__raw']['body'])[0] === 6 && str_starts_with($f['__raw']['cache'], 'private'));
 check('a changed path, expiry, bucket or signature is 404', $get(['p' => str_replace('/' . $staff['sam'] . '/', '/' . $staff['pat'] . '/', $q['p'])] + $q)[0] === 404 && $get(['e' => (string) ((int) $q['e'] + 60)] + $q)[0] === 404 && $get(['b' => 'staff-documents'] + $q)[0] === 404 && $get(['s' => str_repeat('0', 64)] + $q)[0] === 404 && $get(array_diff_key($q, ['s' => 1]))[0] === 404 && $get([])[0] === 404);
 $expired = (int) time() - 10;
 check('an expired link is 404', $get(['e' => (string) $expired, 's' => Photos::sign(test_config(), FileStore::PHOTOS, $q['p'], $expired)] + $q)[0] === 404);
-check('a signature made with another key does not verify', $get(['s' => Photos::sign(['secret_key' => 'another'], FileStore::PHOTOS, $q['p'], (int) $q['e'])] + $q)[0] === 404);
+check('a signature made with another key does not verify', $get(['s' => Photos::sign(['secret_key' => base64_encode(random_bytes(32))], FileStore::PHOTOS, $q['p'], (int) $q['e'])] + $q)[0] === 404);
 $traversal = $org . '/' . $staff['sam'] . '/../../x.png';
 check('a path that climbs out is refused even with a valid signature', $get(['p' => $traversal, 's' => Photos::sign(test_config(), FileStore::PHOTOS, $traversal, (int) $q['e'])] + $q)[0] === 404);
 
@@ -97,3 +99,18 @@ $resolved = (new ReflectionMethod(RotaFlow\Dispatcher::class, 'template'));
 $resolved->setAccessible(true);
 $d = new RotaFlow\Dispatcher($ctx);
 check('the Dispatcher uses the saved wording, and the built-in one for a type with none', $resolved->invoke($d, $org, 'announcement')[0] === 'New: {{title}}' && str_contains($resolved->invoke($d, $org, 'rota')[1], 'Open RotaFlow'));
+
+// Re-encoding drops EXIF (GPS, device, time) and refuses what cannot be decoded or is too large (audit C-05).
+$exif = "Exif\x00\x00" . 'GPSLatitude=51.5074N;HomeAddress';
+$tagged = substr($jpeg, 0, 2) . "\xFF\xE1" . pack('n', strlen($exif) + 2) . $exif . substr($jpeg, 2);
+[$s] = $up('sam', $staff['sam'], $tagged);
+$stored = $pdo->query("SELECT photo_path FROM staff_profiles WHERE id = '{$staff['sam']}'")->fetchColumn();
+$kept = (string) $store->get(FileStore::PHOTOS, (string) $stored);
+check('an uploaded photo is stored without its EXIF data', $s === 200 && $kept !== '' && !str_contains($kept, 'GPSLatitude') && Photos::sniff($kept) === 'image/jpeg');
+check('magic bytes with no real picture are refused', $up('sam', $staff['sam'], "\xFF\xD8\xFF\xE0" . str_repeat('J', 200))[0] === 415);
+$big = imagecreatetruecolor(4100, 2); ob_start(); imagepng($big); $huge = (string) ob_get_clean();
+check('a picture over 4096 pixels on a side is refused', $up('sam', $staff['sam'], $huge)[0] === 422);
+// No fixed fallback key: a missing or placeholder secret_key refuses to sign (audit C-06).
+expectError('signing without a secret_key is refused, not signed with a public default', static fn () => Photos::sign([], FileStore::PHOTOS, 'a/b/c.png', time() + 60), 503, 'unavailable');
+expectError('a placeholder secret_key is refused', static fn () => Photos::sign(['secret_key' => str_repeat('REPLACE_ME', 4)], FileStore::PHOTOS, 'a/b/c.png', time() + 60), 503, 'unavailable');
+

@@ -199,6 +199,12 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       afterSignOutUrl="/login"
       signInFallbackRedirectUrl="/app"
       signUpFallbackRedirectUrl="/app"
+      // A `redirect_url` in a sign-in link may only send people back to this site (security audit, 1 Nov 2026):
+      // without it, a crafted link could land someone on another site straight after a real sign-in.
+      // `typeof window`: the build prerenders public pages in Node, where there is no window.
+      allowedRedirectOrigins={
+        typeof window === 'undefined' ? undefined : [window.location.origin]
+      }
     >
       <ClerkBridge>{children}</ClerkBridge>
     </ClerkProvider>

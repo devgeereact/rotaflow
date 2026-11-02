@@ -330,6 +330,9 @@ final class Timesheets implements Module
         Scope::requireWritable($m);
         [$from, $to] = $this->period($in);
         $rows = $in['approvals'] ?? null;
+        // Four eyes, as for documents: a manager or delegate does not approve their own hours (feeds payroll).
+        // An owner may, because a one-person organisation has nobody else (security audit, 1 Nov 2026).
+        $mine = $m['role'] === 'owner' ? null : Scope::staffProfileId($pdo, $o, $user['id']);
         if (!is_array($rows) || !array_is_list($rows) || $rows === [] || count($rows) > self::MAX_BATCH) {
             throw HttpError::invalid('approvals must be a list of 1 to ' . self::MAX_BATCH . ' entries');
         }
@@ -362,6 +365,9 @@ final class Timesheets implements Module
                     throw HttpError::invalid('each approval must be an object');
                 }
                 $sp = Input::reqStr($r, 'staff_profile_id', 36);
+                if ($mine !== null && $sp === $mine) {
+                    throw new HttpError(403, 'own_timesheet', 'Someone else must approve your own timesheet');
+                }
                 $ok->execute([$sp, $o]);
                 if ($ok->fetchColumn() === false) {
                     throw HttpError::invalid('A staff member is not in this organisation');

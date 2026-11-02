@@ -35,6 +35,19 @@ final class Secret
         return $plain;
     }
 
+    /**
+     * The private secret_key as text, for HMAC keys (signed file links, the enquiry address salt). Refuses a missing,
+     * placeholder or short key instead of falling back to a fixed, public string (security audit, 1 Nov 2026).
+     */
+    public static function hmacKey(array $config): string
+    {
+        $k = (string) ($config['secret_key'] ?? '');
+        if (strlen($k) < 32 || str_contains($k, 'REPLACE_ME')) {
+            throw new HttpError(503, 'unavailable', 'This service is not configured');
+        }
+        return $k;
+    }
+
     private static function key(string $b64): string
     {
         $k = base64_decode($b64, true);

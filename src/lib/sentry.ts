@@ -44,7 +44,9 @@ let started = false;
  */
 export function stripQueryString(url: string): string {
   const cut = url.search(/[?#]/u);
-  return cut === -1 ? url : url.slice(0, cut);
+  const path = cut === -1 ? url : url.slice(0, cut);
+  // An invitation's secret rides in the path, not the query (security audit, 1 Nov 2026).
+  return path.replace(/\/invite\/[^/]+/u, '/invite/:token');
 }
 
 /**
@@ -57,10 +59,14 @@ export function scrubBreadcrumb(breadcrumb: Sentry.Breadcrumb): Sentry.Breadcrum
   if (breadcrumb.category === 'console') return null;
 
   const data = breadcrumb.data;
-  if (data && typeof data.url === 'string') {
-    return { ...breadcrumb, data: { ...data, url: stripQueryString(data.url) } };
+  if (!data) return breadcrumb;
+  // Navigation breadcrumbs carry the addresses in `from` and `to`, fetches in `url`.
+  const scrubbed = { ...data };
+  for (const key of ['url', 'from', 'to'] as const) {
+    if (typeof scrubbed[key] === 'string')
+      scrubbed[key] = stripQueryString(scrubbed[key]);
   }
-  return breadcrumb;
+  return { ...breadcrumb, data: scrubbed };
 }
 
 /**

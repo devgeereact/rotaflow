@@ -145,7 +145,7 @@ final class Files
         }
         $tmp = $dest . '.part-' . bin2hex(random_bytes(4));
         if (file_put_contents($tmp, $body, LOCK_EX) === false || !chmod($tmp, 0600) || !rename($tmp, $dest)) {
-            @unlink($tmp);
+            @unlink($tmp);  // nosemgrep: php.lang.security.unlink-use.unlink-use -- a temp file this CLI created itself; never reachable from the web
             throw new \RuntimeException('cannot write into the private store');
         }
         $this->manifest[$id] = ['path' => $o['bucket_id'] . '/' . $path, 'sha256' => hash('sha256', $body), 'size' => strlen($body)];

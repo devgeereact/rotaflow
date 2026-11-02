@@ -225,11 +225,21 @@ check('there is no way to write into someone\'s inbox', (function () use ($api, 
 
 // ---- push devices ----------------------------------------------------------------------------------------------------------------------------------
 $key = static fn (): array => ['p256dh' => str_repeat('A', 87), 'auth' => str_repeat('b', 22)];
-check('a device registers', call($api, 'sam', 'POST', '/me/push-subscriptions', ['endpoint' => 'https://fcm.example.test/send/abc', 'keys' => $key()])[0] === 200);
-check('registering again updates, not duplicates', call($api, 'sam', 'POST', '/me/push-subscriptions', ['endpoint' => 'https://fcm.example.test/send/abc', 'keys' => $key()])[0] === 200 && (int) $pdo->query("SELECT COUNT(*) FROM push_subscriptions WHERE endpoint = 'https://fcm.example.test/send/abc'")->fetchColumn() === 1);
-check('a second person on the same device takes it over, so the first stops receiving', call($api, 'pat', 'POST', '/me/push-subscriptions', ['endpoint' => 'https://fcm.example.test/send/abc', 'keys' => $key()])[0] === 200 && $pdo->query("SELECT user_id FROM push_subscriptions WHERE endpoint = 'https://fcm.example.test/send/abc'")->fetchColumn() === $user['pat']);
-check('only the owner can release a device', call($api, 'sam', 'POST', '/me/push-subscriptions/delete', ['endpoint' => 'https://fcm.example.test/send/abc'])[0] === 200 && (int) $pdo->query("SELECT COUNT(*) FROM push_subscriptions WHERE endpoint = 'https://fcm.example.test/send/abc'")->fetchColumn() === 1 && call($api, 'pat', 'POST', '/me/push-subscriptions/delete', ['endpoint' => 'https://fcm.example.test/send/abc'])[0] === 200 && (int) $pdo->query("SELECT COUNT(*) FROM push_subscriptions WHERE endpoint = 'https://fcm.example.test/send/abc'")->fetchColumn() === 0);
+check('a device registers', call($api, 'sam', 'POST', '/me/push-subscriptions', ['endpoint' => 'https://fcm.googleapis.com/fcm/send/abc', 'keys' => $key()])[0] === 200);
+check('registering again updates, not duplicates', call($api, 'sam', 'POST', '/me/push-subscriptions', ['endpoint' => 'https://fcm.googleapis.com/fcm/send/abc', 'keys' => $key()])[0] === 200 && (int) $pdo->query("SELECT COUNT(*) FROM push_subscriptions WHERE endpoint = 'https://fcm.googleapis.com/fcm/send/abc'")->fetchColumn() === 1);
+check('a second person on the same device takes it over, so the first stops receiving', call($api, 'pat', 'POST', '/me/push-subscriptions', ['endpoint' => 'https://fcm.googleapis.com/fcm/send/abc', 'keys' => $key()])[0] === 200 && $pdo->query("SELECT user_id FROM push_subscriptions WHERE endpoint = 'https://fcm.googleapis.com/fcm/send/abc'")->fetchColumn() === $user['pat']);
+check('only the owner can release a device', call($api, 'sam', 'POST', '/me/push-subscriptions/delete', ['endpoint' => 'https://fcm.googleapis.com/fcm/send/abc'])[0] === 200 && (int) $pdo->query("SELECT COUNT(*) FROM push_subscriptions WHERE endpoint = 'https://fcm.googleapis.com/fcm/send/abc'")->fetchColumn() === 1 && call($api, 'pat', 'POST', '/me/push-subscriptions/delete', ['endpoint' => 'https://fcm.googleapis.com/fcm/send/abc'])[0] === 200 && (int) $pdo->query("SELECT COUNT(*) FROM push_subscriptions WHERE endpoint = 'https://fcm.googleapis.com/fcm/send/abc'")->fetchColumn() === 0);
 foreach ([['endpoint' => 'http://insecure.example/x', 'keys' => $key()], ['endpoint' => 'https://x.example/y', 'keys' => ['p256dh' => 'short', 'auth' => 'a']], ['endpoint' => 'https://x.example/y'], ['endpoint' => ['a'], 'keys' => $key()]] as $i => $bad) {
     check("a bad push subscription is 422 ($i)", call($api, 'sam', 'POST', '/me/push-subscriptions', $bad)[0] === 422);
 }
 check('registering needs a sign-in', call($api, '', 'POST', '/me/push-subscriptions', ['endpoint' => 'https://x.example/y', 'keys' => $key()])[0] === 401);
+// Only browser push services (audit C-03): the server POSTs to every stored endpoint.
+foreach (['https://attacker.example/push', 'https://fcm.googleapis.com.evil.example/x', 'https://fcm.googleapis.com:8443/x', 'https://127.0.0.1/x'] as $i => $bad) {
+    check("a non-push-service endpoint is refused ($i)", call($api, 'sam', 'POST', '/me/push-subscriptions', ['endpoint' => $bad, 'keys' => $key()])[0] === 422);
+}
+check('each browser push service is accepted', RotaFlow\Mod\Notifications::isPushService('https://updates.push.services.mozilla.com/wpush/v2/x') && RotaFlow\Mod\Notifications::isPushService('https://web.push.apple.com/x') && RotaFlow\Mod\Notifications::isPushService('https://wns2-db5p.notify.windows.com/w/?token=x'));
+$pdo->prepare('DELETE FROM push_subscriptions WHERE user_id = ?')->execute([$user['sam']]);
+for ($i = 0; $i < 12; $i++) {
+    call($api, 'sam', 'POST', '/me/push-subscriptions', ['endpoint' => "https://fcm.googleapis.com/fcm/send/cap$i", 'keys' => $key()]);
+}
+check('a person keeps at most 10 push devices', (function () use ($pdo, $user): bool { $q = $pdo->prepare('SELECT COUNT(*) FROM push_subscriptions WHERE user_id = ?'); $q->execute([$user['sam']]); return (int) $q->fetchColumn() === 10; })());

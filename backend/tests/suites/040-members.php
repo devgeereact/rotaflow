@@ -67,6 +67,9 @@ check('the delegate now passes manager checks', call($api, 'sam', 'GET', "/orgs/
 check('but is still not an owner', call($api, 'sam', 'POST', "/orgs/$org/members/$mPat/role", ['role' => 'manager'])[0] === 403);
 check('cannot lend cover onwards', call($api, 'sam', 'POST', "/orgs/$org/delegations", ['membership_id' => $mPat, 'ends_at' => $until])[0] === 403);
 check('cannot transfer ownership', call($api, 'sam', 'POST', "/orgs/$org/transfer-ownership", ['membership_id' => $mSam])[0] === 403);
+// Temporary manager reach must not mint a permanent manager (audit: effective-manager-mints-permanent-manager).
+check('a delegate cannot invite a manager', call($api, 'sam', 'POST', "/orgs/$org/invites", ['email' => 'second-me@example.test', 'role' => 'manager'])[0] === 403);
+check('a delegate may still invite staff', call($api, 'sam', 'POST', "/orgs/$org/invites", ['email' => 'helper@example.test', 'role' => 'staff'])[0] === 201);
 check('everyone in the organisation can see live cover', count(call($api, 'pat', 'GET', "/orgs/$org/delegations")[1]['delegations']) === 1);
 check('a delegate cannot end cover (only the lender or a real owner or manager can)', call($api, 'sam', 'POST', "/orgs/$org/delegations/$d1/revoke")[0] === 403);
 check('a stranger cannot end cover', call($api, 'zed', 'POST', "/orgs/$org/delegations/$d1/revoke")[0] === 404);
