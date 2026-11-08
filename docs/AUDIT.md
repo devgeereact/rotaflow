@@ -1314,7 +1314,7 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   - `release.json` named `release/cutover`; `scripts/release.mjs` refuses any branch but the one named there, so a release from `main`
     would have been blocked. Now `main`, with `scripts/release-config.test.mjs`.
   - `backend/bin/backup.php` and `RotaFlow\Backup`: private (0600), checksummed, pruned dump; `--restore-check` loads the newest dump
-    into a scratch database and compares every table. Suite `300-backup.php`, 77 checks (26 at first commit). Not scheduled; no off-site copy.
+    into a scratch database and compares every table. Suite `300-backup.php`, 82 checks (26 at first commit). Not scheduled; no off-site copy.
   - `scripts/htaccess.mjs` (`pnpm htaccess compose|diff|push`) and `scripts/htaccess/origin-lock.conf`. A real read-only `diff` against
     the live file listed exactly the 11 hardening lines as missing, and nothing to remove. `push` is tested against a scripted server
     (order, backup-before-write, rollback on a failed move, a failed smoke check or a smoke check that throws, cleanup of a failed
@@ -1358,6 +1358,12 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   --reference`, `sha256sum`), PHP 8.4.27, `proc_open` enabled, so the `.htaccess` push ran on the tools assumed. `pnpm htaccess push
   --go --accept-extra` succeeded (6 smoke checks); the response header `x-turbo-charged-by: LiteSpeed` is STILL sent: LiteSpeed adds it
   after `.htaccess`, so `Header unset` cannot remove it. It needs a Cloudflare response-header rule or a LiteSpeed setting.
+- **Second finding from the live run:** with the right credentials the dump failed on `SHOW CREATE TRIGGER` (the app's account has no
+  TRIGGER, by design), so a dedicated read-only account `devgeereact_rf_backup` was created (owner-approved) and the first live backup
+  succeeded (40 KB, mode 600, checksum and counts file). The restore proof then failed with error 1227: the dump records the migration
+  account as the DEFINER of the four audit triggers, and creating them as another account needs SUPER. The restore check now removes
+  DEFINER clauses from schema statements while loading into the scratch database (tested, including that row data containing the same
+  text is never touched). 82 checks.
 - **NOT TESTED / NOT DONE (needs the owner):** `backup.php` against the live database (privileges of the application's database user,
   a real restore); installing the cron line; creating the scratch database; the off-site encrypted copy and alerting; `pnpm htaccess push
   --go` on the live server; Cloudflare Authenticated Origin Pulls; Clerk `email_verified`, MFA and Turnstile (no Clerk CLI on this

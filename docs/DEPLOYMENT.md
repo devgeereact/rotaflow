@@ -501,10 +501,16 @@ The release snapshots in `~/backups/rotaflow/releases/` hold **code only**. The 
   busy live database can pass.
 - `php backup.php --self-check` lists what would stop a backup on this machine (`proc_open` disabled, a missing `mariadb-dump`, an
   unreachable database). Run it once as cron runs it, before trusting the schedule.
-- The dump needs the database user's SELECT, SHOW VIEW and TRIGGER (the schema has triggers and no routines or events, so `--routines` is
-  not requested).
+- **Use a dedicated read-only account, not the app's.** The dump needs SELECT, SHOW VIEW and TRIGGER on the live database; the app's runtime
+  account deliberately lacks TRIGGER. On the live host the account is `devgeereact_rf_backup` (SELECT, SHOW VIEW, TRIGGER on the live DB, ALL
+  on the scratch DB only), with its credentials in `~/rotaflow-private/config/backup.php` (mode 600, same `dsn` as `config.php`); run the
+  command with `ROTAFLOW_CONFIG_FILE=backup.php`. The schema has triggers and no routines or events, so `--routines` is not requested.
+- The tools are given a `--defaults-file`, not `--defaults-extra-file`: the extra file is read BEFORE the host's `~/.my.cnf`, which on the
+  live host holds another project's account and silently overrode ours. When loading a dump for the restore check, `DEFINER=` clauses are
+  removed from the schema statements (never from row data): the triggers belong to the migration account, and creating them as another
+  account needs SUPER.
 - Suggested schedule (NOT installed; a server change that needs approval): every six hours,
-  `17 */6 * * * ROTAFLOW_PRIVATE_ROOT=$HOME/rotaflow-private /usr/local/bin/php $HOME/rotaflow-private/app/bin/backup.php >> $HOME/rotaflow-private/logs/backup.log 2>&1`,
+  `17 */6 * * * ROTAFLOW_PRIVATE_ROOT=$HOME/rotaflow-private ROTAFLOW_CONFIG_FILE=backup.php /usr/local/bin/php $HOME/rotaflow-private/app/bin/backup.php >> $HOME/rotaflow-private/logs/backup.log 2>&1`,
   plus a monthly `--restore-check` drill.
 - Do not point `~/bin/prune-backups` at the `db` folder: it keeps five per file pattern, which at six-hourly dumps is thirty hours.
 - Still missing: an encrypted off-site copy (key custody is an owner decision), alerting on a failed run, and a run on the live

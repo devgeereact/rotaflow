@@ -440,10 +440,25 @@ final class Backup
             $deadline = microtime(true) + $this->timeoutSeconds;
             $timedOut = false;
             // Feed the client without ever blocking on it: it stops reading at its first error, and a hung one must not hold us.
-            while (!gzeof($gz) && !$timedOut) {
-                $chunk = gzread($gz, 1 << 16);
-                if ($chunk === false) {
-                    break;
+            // Whole lines only, so a DEFINER clause is never split across two chunks; the last partial line is carried over.
+            $carry = '';
+            while ((!gzeof($gz) || $carry !== '') && !$timedOut) {
+                if (!gzeof($gz)) {
+                    $read = gzread($gz, 1 << 16);
+                    if ($read === false) {
+                        break;
+                    }
+                    $data = $carry . $read;
+                    $cut = strrpos($data, "\n");
+                    if ($cut === false) {
+                        $carry = $data;
+                        continue;
+                    }
+                    $chunk = self::withoutDefiners(substr($data, 0, $cut + 1));
+                    $carry = substr($data, $cut + 1);
+                } else {
+                    $chunk = self::withoutDefiners($carry);
+                    $carry = '';
                 }
                 for ($off = 0, $len = strlen($chunk); $off < $len;) {
                     $r = null;
@@ -492,6 +507,20 @@ final class Backup
         } finally {
             @unlink($errFile);
         }
+    }
+
+    /**
+     * Drops `DEFINER=`user`@`host`` from the schema statements of a dump (lines that start a conditional comment or a CREATE), never from
+     * row data. A dump records which account created each trigger or view; loading it as another, unprivileged account would need SUPER
+     * (error 1227). The restore check only has to prove the data and structure come back, so the objects are created by the loading account.
+     */
+    private static function withoutDefiners(string $text): string
+    {
+        return (string) preg_replace_callback(
+            '/^(?:\/\*!|CREATE ).*$/m',
+            static fn (array $m): string => preg_replace('/ ?DEFINER=`[^`]*`@`[^`]*`/', '', $m[0]) ?? $m[0],
+            $text,
+        );
     }
 
     private function emptyDatabase(\PDO $pdo): void

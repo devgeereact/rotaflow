@@ -105,6 +105,39 @@ putenv('HOME=' . $homeBefore);
 check('and when restoring', $homeCheck !== null && $homeCheck['ok'] === true, $homeMsg2);
 $raw->exec("DROP DATABASE IF EXISTS `$scratch`");
 
+// A dump records which account created each trigger (DEFINER). Restoring it as a different, unprivileged account fails (error 1227, needs
+// SUPER); the live server hit this: the triggers belong to the migration account, the backup account restores. The restore check must load
+// the schema without those clauses and must NOT touch row data that happens to contain the same text.
+$defDir = test_private_root() . '/backups-definer';
+mkdir($defDir, 0700, true);
+$dd = (new Backup($cfg, $defDir))->create();
+$sqlD = (string) gzdecode((string) file_get_contents($dd['file']));
+$hits = preg_match_all('/DEFINER=`[^`]+`@`[^`]+`/', $sqlD);
+check('the test dump really contains trigger definers to rewrite', $hits >= 1, (string) $hits);
+$sqlD = preg_replace('/DEFINER=`[^`]+`@`[^`]+`/', 'DEFINER=`someone_else`@`localhost`', $sqlD);
+file_put_contents($dd['file'], gzencode($sqlD));
+$newSha = hash_file('sha256', $dd['file']);
+file_put_contents($dd['file'] . '.sha256', $newSha . '  ' . basename($dd['file']) . "\n");
+$cd = json_decode((string) file_get_contents($dd['file'] . '.counts.json'), true);
+$cd['sha256'] = $newSha;
+file_put_contents($dd['file'] . '.counts.json', json_encode($cd));
+$raw->exec("CREATE DATABASE IF NOT EXISTS `$scratch` CHARACTER SET utf8mb4");
+$defMsg = '';
+$defRes = null;
+try { $defRes = (new Backup($cfg, $defDir))->restoreCheck($scratch); } catch (\Throwable $e) { $defMsg = $e->getMessage(); }
+check('a dump whose triggers belong to another account still restores for the check', $defRes !== null && $defRes['ok'] === true, $defMsg);
+$raw->exec("DROP DATABASE IF EXISTS `$scratch`");
+
+// stripping definers touches schema statements only: row data that happens to contain the same text is never altered
+$strip = new ReflectionMethod(Backup::class, 'withoutDefiners');
+$strip->setAccessible(true);
+$trig = "/*!50003 CREATE*/ /*!50017 DEFINER=`mig`@`localhost`*/ /*!50003 TRIGGER t BEFORE UPDATE ON x FOR EACH ROW SIGNAL SQLSTATE '45000' */;;";
+check('a trigger definer is removed', !str_contains((string) $strip->invoke(null, $trig . "\n"), 'DEFINER='));
+$view = "/*!50013 DEFINER=`mig`@`localhost` SQL SECURITY DEFINER */\n";
+check('a view definer is removed but its SQL SECURITY clause stays', ($v = (string) $strip->invoke(null, $view)) !== '' && !str_contains($v, 'DEFINER=`') && str_contains($v, 'SQL SECURITY DEFINER'), $v);
+$row = "INSERT INTO users VALUES ('a','x DEFINER=`a`@`b` y','z');\n(2,'DEFINER=`c`@`d`'),\n";
+check('row data containing DEFINER text is left exactly as it was', $strip->invoke(null, $row) === $row);
+
 // ---- retention -----------------------------------------------------------------------------------------------------------
 $keepDir = test_private_root() . '/backups-keep';
 mkdir($keepDir, 0700, true);
