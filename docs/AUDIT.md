@@ -1302,3 +1302,27 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   the Clerk session token. Clerk `redirect_url` is now limited to this origin; confirm by hand after release.
 - Checks: `pnpm run check` (unit, build, bundle, docs, export, PHP suite on the isolated test database) and
   Playwright 142 passed, 0 failed, on the local dev server. NOT TESTED: Docker suites, real phones.
+
+## 2026-11-08: Phase 1, live safety and ground truth (branch `phase-1/live-safety`, not pushed)
+
+- Read-only SSH checks of the live host (no write of any kind): the 2 Nov security code is deployed (`Api.php`, `Timesheets.php` and
+  `Enquiries.php` match `main` by SHA-256); the newest release snapshot is `20261102T091532Z` and holds code only; **there was no
+  database backup job for rotaflow** (the crontab has only `bin/cron.php`, `~/backups/rotaflow` has only `releases/`); `cron.php` runs
+  every five minutes, not every minute as the comments and this file say; the live root `.htaccess` lacked `ServerSignature Off` and the
+  two `Header unset` rules, so live responses still sent `x-turbo-charged-by: LiteSpeed`.
+- Changed (TDD: each test was watched failing for the right reason, and mutations of the new code each turned its suite red):
+  - `release.json` named `release/cutover`; `scripts/release.mjs` refuses any branch but the one named there, so a release from `main`
+    would have been blocked. Now `main`, with `scripts/release-config.test.mjs`.
+  - `backend/bin/backup.php` and `RotaFlow\Backup`: private (0600), checksummed, pruned dump; `--restore-check` loads the newest dump
+    into a scratch database and compares every table. Suite `300-backup.php`, 26 checks. Not scheduled; no off-site copy.
+  - `scripts/htaccess.mjs` (`pnpm htaccess compose|diff|push`) and `scripts/htaccess/origin-lock.conf`. A real read-only `diff` against
+    the live file listed exactly the 11 hardening lines as missing, and nothing to remove. `push` is tested against a scripted server
+    (order, backup-before-write, rollback on a failed move or a failed smoke check); it was not run against the real server.
+  - `docs/DEPLOYMENT.md`, `docs/SECURITY.md` (open items 1 and 7), `CHANGELOG.md`.
+- Evidence: `npm run verify` exit 0 (lint with zero warnings, format, typecheck, vitest 138 files / 1,823 tests, build, bundle budget,
+  migration safety, doc counts, export coverage, PHP suites **2,291 passed, 0 failed**, upload guard; nothing sent).
+- **NOT TESTED / NOT DONE (needs the owner):** `backup.php` against the live database (privileges of the application's database user,
+  a real restore); installing the cron line; creating the scratch database; the off-site encrypted copy and alerting; `pnpm htaccess push
+  --go` on the live server; Cloudflare Authenticated Origin Pulls; Clerk `email_verified`, MFA and Turnstile (no Clerk CLI on this
+  machine); merging this branch to `main` and any release.
+- Note for Phase 3: this file says "newest last" while the global rule is newest first, and the cron cadence in the docs is wrong.
