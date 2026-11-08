@@ -2,7 +2,7 @@
   "host": "cpanel",
   "project": "rotaflow",
   "url": "https://rotaflow.space",
-  "branch": "release/cutover",
+  "branch": "main",
   "checks": ["pnpm run check"],
   "build": "rm -rf dist && VITE_APP_URL=https://rotaflow.space VITE_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsucm90YWZsb3cuc3BhY2Uk pnpm run build && pnpm run check:bundle && grep -qF 'Y2xlcmsucm90YWZsb3cuc3BhY2Uk' -r dist/assets && { if grep -rlE --exclude='*.map' 'supabase\\.co|imagekit\\.io|sk_(live|test)_[A-Za-z0-9]{20,}' dist; then echo 'dist holds a retired service or a secret key: clean .env and rebuild'; exit 1; fi; } && { if [ -e dist/.htaccess ]; then echo 'dist/.htaccess must not exist: the web root .htaccess is never released'; exit 1; fi; }",
   "parts": [
