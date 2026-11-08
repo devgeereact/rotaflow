@@ -13,6 +13,11 @@ Dependabot may be grouped into one line per week. The rule sits under
 
 ## Unreleased
 
+- **Phase 1, live safety (8 November 2026).** There was no database backup for the live site: `backend/bin/backup.php` now makes a
+  private, checksummed, pruned MariaDB dump and `--restore-check` proves the newest one loads into a scratch database (suite
+  `300-backup`, 26 checks). Not scheduled or copied off-site yet; that needs the owner. `pnpm htaccess compose|diff|push` composes and
+  ships the live root `.htaccess` (origin-lock block plus the repo file) with a backup first and an automatic restore if the smoke
+  checks fail, so the banner hardening no longer needs a hand edit on the server. `release.json` names `main`, with a test.
 - **Security audit and fixes (2 November 2026).** Seventeen confirmed findings fixed, none critical or high. Access:
   delegated cover can no longer invite a permanent manager; managers cannot approve their own timesheets or leave;
   a calendar feed stops when the person is suspended. Server requests: push endpoints limited to browser push

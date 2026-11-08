@@ -48,7 +48,10 @@ describe('driftLines', () => {
   });
 
   it('is empty when the files match', () => {
-    expect(driftLines('a\nb\n', 'a\nb\n')).toEqual({ missingFromLive: [], extraInLive: [] });
+    expect(driftLines('a\nb\n', 'a\nb\n')).toEqual({
+      missingFromLive: [],
+      extraInLive: [],
+    });
   });
 });
 
@@ -97,7 +100,9 @@ describe('pushHtaccess', () => {
 
   it('never writes if the backup fails', async () => {
     const s = fakeServer({ live: 'OLD\n', failOn: ['backup'] });
-    await expect(pushHtaccess({ composed, run: s.run, smoke: s.smoke })).rejects.toThrow(/backup/);
+    await expect(pushHtaccess({ composed, run: s.run, smoke: s.smoke })).rejects.toThrow(
+      /backup/,
+    );
     expect(s.calls).toEqual(['read', 'backup']);
     expect(s.files['~/rotaflow.space/.htaccess']).toBe('OLD\n');
   });
@@ -112,7 +117,9 @@ describe('pushHtaccess', () => {
 
   it('restores if the move itself fails after the write', async () => {
     const s = fakeServer({ live: 'OLD\n', failOn: ['move'] });
-    await expect(pushHtaccess({ composed, run: s.run, smoke: s.smoke })).rejects.toThrow(/move/);
+    await expect(pushHtaccess({ composed, run: s.run, smoke: s.smoke })).rejects.toThrow(
+      /move/,
+    );
     expect(s.calls).toContain('restore');
     expect(s.files['~/rotaflow.space/.htaccess']).toBe('OLD\n');
   });

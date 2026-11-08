@@ -27,7 +27,7 @@ and only the built artifacts are shipped.
 > so grey-clouding takes the site down instantly. `rotaflow.space` is its own zone
 > with its own Origin cert — the `*.gakinz.com` wildcard does not cover it.
 >
-> ⚠️ **The live `.htaccess` is not the repo file.** The server copy is the repo file
+> ⚠️ **The live `.htaccess` is not the repo file.** (`pnpm htaccess` now composes and pushes it; see "Composing the live `.htaccess`".) The server copy is the repo file
 > with a `# === BEGIN Cloudflare-origin-lock ===` block prepended, which 403s any
 > request arriving without a `CF-RAY` header (with `/.well-known/` exempt so ACME
 > still works). Ship the repo file alone and that lock is silently removed. Prepend
@@ -338,6 +338,21 @@ through; it worked, and these are the steps that made it safe.
    the site's own document root. The pages still work in that state; only the static
    copy is missing. If the first row returns 200, the new `.htaccess` did not deploy.
 
+### The command: `pnpm htaccess` (Phase 1, November 2026)
+
+The steps above are now a command, so a change to the repo `.htaccess` never needs a hand edit on the server
+(`scripts/release.mjs` still never ships the root file, on purpose).
+
+- `pnpm htaccess compose` prints the file that should be live: `scripts/htaccess/origin-lock.conf` (the lock block, copied
+  verbatim from the live file) followed by the repo `.htaccess`. Composing its own output changes nothing.
+- `pnpm htaccess diff` reads the live file over SSH (read-only) and lists the lines to add or remove. On 2026-11-08 it showed
+  exactly the 11 banner-hardening lines (`ServerSignature Off`, `Header unset X-Powered-By`, `Header unset X-Turbo-Charged-By`).
+- `pnpm htaccess push` is a dry run. `pnpm htaccess push --go` backs the live file up to
+  `~/backups/rotaflow/htaccess/`, writes `.htaccess.new` beside it, moves it into place, runs the `smoke` checks from
+  `release.json`, and **restores the backup if any fail**. It needs the owner's "approved:" like any deploy.
+- Not covered: the `curl --resolve` lock check in the table above (run it by hand after a push), and replacing the CF-RAY lock
+  with Cloudflare Authenticated Origin Pulls (a Cloudflare setting; the lock block stays as live until that exists).
+
 ## A deploy does not undo a leak
 
 Learned on 2026-08-31, deploying the removal of a retired credential (HARDEN-010).
@@ -457,6 +472,26 @@ curl -s "https://rotaflow.space/$LIVE" | grep -o '<short-sha>' | head -1
 
 `vite.config.ts` bakes the git SHA in as `__SENTRY_RELEASE__`, so this is a direct answer rather
 than an inference from a filename.
+
+## Database backups (MariaDB, since the 1 November 2026 cutover)
+
+The release snapshots in `~/backups/rotaflow/releases/` hold **code only**. The database is backed up by
+`backend/bin/backup.php` (class `RotaFlow\Backup`, suite `300-backup.php`):
+
+- `php backup.php [--dir=PATH] [--keep=28]` writes `rotaflow-<UTC>.sql.gz` (mode 0600) and a `.sha256`, then keeps the newest N.
+  Default folder `~/backups/rotaflow/db`. The password reaches `mariadb-dump` through a removed 0600 defaults file, never the
+  command line. A failed or truncated dump leaves no file and exits 1.
+- `php backup.php --restore-check --scratch-db=NAME [--tolerance=PCT]` verifies the newest dump's checksum, loads it into an empty
+  scratch database, compares every table's row count with the live one and empties the scratch database. `NAME` must exist, be
+  empty, differ from the live database and contain `restorecheck` (cPanel users create it once in the panel). On a busy live
+  database use a small tolerance (for example 2); `0` is exact.
+- Suggested schedule (NOT installed; a server change that needs approval): every six hours,
+  `17 */6 * * * ROTAFLOW_PRIVATE_ROOT=$HOME/rotaflow-private /usr/local/bin/php $HOME/rotaflow-private/app/bin/backup.php >> $HOME/rotaflow-private/logs/backup.log 2>&1`,
+  plus a monthly `--restore-check` drill.
+- Do not point `~/bin/prune-backups` at the `db` folder: it keeps five per file pattern, which at six-hourly dumps is thirty hours.
+- Still missing: an encrypted off-site copy (key custody is an owner decision), alerting on a failed run, and a live check that the
+  application's database user may run `mariadb-dump --single-transaction` (SELECT, SHOW VIEW, TRIGGER). Until then the command is tested
+  against the throwaway test database only.
 
 ## Recovery: configuring the backup and auth-monitor jobs
 

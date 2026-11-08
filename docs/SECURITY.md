@@ -514,8 +514,10 @@ turn itself off when a session ends; that part of D8 is not built.
 
 ## Open items, in priority order
 
-1. **Enable backups** (§1) — billing decision, blocks a safe beta more than
-   anything else in this document.
+1. **Schedule and copy off-site the MariaDB backups** (§1) — `backend/bin/backup.php` exists
+   (Phase 1, November 2026) but is not scheduled and no off-site copy exists; until both are
+   done there is no database backup for the live site. Blocks a safe beta more than anything
+   else in this document.
 2. **Name an incident owner and an on-call path** (§6) — a decision, not
    code.
 3. ✅ **Scheduled health probe** runs every 5 minutes via `pg_cron`, testing
@@ -529,7 +531,7 @@ turn itself off when a session ends; that part of D8 is not built.
 6. **Replace the CF-RAY origin lock** with Cloudflare Authenticated Origin Pulls or a Cloudflare IP-range lock in
    the composed root `.htaccess`: the `CF-RAY` header can be sent by anyone who reaches the server's IP directly
    (security audit, 2 November 2026).
-7. **Copy the header block into the live root `.htaccess`**: `ServerSignature Off` and unsetting
+7. **Push the composed root `.htaccess`** (`pnpm htaccess push --go`, needs approval; it replaces "copy the header block by hand"): `ServerSignature Off` and unsetting
    `X-Turbo-Charged-By` / `X-Powered-By` (the repository copy has them; the release never ships the root file).
 8. **Add `email_verified` to the Clerk session token** and require it in `Users::linkOrCreate`, now that Google
    sign-in is enabled beside the email code.

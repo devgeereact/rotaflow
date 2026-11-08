@@ -15,7 +15,9 @@ describe('release.json', () => {
   it('only uploads from folders that exist in the repository or are built', () => {
     const built = new Set(['dist']);
     for (const part of cfg.parts) {
-      expect(built.has(part.from) || existsSync(join(root, part.from)), part.from).toBe(true);
+      expect(built.has(part.from) || existsSync(join(root, part.from)), part.from).toBe(
+        true,
+      );
     }
   });
 
