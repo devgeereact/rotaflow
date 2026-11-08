@@ -54,20 +54,76 @@ export async function pushHtaccess({ composed, run, smoke }) {
   const live = await run('read');
   if (live === composed) return { ok: true, changed: false };
   await run('backup');
-  let moved = false;
+  let written = false;
   try {
     await run('write', composed);
-    moved = true;
+    written = true;
     await run('move');
   } catch (e) {
-    if (moved) await run('restore');
+    // After a successful write the new file may already be live: put the old one back. Before it, only the half-written file exists.
+    if (written) await run('restore');
+    else {
+      try {
+        await run('cleanup');
+      } catch {
+        // the original error below is the one that matters
+      }
+    }
     throw e;
   }
-  if (!(await smoke())) {
+  let good = false;
+  try {
+    good = await smoke();
+  } catch {
+    good = false;
+  }
+  if (!good) {
     await run('restore');
     return { ok: false, changed: false, rolledBack: true };
   }
   return { ok: true, changed: true };
+}
+
+/**
+ * The checks a release makes (release.json "smoke"). Never throws: a network error is retried once, then counts as a failure, so
+ * the caller rolls back instead of crashing with a half-applied file. Each request has a time limit.
+ */
+export function makeSmoke({
+  base,
+  checks,
+  fetchImpl = fetch,
+  timeoutMs = 15000,
+  log = () => undefined,
+}) {
+  const once = async (s) => {
+    const res = await fetchImpl(base + s.path, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const body = s.contains ? await res.text() : '';
+    if (res.status !== s.status || (s.contains && !body.includes(s.contains))) {
+      log(
+        `smoke failed: ${s.path} answered ${res.status}${s.contains && !body.includes(s.contains) ? ` without "${s.contains}"` : ''}`,
+      );
+      return false;
+    }
+    return true;
+  };
+  return async () => {
+    for (const s of checks) {
+      let ok = false;
+      for (let attempt = 0; attempt < 2 && !ok; attempt += 1) {
+        try {
+          ok = await once(s);
+          if (!ok) break; // a wrong answer is an answer: do not retry it
+        } catch (e) {
+          log(`smoke error on ${s.path}: ${e.message}`);
+        }
+      }
+      if (!ok) return false;
+    }
+    return true;
+  };
 }
 
 // ---- command line (not run when imported by the tests) -----------------------------------------------------------------------
@@ -95,6 +151,8 @@ function sshRunner(host, docroot) {
           return ssh(`cat > ${live}.new && chmod --reference=${live} ${live}.new`, arg);
         case 'move':
           return ssh(`mv ${live}.new ${live}`);
+        case 'cleanup':
+          return ssh(`rm -f ${live}.new`);
         case 'restore':
           return ssh(`cp -p ${backup} ${live} && rm -f ${live}.new`);
         default:
@@ -137,26 +195,25 @@ async function main() {
 
   if (!rest.includes('--go')) {
     console.log(
-      `\nDry run. With --go: back up to ${cfg.host}:${srv.backup}, write ${docroot}/.htaccess.new, move it into place, check ${cfg.url}/ and /api/health, and restore the backup if either fails.`,
+      `\nDry run. With --go: back up to ${cfg.host}:${srv.backup}, write ${docroot}/.htaccess.new, move it into place, run the ${cfg.smoke.length} smoke checks from release.json against ${cfg.url}, and restore the backup if any fail (or if the check cannot run).`,
     );
     return;
   }
-  // The same checks a release makes (release.json "smoke"): the home page, the API health route, an unauthenticated API call,
-  // a deep SPA route (proves the fallback survived) and a missing page (proves 404s still 404).
-  const smoke = async () => {
-    for (const s of cfg.smoke) {
-      const res = await fetch(cfg.url + s.path, { redirect: 'manual' });
-      const body = s.contains ? await res.text() : '';
-      if (res.status !== s.status || (s.contains && !body.includes(s.contains))) {
-        console.error(
-          `smoke failed: ${s.path} answered ${res.status}${s.contains && !body.includes(s.contains) ? ` without "${s.contains}"` : ''}`,
-        );
-        return false;
-      }
-    }
-    return true;
-  };
-  const r = await pushHtaccess({ composed, run: srv.run, smoke });
+  const smoke = makeSmoke({
+    base: cfg.url,
+    checks: cfg.smoke,
+    log: (m) => console.error(m),
+  });
+  let r;
+  try {
+    r = await pushHtaccess({ composed, run: srv.run, smoke });
+  } catch (e) {
+    console.error(`push failed: ${e.message}`);
+    console.error(
+      `The old file is at ${cfg.host}:${srv.backup}. To put it back by hand: ssh ${cfg.host} 'cp -p ${srv.backup} ~/${docroot}/.htaccess'`,
+    );
+    process.exit(1);
+  }
   console.log(
     r.changed
       ? `pushed; old file kept at ${srv.backup}`

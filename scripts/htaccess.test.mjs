@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { composeHtaccess, driftLines, pushHtaccess } from './htaccess.mjs';
+import { composeHtaccess, driftLines, makeSmoke, pushHtaccess } from './htaccess.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoFile = readFileSync(join(root, '.htaccess'), 'utf8');
@@ -56,7 +56,7 @@ describe('driftLines', () => {
 });
 
 /** A scripted server: records every command, answers from a map, and can be told to fail a step. */
-function fakeServer({ live, failOn = [], smokeOk = true } = {}) {
+function fakeServer({ live, failOn = [], smokeOk = true, smokeThrows = false } = {}) {
   const calls = [];
   const files = { '~/rotaflow.space/.htaccess': live };
   return {
@@ -70,10 +70,12 @@ function fakeServer({ live, failOn = [], smokeOk = true } = {}) {
       if (step === 'write') files.tmp = arg;
       if (step === 'move') files['~/rotaflow.space/.htaccess'] = files.tmp;
       if (step === 'restore') files['~/rotaflow.space/.htaccess'] = files.backup;
+      if (step === 'cleanup') delete files.tmp;
       return '';
     },
     smoke() {
       calls.push('smoke');
+      if (smokeThrows) throw new Error('fetch failed');
       return smokeOk;
     },
   };
@@ -122,5 +124,89 @@ describe('pushHtaccess', () => {
     );
     expect(s.calls).toContain('restore');
     expect(s.files['~/rotaflow.space/.htaccess']).toBe('OLD\n');
+  });
+});
+
+describe('pushHtaccess when things go wrong', () => {
+  const composed = 'NEW\n';
+
+  it('puts the old file back if the smoke check itself throws', async () => {
+    const s = fakeServer({ live: 'OLD\n', smokeThrows: true });
+    const r = await pushHtaccess({ composed, run: s.run, smoke: s.smoke });
+    expect(r).toMatchObject({ ok: false, rolledBack: true });
+    expect(s.calls.at(-1)).toBe('restore');
+    expect(s.files['~/rotaflow.space/.htaccess']).toBe('OLD\n');
+  });
+
+  it('cleans up the half-written file when the write fails, and leaves the live file alone', async () => {
+    const s = fakeServer({ live: 'OLD\n', failOn: ['write'] });
+    await expect(pushHtaccess({ composed, run: s.run, smoke: s.smoke })).rejects.toThrow(
+      /write/,
+    );
+    expect(s.calls).toEqual(['read', 'backup', 'write', 'cleanup']);
+    expect(s.files['~/rotaflow.space/.htaccess']).toBe('OLD\n');
+  });
+});
+
+describe('makeSmoke', () => {
+  const checks = [
+    { path: '/', status: 200 },
+    { path: '/api/health', status: 200, contains: '"ok":true' },
+  ];
+  const reply = (status, body = '') => ({ status, text: async () => body });
+
+  it('passes when every check answers as expected', async () => {
+    const smoke = makeSmoke({
+      base: 'https://x.test',
+      checks,
+      fetchImpl: async (u) =>
+        u.endsWith('health') ? reply(200, '{"ok":true}') : reply(200),
+    });
+    expect(await smoke()).toBe(true);
+  });
+
+  it('fails, without throwing, on a wrong status or a missing body marker', async () => {
+    expect(
+      await makeSmoke({
+        base: 'https://x.test',
+        checks,
+        fetchImpl: async () => reply(403),
+      })(),
+    ).toBe(false);
+    expect(
+      await makeSmoke({
+        base: 'https://x.test',
+        checks,
+        fetchImpl: async () => reply(200, 'nope'),
+      })(),
+    ).toBe(false);
+  });
+
+  it('survives one network error by retrying, but not endless ones', async () => {
+    let n = 0;
+    const flaky = async () => {
+      n += 1;
+      if (n === 1) throw new Error('reset');
+      return reply(200, '{"ok":true}');
+    };
+    expect(await makeSmoke({ base: 'https://x.test', checks, fetchImpl: flaky })()).toBe(
+      true,
+    );
+    const down = async () => {
+      throw new Error('down');
+    };
+    expect(await makeSmoke({ base: 'https://x.test', checks, fetchImpl: down })()).toBe(
+      false,
+    );
+  });
+
+  it('gives each request a time limit', async () => {
+    let signal;
+    await makeSmoke({
+      base: 'https://x.test',
+      checks: [checks[0]],
+      fetchImpl: async (_u, o) => ((signal = o.signal), reply(200)),
+    })();
+    expect(signal).toBeInstanceOf(AbortSignal);
   });
 });
