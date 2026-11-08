@@ -34,7 +34,8 @@
     "e2e:walk": "playwright test --config e2e/walk/playwright.walk.config.ts",
     "test:datamove": "bash scripts/datamove-test.sh all",
     "release": "node scripts/release.mjs",
-    "verify": "node scripts/release.mjs --verify"
+    "verify": "node scripts/release.mjs --verify",
+    "htaccess": "node scripts/htaccess.mjs"
   },
   "dependencies": {
     "@clerk/clerk-react": "5.61.3",
