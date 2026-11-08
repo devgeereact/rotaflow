@@ -2,7 +2,16 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { composeHtaccess, driftLines, makeSmoke, pushHtaccess } from './htaccess.mjs';
+import { createHash } from 'node:crypto';
+import {
+  composeHtaccess,
+  driftLines,
+  makeSmoke,
+  parseArgs,
+  pushHtaccess,
+  sshRunner,
+  whitespaceOnly,
+} from './htaccess.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoFile = readFileSync(join(root, '.htaccess'), 'utf8');
@@ -208,5 +217,104 @@ describe('makeSmoke', () => {
       fetchImpl: async (_u, o) => ((signal = o.signal), reply(200)),
     })();
     expect(signal).toBeInstanceOf(AbortSignal);
+  });
+});
+
+/** An ssh stand-in: records the remote command of each call and answers like a server (sha256sum of what was piped in). */
+function fakeSsh({ corruptUpload = false } = {}) {
+  const commands = [];
+  const exec = (_file, args, opts = {}) => {
+    const cmd = args.at(-1);
+    commands.push({ cmd, input: opts.input });
+    if (cmd.includes('sha256sum')) {
+      const real = createHash('sha256')
+        .update(opts.input ?? '')
+        .digest('hex');
+      return `${corruptUpload ? 'f'.repeat(64) : real}  /home/x/rotaflow.space/.htaccess.new\n`;
+    }
+    return '';
+  };
+  return { exec, commands };
+}
+
+describe('sshRunner: the real command strings', () => {
+  it('never writes --option=~/path, because a shell does not expand a tilde there', () => {
+    const f = fakeSsh();
+    const r = sshRunner('cpanel', 'rotaflow.space', f.exec);
+    for (const step of ['read', 'backup', 'move', 'restore', 'cleanup']) r.run(step);
+    r.run('write', 'NEW\n');
+    expect(f.commands.length).toBeGreaterThan(5);
+    for (const c of f.commands) expect(c.cmd, c.cmd).not.toMatch(/=~/);
+  });
+
+  it('copies the live file mode with --reference as a separate word', () => {
+    const f = fakeSsh();
+    sshRunner('cpanel', 'rotaflow.space', f.exec).run('write', 'NEW\n');
+    expect(f.commands[0].cmd).toContain(
+      'chmod --reference ~/rotaflow.space/.htaccess ~/rotaflow.space/.htaccess.new',
+    );
+    expect(f.commands[0].input).toBe('NEW\n');
+  });
+
+  it('restores through a file beside the live one and a move, never by copying over it', () => {
+    const f = fakeSsh();
+    sshRunner('cpanel', 'rotaflow.space', f.exec).run('restore');
+    const cmd = f.commands[0].cmd;
+    expect(cmd).toMatch(/cp -p \S+ ~\/rotaflow\.space\/\.htaccess\.restore/);
+    expect(cmd).toContain(
+      'mv ~/rotaflow.space/.htaccess.restore ~/rotaflow.space/.htaccess',
+    );
+    expect(cmd).not.toMatch(/cp -p \S+ ~\/rotaflow\.space\/\.htaccess(\s|$)/);
+  });
+
+  it('cleans up both the new file and a half-made restore file', () => {
+    const f = fakeSsh();
+    sshRunner('cpanel', 'rotaflow.space', f.exec).run('cleanup');
+    expect(f.commands[0].cmd).toContain('.htaccess.new');
+    expect(f.commands[0].cmd).toContain('.htaccess.restore');
+  });
+
+  it('refuses an upload whose checksum on the server differs from what was sent', () => {
+    const f = fakeSsh({ corruptUpload: true });
+    expect(() =>
+      sshRunner('cpanel', 'rotaflow.space', f.exec).run('write', 'NEW\n'),
+    ).toThrow(/does not match/);
+  });
+
+  it('accepts an upload whose checksum matches', () => {
+    const f = fakeSsh();
+    expect(() =>
+      sshRunner('cpanel', 'rotaflow.space', f.exec).run('write', 'NEW\n'),
+    ).not.toThrow();
+  });
+
+  it('refuses to build commands without a document root', () => {
+    expect(() => sshRunner('cpanel', undefined, fakeSsh().exec)).toThrow(
+      /document root/i,
+    );
+  });
+});
+
+describe('whitespaceOnly', () => {
+  it('is true when only whitespace or line endings differ', () => {
+    expect(whitespaceOnly('a\nb\n', 'a\r\nb\r\n')).toBe(true);
+    expect(whitespaceOnly('a\n', 'a')).toBe(true);
+  });
+  it('is false for identical files and for real differences', () => {
+    expect(whitespaceOnly('a\n', 'a\n')).toBe(false);
+    expect(whitespaceOnly('a\n', 'b\n')).toBe(false);
+  });
+});
+
+describe('parseArgs', () => {
+  it('accepts the options each command has', () => {
+    expect(parseArgs('compose', ['--out=x.txt'])).toEqual({ out: 'x.txt', go: false });
+    expect(parseArgs('push', ['--go'])).toEqual({ out: undefined, go: true });
+    expect(parseArgs('diff', [])).toEqual({ out: undefined, go: false });
+  });
+  it('rejects an option on a command that does not take it', () => {
+    expect(() => parseArgs('compose', ['--go'])).toThrow(/unknown option --go/);
+    expect(() => parseArgs('diff', ['--out=x'])).toThrow(/unknown option/);
+    expect(() => parseArgs('push', ['--bad'])).toThrow(/unknown option --bad/);
   });
 });

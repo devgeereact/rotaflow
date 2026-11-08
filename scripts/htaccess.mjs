@@ -12,6 +12,7 @@
  *                                                    and put the old file back if the site does not answer
  */
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -128,12 +129,21 @@ export function makeSmoke({
 
 // ---- command line (not run when imported by the tests) -----------------------------------------------------------------------
 
-function sshRunner(host, docroot) {
+/**
+ * The real server steps, as remote shell commands. `exec` is injectable so the command strings are tested (they were not, and one of them
+ * had a tilde after an equals sign, which a shell does not expand). Every step that replaces the live file does it with a write beside
+ * it and one `mv`, so the origin lock is never absent, even for an instant.
+ */
+export function sshRunner(host, docroot, exec = execFileSync) {
+  if (!docroot)
+    throw new Error(
+      'no document root: release.json has no "dist" part to say where the site lives',
+    );
   const live = `~/${docroot}/.htaccess`;
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
   const backup = `~/backups/rotaflow/htaccess/htaccess.${stamp}`;
   const ssh = (cmd, input) =>
-    execFileSync('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', host, cmd], {
+    exec('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', host, cmd], {
       input,
       encoding: 'utf8',
     });
@@ -147,19 +157,54 @@ function sshRunner(host, docroot) {
           return ssh(
             `mkdir -p ~/backups/rotaflow/htaccess && cp -p ${live} ${backup} && chmod 600 ${backup}`,
           );
-        case 'write':
-          return ssh(`cat > ${live}.new && chmod --reference=${live} ${live}.new`, arg);
+        case 'write': {
+          // --reference as its own word: a tilde only expands at the start of a word. sha256sum proves what arrived is what was sent.
+          const out = ssh(
+            `cat > ${live}.new && chmod --reference ${live} ${live}.new && sha256sum ${live}.new`,
+            arg,
+          );
+          const sent = createHash('sha256').update(arg).digest('hex');
+          if (String(out).trim().split(/\s+/)[0] !== sent)
+            throw new Error(
+              'the uploaded file does not match what was sent (checksum differs)',
+            );
+          return out;
+        }
         case 'move':
           return ssh(`mv ${live}.new ${live}`);
         case 'cleanup':
-          return ssh(`rm -f ${live}.new`);
+          return ssh(`rm -f ${live}.new ${live}.restore`);
         case 'restore':
-          return ssh(`cp -p ${backup} ${live} && rm -f ${live}.new`);
+          return ssh(
+            `cp -p ${backup} ${live}.restore && mv ${live}.restore ${live} && rm -f ${live}.new`,
+          );
         default:
           throw new Error(`unknown step ${step}`);
       }
     },
   };
+}
+
+/** True when the two files have the same lines but are not byte-identical (spaces, line endings, a final newline). */
+export function whitespaceOnly(composed, live) {
+  const norm = (s) =>
+    s
+      .replace(/\r\n/g, '\n')
+      .replace(/[ \t]+$/gm, '')
+      .replace(/\n+$/, '');
+  return composed !== live && norm(composed) === norm(live);
+}
+
+/** Options per command; anything else is a mistake worth stopping for. */
+export function parseArgs(cmd, rest) {
+  const allowed = { compose: ['--out='], diff: [], push: ['--go'] }[cmd] ?? [];
+  const out = { out: undefined, go: false };
+  for (const a of rest) {
+    if (allowed.includes('--go') && a === '--go') out.go = true;
+    else if (allowed.includes('--out=') && a.startsWith('--out=')) out.out = a.slice(6);
+    else throw new Error(`unknown option ${a}`);
+  }
+  return out;
 }
 
 async function main() {
@@ -170,19 +215,15 @@ async function main() {
     readFileSync(join(root, '.htaccess'), 'utf8'),
     readFileSync(join(root, 'scripts/htaccess/origin-lock.conf'), 'utf8'),
   );
-  const known = new Set(['--go']);
-  for (const a of rest)
-    if (!known.has(a) && !a.startsWith('--out=')) throw new Error(`unknown option ${a}`);
+  if (!['compose', 'diff', 'push'].includes(cmd))
+    throw new Error('usage: htaccess.mjs compose [--out=FILE] | diff | push [--go]');
+  const opts = parseArgs(cmd, rest);
 
   if (cmd === 'compose') {
-    const out = rest.find((a) => a.startsWith('--out='))?.slice(6);
-    if (out) writeFileSync(out, composed);
+    if (opts.out) writeFileSync(opts.out, composed);
     else process.stdout.write(composed);
     return;
   }
-  if (cmd !== 'diff' && cmd !== 'push')
-    throw new Error('usage: htaccess.mjs compose [--out=FILE] | diff | push [--go]');
-
   const srv = sshRunner(cfg.host, docroot);
   const liveText = srv.run('read');
   const d = driftLines(composed, liveText);
@@ -191,9 +232,13 @@ async function main() {
   );
   for (const l of d.missingFromLive) console.log(`  + ${l}`);
   for (const l of d.extraInLive) console.log(`  - ${l}`);
+  if (whitespaceOnly(composed, liveText))
+    console.log(
+      '  (the lines are identical; the files differ only in whitespace or line endings, and push --go would still rewrite it)',
+    );
   if (cmd === 'diff') return;
 
-  if (!rest.includes('--go')) {
+  if (!opts.go) {
     console.log(
       `\nDry run. With --go: back up to ${cfg.host}:${srv.backup}, write ${docroot}/.htaccess.new, move it into place, run the ${cfg.smoke.length} smoke checks from release.json against ${cfg.url}, and restore the backup if any fail (or if the check cannot run).`,
     );
