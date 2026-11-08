@@ -51,9 +51,16 @@ export function driftLines(composed, live) {
  * answers whether the site still serves. Nothing is written until the backup exists; a failed move or a failed smoke check puts the old
  * file back.
  */
-export async function pushHtaccess({ composed, run, smoke }) {
+export async function pushHtaccess({ composed, run, smoke, acceptExtra = false }) {
   const live = await run('read');
   if (live === composed) return { ok: true, changed: false };
+  const extra = driftLines(composed, live).extraInLive;
+  if (extra.length > 0 && !acceptExtra) {
+    // Lines live has and the composed file does not: a hand edit nobody wrote down. Overwriting it silently is how locks get lost.
+    throw new Error(
+      `the live .htaccess has ${extra.length} line(s) the composed file lacks (first: ${extra[0].trim().slice(0, 120)}). Someone edited it by hand: run "diff", decide, then pass --accept-extra to overwrite them`,
+    );
+  }
   await run('backup');
   let written = false;
   try {
@@ -79,8 +86,20 @@ export async function pushHtaccess({ composed, run, smoke }) {
     good = false;
   }
   if (!good) {
-    await run('restore');
-    return { ok: false, changed: false, rolledBack: true };
+    try {
+      await run('restore');
+    } catch (e) {
+      throw new Error(
+        `the smoke check failed and the rollback also failed (${e.message}); the new file may still be live, restore the backup by hand`,
+      );
+    }
+    let siteAfterRollback = false;
+    try {
+      siteAfterRollback = await smoke();
+    } catch {
+      siteAfterRollback = false;
+    }
+    return { ok: false, changed: false, rolledBack: true, siteAfterRollback };
   }
   return { ok: true, changed: true };
 }
@@ -146,6 +165,7 @@ export function sshRunner(host, docroot, exec = execFileSync) {
     exec('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', host, cmd], {
       input,
       encoding: 'utf8',
+      timeout: 120000,
     });
   return {
     backup,
@@ -154,9 +174,7 @@ export function sshRunner(host, docroot, exec = execFileSync) {
         case 'read':
           return ssh(`cat ${live}`);
         case 'backup':
-          return ssh(
-            `mkdir -p ~/backups/rotaflow/htaccess && cp -p ${live} ${backup} && chmod 600 ${backup}`,
-          );
+          return ssh(`mkdir -p ~/backups/rotaflow/htaccess && cp -p ${live} ${backup}`);
         case 'write': {
           // --reference as its own word: a tilde only expands at the start of a word. sha256sum proves what arrived is what was sent.
           const out = ssh(
@@ -197,10 +215,13 @@ export function whitespaceOnly(composed, live) {
 
 /** Options per command; anything else is a mistake worth stopping for. */
 export function parseArgs(cmd, rest) {
-  const allowed = { compose: ['--out='], diff: [], push: ['--go'] }[cmd] ?? [];
-  const out = { out: undefined, go: false };
+  const allowed =
+    { compose: ['--out='], diff: [], push: ['--go', '--accept-extra'] }[cmd] ?? [];
+  const out = { out: undefined, go: false, acceptExtra: false };
   for (const a of rest) {
     if (allowed.includes('--go') && a === '--go') out.go = true;
+    else if (allowed.includes('--accept-extra') && a === '--accept-extra')
+      out.acceptExtra = true;
     else if (allowed.includes('--out=') && a.startsWith('--out=')) out.out = a.slice(6);
     else throw new Error(`unknown option ${a}`);
   }
@@ -251,7 +272,12 @@ async function main() {
   });
   let r;
   try {
-    r = await pushHtaccess({ composed, run: srv.run, smoke });
+    r = await pushHtaccess({
+      composed,
+      run: srv.run,
+      smoke,
+      acceptExtra: opts.acceptExtra,
+    });
   } catch (e) {
     console.error(`push failed: ${e.message}`);
     console.error(
@@ -263,7 +289,7 @@ async function main() {
     r.changed
       ? `pushed; old file kept at ${srv.backup}`
       : r.rolledBack
-        ? 'smoke check failed; the old file was restored'
+        ? `smoke check failed; the old file was restored (the site ${r.siteAfterRollback ? 'answers again' : 'DOES NOT answer its checks: investigate now'})`
         : 'already up to date',
   );
   if (!r.ok) process.exitCode = 1;
