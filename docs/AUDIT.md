@@ -1314,13 +1314,23 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   - `release.json` named `release/cutover`; `scripts/release.mjs` refuses any branch but the one named there, so a release from `main`
     would have been blocked. Now `main`, with `scripts/release-config.test.mjs`.
   - `backend/bin/backup.php` and `RotaFlow\Backup`: private (0600), checksummed, pruned dump; `--restore-check` loads the newest dump
-    into a scratch database and compares every table. Suite `300-backup.php`, 26 checks. Not scheduled; no off-site copy.
+    into a scratch database and compares every table. Suite `300-backup.php`, 44 checks (26 at first commit). Not scheduled; no off-site copy.
   - `scripts/htaccess.mjs` (`pnpm htaccess compose|diff|push`) and `scripts/htaccess/origin-lock.conf`. A real read-only `diff` against
     the live file listed exactly the 11 hardening lines as missing, and nothing to remove. `push` is tested against a scripted server
-    (order, backup-before-write, rollback on a failed move or a failed smoke check); it was not run against the real server.
+    (order, backup-before-write, rollback on a failed move, a failed smoke check or a smoke check that throws, cleanup of a failed
+    write); 18 tests. It was not run against the real server.
   - `docs/DEPLOYMENT.md`, `docs/SECURITY.md` (open items 1 and 7), `CHANGELOG.md`.
 - Evidence: `npm run verify` exit 0 (lint with zero warnings, format, typecheck, vitest 138 files / 1,823 tests, build, bundle budget,
   migration safety, doc counts, export coverage, PHP suites **2,291 passed, 0 failed**, upload guard; nothing sent).
+- **Independent review, same day.** A separate reviewer read the code and the docs against the phase's criteria and found three
+  defects that mattered before anyone uses `push --go` or schedules the backup; all three were fixed test-first:
+  (1) a network error in the smoke check skipped the rollback and left the new file live, and the request had no time limit;
+  (2) the restore check compared with the live database as it is now, so a restore losing up to the tolerance passed silently, so the
+  dump now records each table's count around itself and the check holds the restore to that range exactly;
+  (3) the scratch database was wiped even if it held someone else's tables, its name check accepted a trailing newline, and
+  `--routines` (not needed, often refused on shared hosting) is no longer requested. Also: a self-check, no PHP warnings when the client
+  abandons a restore, a failed write cleaned up, the backup path printed on failure, docs corrected. One slip of mine: the roadmap tool
+  ticked Phase 1 as complete; it is not.
 - **NOT TESTED / NOT DONE (needs the owner):** `backup.php` against the live database (privileges of the application's database user,
   a real restore); installing the cron line; creating the scratch database; the off-site encrypted copy and alerting; `pnpm htaccess push
   --go` on the live server; Cloudflare Authenticated Origin Pulls; Clerk `email_verified`, MFA and Turnstile (no Clerk CLI on this
