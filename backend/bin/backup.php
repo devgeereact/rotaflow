@@ -32,14 +32,20 @@ if ($opts['restore-check'] && $opts['scratch-db'] === null) {
     fwrite(STDERR, "--restore-check needs --scratch-db=NAME\n");
     exit(2);
 }
-if (preg_match('/^\d+$/', (string) $opts['keep']) !== 1 || (int) $opts['keep'] < 1 || !is_numeric($opts['tolerance']) || (float) $opts['tolerance'] < 0) {
-    fwrite(STDERR, "--keep must be a whole number of at least 1 and --tolerance a number of 0 or more\n");
+if (preg_match('/^\d+$/', (string) $opts['keep']) !== 1 || (int) $opts['keep'] < 1 || !is_numeric($opts['tolerance']) || (float) $opts['tolerance'] < 0 || (float) $opts['tolerance'] > 100) {
+    fwrite(STDERR, "--keep must be a whole number of at least 1 and --tolerance a number from 0 to 100\n");
     exit(2);
 }
-$dir = $opts['dir'] ?? (getenv('ROTAFLOW_BACKUP_DIR') ?: rtrim((string) getenv('HOME'), '/') . '/backups/rotaflow/db');
-$backup = new Backup(Bootstrap::config(Bootstrap::privateRoot(), getenv('ROTAFLOW_CONFIG_FILE') ?: 'config.php'), $dir);
+$home = rtrim((string) getenv('HOME'), '/');
+$dir = $opts['dir'] ?? (getenv('ROTAFLOW_BACKUP_DIR') ?: ($home !== '' ? $home . '/backups/rotaflow/db' : null));
+if ($dir === null) {
+    fwrite(STDERR, "no backup folder: pass --dir=PATH or set ROTAFLOW_BACKUP_DIR (HOME is not set)\n");
+    exit(2);
+}
 
 try {
+    // Inside the try so a missing or incomplete configuration is a plain message and exit 1, not a stack trace and exit 255.
+    $backup = new Backup(Bootstrap::config(Bootstrap::privateRoot(), getenv('ROTAFLOW_CONFIG_FILE') ?: 'config.php'), $dir);
     if ($opts['self-check']) {
         $problems = $backup->selfCheck();
         foreach ($problems as $p) {

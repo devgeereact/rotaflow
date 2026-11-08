@@ -134,6 +134,19 @@ check('a scratch database with foreign tables is refused', $threw(fn () => (new 
 check('and its foreign table is still there', (int) $raw->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$scratch' AND table_name = 'not_ours'")->fetchColumn() === 1);
 $raw->exec("DROP TABLE IF EXISTS `$scratch`.`not_ours`");
 
+// WR-02: the rule is "empty", not "only RotaFlow-named tables": a restore of real data into a *_restorecheck database is not ours to wipe
+$raw->exec("CREATE TABLE `$scratch`.`users` (id INT, email VARCHAR(50))");
+$raw->exec("INSERT INTO `$scratch`.`users` VALUES (1, 'staging-restore@example.test')");
+$m1 = '';
+try { (new Backup($cfg, $rdir))->restoreCheck($scratch); } catch (\Throwable $e) { $m1 = $e->getMessage(); }
+check('a scratch database holding a RotaFlow-named table with data is refused', str_contains($m1, 'not empty'), $m1);
+check('and that table and its row are untouched', (int) $raw->query("SELECT COUNT(*) FROM `$scratch`.`users`")->fetchColumn() === 1);
+$raw->exec("DROP TABLE IF EXISTS `$scratch`.`users`");
+$raw->exec("CREATE VIEW `$scratch`.`a_view` AS SELECT 1 AS one");
+check('a scratch database holding a view is refused', $threw(fn () => (new Backup($cfg, $rdir))->restoreCheck($scratch)));
+check('and the view is untouched', (int) $raw->query("SELECT COUNT(*) FROM information_schema.views WHERE table_schema = '$scratch'")->fetchColumn() === 1);
+$raw->exec("DROP VIEW IF EXISTS `$scratch`.`a_view`");
+
 // a tampered dump must not be trusted
 $tamper = test_private_root() . '/backups-tamper';
 mkdir($tamper, 0700, true);
@@ -175,6 +188,53 @@ restore_error_handler();
 check('an unloadable dump throws a clear error without PHP warnings', str_contains($msg2, 'did not restore') && $warned === false, 'message=' . substr($msg2, 0, 160) . ' warned=' . var_export($warned, true));
 check('the error never quotes the dump, which holds personal data', !str_contains($msg2, 'secret-person') && str_contains($msg2, 'ERROR 1064'), $msg2);
 check('and leaves the scratch database empty', (int) $raw->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$scratch'")->fetchColumn() === 0);
+
+// WR-03: a dump is read back after it is written; a short or cut-off file is never published
+$vDir = test_private_root() . '/backups-verify';
+mkdir($vDir, 0700, true);
+$good = (new Backup($cfg, $vDir))->create();
+check('a complete dump passes the read-back check', Backup::verifyDumpFile($good['file']) === null);
+$raw0 = (string) file_get_contents($good['file']);
+file_put_contents($vDir . '/cut.sql.gz', substr($raw0, 0, intdiv(strlen($raw0), 2)));
+check('a dump cut off halfway fails the read-back check', $threw(fn () => Backup::verifyDumpFile($vDir . '/cut.sql.gz')));
+file_put_contents($vDir . '/nomark.sql.gz', gzencode("-- looks fine\nCREATE TABLE t (id INT);\n"));
+check('a dump without the completion marker fails the read-back check', $threw(fn () => Backup::verifyDumpFile($vDir . '/nomark.sql.gz')));
+
+// WR-04: a dump without its checksum is not "the newest dump"; the previous good one is
+file_put_contents($vDir . '/rotaflow-29990101T000000Z.sql.gz', 'half-published');
+check('a dump that lacks its checksum is ignored when choosing the newest', (new Backup($cfg, $vDir))->latest() === $good['file']);
+
+// a counts file that is not the shape it should be is "not trusted", not a PHP warning
+$sh = test_private_root() . '/backups-shape';
+mkdir($sh, 0700, true);
+$s = (new Backup($cfg, $sh))->create();
+$raw->exec("CREATE DATABASE IF NOT EXISTS `$scratch` CHARACTER SET utf8mb4");
+foreach (['a string' => 'oops', 'one number' => [1], 'two words' => ['a', 'b'], 'three numbers' => [1, 2, 3]] as $shape => $bad) {
+    file_put_contents($s['file'] . '.counts.json', json_encode(['sha256' => $s['sha256'], 'tables' => ['users' => $bad]]));
+    $m2 = '';
+    try { (new Backup($cfg, $sh))->restoreCheck($scratch); } catch (\Throwable $e) { $m2 = $e->getMessage(); }
+    check("a counts file whose range is $shape is refused as not trusted", str_contains($m2, 'counts file'), $m2);
+}
+$raw->exec("DROP DATABASE IF EXISTS `$scratch`");
+
+// WR-05: a dump tool that hangs is stopped at the deadline and leaves nothing behind (and the lock is released)
+$hangBin = test_private_root() . '/hang-bin';
+mkdir($hangBin, 0700, true);
+$pathNow = (string) getenv('PATH');
+file_put_contents($hangBin . '/mariadb-dump', "#!/bin/sh\necho '-- start'\nsleep 30\n");
+chmod($hangBin . '/mariadb-dump', 0700);
+$hDir = test_private_root() . '/backups-hang';
+putenv('PATH=' . $hangBin . ':' . $pathNow);
+$t0 = microtime(true);
+$hm = '';
+try { (new Backup($cfg, $hDir, 1))->create(); } catch (\Throwable $e) { $hm = $e->getMessage(); }
+putenv('PATH=' . $pathNow);
+check('a hung dump tool is stopped at the deadline', str_contains($hm, 'timed out') && (microtime(true) - $t0) < 10, $hm . ' ' . round(microtime(true) - $t0, 1) . 's');
+check('and it leaves no file behind', $leftovers($hDir) === []);
+$lk = fopen($hDir . '/.lock', 'c');
+check('and the lock is free again', flock($lk, LOCK_EX | LOCK_NB));
+flock($lk, LOCK_UN);
+unlink($hangBin . '/mariadb-dump');
 
 // ---- the lock and the self-check ------------------------------------------------------------------------------------------
 $lockDir = test_private_root() . '/backups-lock';
@@ -227,3 +287,12 @@ check('the command restore-checks the newest dump and exits 0', $rc6 === 0 && st
 $raw->exec("DROP DATABASE IF EXISTS `$scratch`");
 [$rc7, $out7] = $run('--dir=' . escapeshellarg($cliDir) . ' --restore-check --scratch-db=x_restorecheck --tolerance=-1');
 check('a negative tolerance is rejected as bad usage', $rc7 === 2 && str_contains($out7, '--tolerance'));
+
+// the command's own failures keep its promises: exit 1 with a message, never a stack trace
+$emptyRoot = test_private_root() . '/empty-root';
+mkdir($emptyRoot . '/config', 0700, true);
+$out8 = [];
+exec('ROTAFLOW_PRIVATE_ROOT=' . escapeshellarg($emptyRoot) . ' ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/../../bin/backup.php') . ' --dir=' . escapeshellarg($cliDir) . ' 2>&1', $out8, $rc8);
+check('a missing configuration exits 1 with a plain message, not a stack trace', $rc8 === 1 && str_contains(implode("\n", $out8), 'backup FAILED') && !str_contains(implode("\n", $out8), 'Stack trace'), implode(' | ', $out8));
+[$rc9, $out9] = $run('--dir=' . escapeshellarg($cliDir) . ' --restore-check --scratch-db=x_restorecheck --tolerance=150');
+check('a tolerance above 100 is rejected as bad usage', $rc9 === 2 && str_contains($out9, '--tolerance'));

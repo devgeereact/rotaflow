@@ -12,6 +12,7 @@ namespace RotaFlow;
  * restoreCheck()  checks the newest dump against its checksum, loads it into a SCRATCH database (its name must contain "restorecheck";
  *                 the source database and any database holding tables that are not RotaFlow's are refused), compares every table's row
  *                 count with the range recorded around the dump (rotaflow-<UTC>.sql.gz.counts.json), then empties the scratch database.
+ * Time limits: a dump or a restore that runs past the deadline is stopped, so a hung tool cannot hold the lock for ever.
  * selfCheck()     lists what would stop a backup on this machine (a disabled proc_open, a missing tool, an unreachable database).
  */
 final class Backup
@@ -19,7 +20,8 @@ final class Backup
     private const NAME = '/^rotaflow-(\d{8}T\d{6}Z)\.sql\.gz\z/';
 
     /** @param array{dsn:string,user:string,password:string} $config */
-    public function __construct(private readonly array $config, private readonly string $dir) {}
+    /** @param int $timeoutSeconds how long the dump tool or the restore client may run before it is stopped */
+    public function __construct(private readonly array $config, private readonly string $dir, private readonly int $timeoutSeconds = 1800) {}
 
     /** @return array{file:string,bytes:int,sha256:string} */
     public function create(?int $now = null): array
@@ -29,12 +31,14 @@ final class Backup
         if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
             throw new \RuntimeException('Another backup is already running');
         }
-        foreach (glob($this->dir . '/rotaflow-*.sql.gz.part') ?: [] as $stale) {
-            @unlink($stale); // we hold the lock, so a partial file is from a crashed run
+        foreach (glob($this->dir . '/rotaflow-*{.part,.tmp}', GLOB_BRACE) ?: [] as $stale) {
+            @unlink($stale); // we hold the lock, so these are from a crashed run
         }
         $cnf = $this->writeDefaultsFile();
         $final = $this->dir . '/rotaflow-' . gmdate('Ymd\THis\Z', $now ?? time()) . '.sql.gz';
         $part = $final . '.part';
+        $sumTmp = $final . '.sha256.tmp';
+        $cntTmp = $final . '.counts.json.tmp';
         try {
             if (is_file($final)) {
                 throw new \RuntimeException('A dump with this timestamp already exists');
@@ -44,26 +48,54 @@ final class Backup
             $this->dumpTo($cnf, $part);
             $after = $this->counts($live);
             chmod($part, 0600);
-            rename($part, $final);
-            $sha = (string) hash_file('sha256', $final);
-            file_put_contents($final . '.sha256', $sha . '  ' . basename($final) . "\n");
-            chmod($final . '.sha256', 0600);
+            self::verifyDumpFile($part); // read it back: a full disk or a cut-off write must never become a "good" dump
+            $sha = (string) hash_file('sha256', $part);
             // The dump is one consistent moment somewhere between the two counts, so each table's count in it lies in [min, max] of them.
             $ranges = [];
             foreach (array_unique([...array_keys($before), ...array_keys($after)]) as $table) {
                 $seen = array_filter([$before[$table] ?? null, $after[$table] ?? null], static fn ($n): bool => $n !== null);
                 $ranges[$table] = [min($seen), max($seen)];
             }
-            file_put_contents($final . '.counts.json', json_encode(['dump' => basename($final), 'sha256' => $sha, 'at' => gmdate('c'), 'tables' => $ranges], JSON_UNESCAPED_SLASHES) . "\n");
-            chmod($final . '.counts.json', 0600);
+            file_put_contents($sumTmp, $sha . '  ' . basename($final) . "\n");
+            file_put_contents($cntTmp, json_encode(['dump' => basename($final), 'sha256' => $sha, 'at' => gmdate('c'), 'tables' => $ranges], JSON_UNESCAPED_SLASHES) . "\n");
+            chmod($sumTmp, 0600);
+            chmod($cntTmp, 0600);
+            // Publish the sidecars first and the dump LAST: a dump is only ever visible with its checksum and counts beside it.
+            rename($sumTmp, $final . '.sha256');
+            rename($cntTmp, $final . '.counts.json');
+            rename($part, $final);
             return ['file' => $final, 'bytes' => (int) filesize($final), 'sha256' => $sha];
         } finally {
             @unlink($cnf);
-            if (is_file($part)) {
-                @unlink($part);
+            foreach ([$part, $sumTmp, $cntTmp] as $f) {
+                if (is_file($f)) {
+                    @unlink($f);
+                }
             }
             flock($lock, LOCK_UN);
             fclose($lock);
+        }
+    }
+
+    /** Reads a gzipped dump to its end and requires mysqldump's completion marker there. @throws \RuntimeException */
+    public static function verifyDumpFile(string $file): void
+    {
+        $gz = @gzopen($file, 'rb');
+        if ($gz === false) {
+            throw new \RuntimeException('The dump cannot be read back');
+        }
+        $tail = '';
+        while (!gzeof($gz)) {
+            $chunk = gzread($gz, 1 << 16);
+            if ($chunk === false) {
+                gzclose($gz);
+                throw new \RuntimeException('The dump cannot be read back to its end');
+            }
+            $tail = substr($tail . $chunk, -300);
+        }
+        gzclose($gz);
+        if (!str_contains($tail, 'Dump completed')) {
+            throw new \RuntimeException('The dump is incomplete (no completion marker at its end)');
         }
     }
 
@@ -105,8 +137,7 @@ final class Backup
         }
         $file = $this->latest();
         $sha = (string) hash_file('sha256', $file);
-        $sumFile = $file . '.sha256';
-        if (!is_file($sumFile) || !hash_equals(explode('  ', trim((string) file_get_contents($sumFile)))[0], $sha)) {
+        if (!hash_equals(explode('  ', trim((string) file_get_contents($file . '.sha256')))[0], $sha)) {
             throw new \RuntimeException('The newest dump does not match its checksum; it is not trusted');
         }
         $expected = null;
@@ -115,18 +146,22 @@ final class Backup
             if (!is_array($c) || ($c['sha256'] ?? '') !== $sha || !is_array($c['tables'] ?? null)) {
                 throw new \RuntimeException('The counts file does not belong to the newest dump; it is not trusted');
             }
+            foreach ($c['tables'] as $range) {
+                if (!is_array($range) || count($range) !== 2 || !is_int($range[0] ?? null) || !is_int($range[1] ?? null)) {
+                    throw new \RuntimeException('The counts file is malformed; it is not trusted');
+                }
+            }
             $expected = $c['tables'];
         }
-        $live = $this->connect($dsn['dbname']);
-        $liveCounts = $this->counts($live);
+        $liveCounts = $this->counts($this->connect($dsn['dbname']));
         $scratchPdo = $this->connect($scratch);
-        $foreign = array_diff(array_keys($this->counts($scratchPdo)), array_keys($liveCounts));
-        if ($foreign !== []) {
-            throw new \InvalidArgumentException('The scratch database holds tables that are not RotaFlow\'s (' . implode(', ', array_slice($foreign, 0, 3)) . '); it will not be emptied');
+        $present = (int) $scratchPdo->query('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()')->fetchColumn();
+        if ($present > 0) {
+            // Whatever is in there is not ours: a restore of real data into a *_restorecheck database must never be wiped.
+            throw new \InvalidArgumentException("The scratch database is not empty ($present tables or views); it will not be touched. Empty it by hand first");
         }
         $cnf = $this->writeDefaultsFile();
         try {
-            $this->emptyDatabase($scratchPdo);
             $this->load($cnf, $scratch, $file);
             $restored = $this->counts($scratchPdo);
             $expected ??= array_map(static fn (int $n): array => [$n, $n], $liveCounts);
@@ -142,7 +177,11 @@ final class Backup
             return ['ok' => $mismatches === [], 'file' => $file, 'tables' => count($restored), 'mismatches' => $mismatches];
         } finally {
             @unlink($cnf);
-            $this->emptyDatabase($scratchPdo);
+            try {
+                $this->emptyDatabase($scratchPdo); // it was empty when we started, so only what we loaded is removed
+            } catch (\Throwable) {
+                // never let a failed cleanup hide the error that matters
+            }
         }
     }
 
@@ -180,14 +219,19 @@ final class Backup
         return $problems;
     }
 
-    /** The newest dump's path. */
+    /** The newest dump's path; a dump without its checksum beside it is not a candidate. */
     public function latest(): string
     {
         $all = $this->dumps();
         if ($all === []) {
             throw new \RuntimeException('No dump found in ' . $this->dir);
         }
-        return $all[count($all) - 1];
+        for ($i = count($all) - 1; $i >= 0; --$i) {
+            if (is_file($all[$i] . '.sha256')) {
+                return $all[$i];
+            }
+        }
+        throw new \RuntimeException('No dump in ' . $this->dir . ' has a checksum beside it');
     }
 
     // ---- internals --------------------------------------------------------------------------------------------------------
@@ -276,74 +320,136 @@ final class Backup
 
     private function dumpTo(string $cnf, string $part): void
     {
-        $errFile = tempnam(sys_get_temp_dir(), 'rotaflow-dumperr-');
-        $proc = proc_open($this->dumpCommand($cnf), [1 => ['pipe', 'w'], 2 => ['file', (string) $errFile, 'w']], $pipes);
-        if (!is_resource($proc)) {
-            throw new \RuntimeException('Cannot start the dump tool');
-        }
-        touch($part);
-        chmod($part, 0600);
-        $gz = gzopen($part, 'wb6');
-        if ($gz === false) {
-            proc_terminate($proc);
-            throw new \RuntimeException('Cannot write the dump file');
-        }
-        $tail = '';
-        while (!feof($pipes[1])) {
-            $chunk = fread($pipes[1], 1 << 16);
-            if ($chunk === false || $chunk === '') {
-                continue;
+        $errFile = (string) tempnam(sys_get_temp_dir(), 'rotaflow-dumperr-');
+        try {
+            $proc = proc_open($this->dumpCommand($cnf), [1 => ['pipe', 'w'], 2 => ['file', $errFile, 'w']], $pipes);
+            if (!is_resource($proc)) {
+                throw new \RuntimeException('Cannot start the dump tool');
             }
-            gzwrite($gz, $chunk);
-            $tail = substr($tail . $chunk, -300);
-        }
-        gzclose($gz);
-        fclose($pipes[1]);
-        $rc = proc_close($proc);
-        $err = trim(str_replace($this->config['password'], '***', (string) file_get_contents((string) $errFile)));
-        @unlink((string) $errFile);
-        if ($rc !== 0 || !str_contains($tail, 'Dump completed')) {
-            @unlink($part);
-            throw new \RuntimeException('The dump failed' . ($err !== '' ? ': ' . substr($err, 0, 300) : ' (it ended early)'));
+            touch($part);
+            chmod($part, 0600);
+            $gz = gzopen($part, 'wb6');
+            if ($gz === false) {
+                proc_terminate($proc, 9);
+                fclose($pipes[1]);
+                proc_close($proc);
+                throw new \RuntimeException('Cannot write the dump file');
+            }
+            stream_set_blocking($pipes[1], false);
+            $deadline = microtime(true) + $this->timeoutSeconds;
+            $tail = '';
+            $failure = null;
+            while (true) {
+                $r = [$pipes[1]];
+                $w = $e = null;
+                if (@stream_select($r, $w, $e, 1) > 0) {
+                    $chunk = fread($pipes[1], 1 << 16);
+                    if ($chunk !== false && $chunk !== '') {
+                        if (gzwrite($gz, $chunk) !== strlen($chunk)) {
+                            $failure = 'The dump could not be written (disk full?)';
+                            break;
+                        }
+                        $tail = substr($tail . $chunk, -300);
+                    }
+                }
+                if (feof($pipes[1])) {
+                    break;
+                }
+                if (microtime(true) > $deadline) {
+                    $failure = 'The dump timed out after ' . $this->timeoutSeconds . ' seconds and was stopped';
+                    break;
+                }
+            }
+            if ($failure !== null) {
+                proc_terminate($proc, 9);
+            }
+            $closed = gzclose($gz);
+            fclose($pipes[1]);
+            $rc = proc_close($proc);
+            if ($failure === null && !$closed) {
+                $failure = 'The dump could not be written (disk full?)';
+            }
+            $err = trim(str_replace($this->config['password'], '***', (string) file_get_contents($errFile)));
+            if ($failure !== null || $rc !== 0 || !str_contains($tail, 'Dump completed')) {
+                @unlink($part);
+                throw new \RuntimeException($failure ?? 'The dump failed' . ($err !== '' ? ': ' . substr($err, 0, 300) : ' (it ended early)'));
+            }
+        } finally {
+            @unlink($errFile);
         }
     }
 
     private function load(string $cnf, string $scratch, string $file): void
     {
-        $proc = proc_open([self::tool(['mariadb', 'mysql']), '--defaults-extra-file=' . $cnf, '--default-character-set=utf8mb4', $scratch],
-            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
-        if (!is_resource($proc)) {
-            throw new \RuntimeException('Cannot start the restore tool');
-        }
-        $gz = gzopen($file, 'rb');
-        if ($gz === false) {
-            proc_terminate($proc);
-            throw new \RuntimeException('Cannot read the dump file');
-        }
-        while (!gzeof($gz)) {
-            $chunk = gzread($gz, 1 << 16);
-            if ($chunk === false) {
-                break;
+        $errFile = (string) tempnam(sys_get_temp_dir(), 'rotaflow-loaderr-');
+        try {
+            $proc = proc_open([self::tool(['mariadb', 'mysql']), '--defaults-extra-file=' . $cnf, '--default-character-set=utf8mb4', $scratch],
+                [0 => ['pipe', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', $errFile, 'w']], $pipes);
+            if (!is_resource($proc)) {
+                throw new \RuntimeException('Cannot start the restore tool');
             }
-            // The client stops reading at its first error; a write to its closed pipe fails, and we stop feeding it.
-            for ($off = 0, $len = strlen($chunk); $off < $len;) {
-                $w = @fwrite($pipes[0], substr($chunk, $off));
-                if ($w === false || $w === 0) {
-                    break 2;
+            $gz = gzopen($file, 'rb');
+            if ($gz === false) {
+                proc_terminate($proc, 9);
+                fclose($pipes[0]);
+                proc_close($proc);
+                throw new \RuntimeException('Cannot read the dump file');
+            }
+            stream_set_blocking($pipes[0], false);
+            $deadline = microtime(true) + $this->timeoutSeconds;
+            $timedOut = false;
+            // Feed the client without ever blocking on it: it stops reading at its first error, and a hung one must not hold us.
+            while (!gzeof($gz) && !$timedOut) {
+                $chunk = gzread($gz, 1 << 16);
+                if ($chunk === false) {
+                    break;
                 }
-                $off += $w;
+                for ($off = 0, $len = strlen($chunk); $off < $len;) {
+                    $r = null;
+                    $w = [$pipes[0]];
+                    $e = null;
+                    if (@stream_select($r, $w, $e, 1) > 0) {
+                        $n = @fwrite($pipes[0], substr($chunk, $off));
+                        if ($n === false) {
+                            break 2; // the client has gone (its error is read below)
+                        }
+                        $off += $n;
+                    }
+                    if (microtime(true) > $deadline) {
+                        $timedOut = true;
+                        break 2;
+                    }
+                }
             }
-        }
-        gzclose($gz);
-        @fclose($pipes[0]);
-        $err = (string) stream_get_contents($pipes[2]);
-        stream_get_contents($pipes[1]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        if (proc_close($proc) !== 0) {
-            // The client quotes the SQL near its error, and the dump holds personal data: keep only the error number and line.
-            $brief = preg_match('/ERROR \d+ \(\w+\)( at line \d+)?/', $err, $m) === 1 ? $m[0] : 'the client reported an error';
-            throw new \RuntimeException('The dump did not restore: ' . $brief);
+            gzclose($gz);
+            @fclose($pipes[0]);
+            $exit = null;
+            while ($exit === null) {
+                $st = proc_get_status($proc);
+                if (!$st['running']) {
+                    $exit = (int) $st['exitcode'];
+                } elseif (microtime(true) > $deadline) {
+                    $timedOut = true;
+                    break;
+                } else {
+                    usleep(100000);
+                }
+            }
+            if ($timedOut) {
+                proc_terminate($proc, 9);
+            }
+            proc_close($proc);
+            if ($timedOut) {
+                throw new \RuntimeException('The restore timed out after ' . $this->timeoutSeconds . ' seconds and was stopped');
+            }
+            if ($exit !== 0) {
+                // The client quotes the SQL near its error, and the dump holds personal data: keep only the error number and line.
+                $err = (string) file_get_contents($errFile);
+                $brief = preg_match('/ERROR \d+ \(\w+\)( at line \d+)?/', $err, $m) === 1 ? $m[0] : 'the client reported an error';
+                throw new \RuntimeException('The dump did not restore: ' . $brief);
+            }
+        } finally {
+            @unlink($errFile);
         }
     }
 
