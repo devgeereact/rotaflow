@@ -1314,7 +1314,7 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   - `release.json` named `release/cutover`; `scripts/release.mjs` refuses any branch but the one named there, so a release from `main`
     would have been blocked. Now `main`, with `scripts/release-config.test.mjs`.
   - `backend/bin/backup.php` and `RotaFlow\Backup`: private (0600), checksummed, pruned dump; `--restore-check` loads the newest dump
-    into a scratch database and compares every table. Suite `300-backup.php`, 72 checks (26 at first commit). Not scheduled; no off-site copy.
+    into a scratch database and compares every table. Suite `300-backup.php`, 75 checks (26 at first commit). Not scheduled; no off-site copy.
   - `scripts/htaccess.mjs` (`pnpm htaccess compose|diff|push`) and `scripts/htaccess/origin-lock.conf`. A real read-only `diff` against
     the live file listed exactly the 11 hardening lines as missing, and nothing to remove. `push` is tested against a scripted server
     (order, backup-before-write, rollback on a failed move, a failed smoke check or a smoke check that throws, cleanup of a failed
@@ -1344,6 +1344,12 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   origin lock; now a write beside plus one `mv`), the upload is checksummed before it is moved, a scratch database must be empty (a
   RotaFlow-named table with data used to be wiped), a dump is read back and published last, time limits on a hung dump or restore,
   config errors exit 1, option validation, stale doc references. 62 script tests, 72 backup checks. A second pass of the same workflow then found that the rollback left the file at mode 0600 (the backup step ran chmod 600), fixed with a post-rollback site check, a refusal to overwrite live lines it cannot explain, and an ssh time limit; a checksum file that could not be written no longer lets a dump be published.
+- **Fourth pass (`/gsd-execute-phase 1` with its reviewer and verifier in the foreground): `human_needed`, no critical or blocking
+  finding.** Its remaining warnings were fixed the same day: the credentials file can no longer fall back to the shared temporary
+  folder when the backup folder is unwritable (the folder is checked and the path verified), a restore check refuses to run while a
+  backup is running (shared lock), a rollback that also fails reports the first error too, two assertions that could never fail were
+  given real targets, and the stale Supabase backup row in `docs/SAAS.md` is marked superseded. Not exercised: GNU `chmod --reference`
+  and `sha256sum` on the cPanel host (tested with stand-ins on a Mac).
 - **NOT TESTED / NOT DONE (needs the owner):** `backup.php` against the live database (privileges of the application's database user,
   a real restore); installing the cron line; creating the scratch database; the off-site encrypted copy and alerting; `pnpm htaccess push
   --go` on the live server; Cloudflare Authenticated Origin Pulls; Clerk `email_verified`, MFA and Turnstile (no Clerk CLI on this

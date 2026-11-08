@@ -69,8 +69,15 @@ export async function pushHtaccess({ composed, run, smoke, acceptExtra = false }
     await run('move');
   } catch (e) {
     // After a successful write the new file may already be live: put the old one back. Before it, only the half-written file exists.
-    if (written) await run('restore');
-    else {
+    if (written) {
+      try {
+        await run('restore');
+      } catch (r) {
+        throw new Error(
+          `${e.message}; and the rollback also failed (${r.message}); the new file may be live, restore the backup by hand`,
+        );
+      }
+    } else {
       try {
         await run('cleanup');
       } catch {

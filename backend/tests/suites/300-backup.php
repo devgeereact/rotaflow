@@ -24,13 +24,13 @@ check('a dump of a second moment is a second file', $b->create(time() + 1)['file
 
 // ---- the password stays out of sight -------------------------------------------------------------------------------------
 check('the password is not on the command line', !str_contains(implode(' ', $b->dumpCommand('/tmp/x.cnf')), $pass));
-check('no credentials file is left behind', glob($dir . '/*.cnf') === [] && glob(sys_get_temp_dir() . '/rotaflow-dump-*') === []);
+check('no credentials file is left behind', (glob($dir . '/.rotaflow-*') ?: []) === [] && (glob(sys_get_temp_dir() . '/.rotaflow-*') ?: []) === [] && (glob(sys_get_temp_dir() . '/rotaflow-dump-*') ?: []) === [], implode(',', glob($dir . '/.rotaflow-*') ?: []));
 check('the summary never carries the password', !str_contains(json_encode($made), $pass));
 
 // ---- a failed dump leaves nothing ----------------------------------------------------------------------------------------
 $bad = new Backup(['password' => 'wrong-password-for-test'] + $cfg, $dir . '-bad');
 check('a failing dump throws', $threw(fn () => $bad->create()));
-check('a failing dump leaves no file behind', (glob($dir . '-bad/*') ?: []) === []);
+check('a failing dump leaves no file behind, hidden ones included', array_values(array_diff(scandir($dir . '-bad') ?: ['x'], ['.', '..', '.lock'])) === []);
 
 // ---- the dump tool itself failing, in the two ways that matter ------------------------------------------------------------
 $fakeBin = test_private_root() . '/fake-bin';
@@ -262,6 +262,31 @@ $lk = fopen($hDir . '/.lock', 'c');
 check('and the lock is free again', flock($lk, LOCK_EX | LOCK_NB));
 flock($lk, LOCK_UN);
 unlink($hangBin . '/mariadb-dump');
+
+// WR-01: if the backup folder cannot be written, the credentials file must not fall back to the shared temporary folder
+$roDir = test_private_root() . '/backups-readonly';
+mkdir($roDir, 0700, true);
+(new Backup($cfg, $roDir))->create();
+$raw->exec("CREATE DATABASE IF NOT EXISTS `$scratch` CHARACTER SET utf8mb4");
+$tmpBefore = glob(sys_get_temp_dir() . '/.rotaflow-*') ?: [];
+chmod($roDir, 0500);
+$roMsg = '';
+try { (new Backup($cfg, $roDir))->restoreCheck($scratch); } catch (\Throwable $e) { $roMsg = $e->getMessage(); }
+chmod($roDir, 0700);
+check('a read-only backup folder is refused rather than falling back to shared /tmp', str_contains($roMsg, 'not writable'), $roMsg);
+check('and nothing was left in the shared temporary folder', (glob(sys_get_temp_dir() . '/.rotaflow-*') ?: []) === $tmpBefore);
+
+// WR-03: a restore check does not run while a backup is writing to the same folder
+$busy = test_private_root() . '/backups-busy';
+mkdir($busy, 0700, true);
+(new Backup($cfg, $busy))->create();
+$heldLock = fopen($busy . '/.lock', 'c');
+flock($heldLock, LOCK_EX);
+$busyMsg = '';
+try { (new Backup($cfg, $busy))->restoreCheck($scratch); } catch (\Throwable $e) { $busyMsg = $e->getMessage(); }
+flock($heldLock, LOCK_UN);
+check('a restore check refuses to run while a backup is running', str_contains($busyMsg, 'running'), $busyMsg);
+$raw->exec("DROP DATABASE IF EXISTS `$scratch`");
 
 // ---- the lock and the self-check ------------------------------------------------------------------------------------------
 $lockDir = test_private_root() . '/backups-lock';

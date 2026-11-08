@@ -422,6 +422,13 @@ describe('what a rollback must preserve and report', () => {
     expect(r.ok).toBe(true);
   });
 
+  it('keeps the first error when the rollback after a failed move also fails', async () => {
+    const s = fakeServer({ live: 'OLD\n', failOn: ['move', 'restore'] });
+    await expect(
+      pushHtaccess({ composed, run: s.run, smoke: s.smoke, acceptExtra: true }),
+    ).rejects.toThrow(/move failed.*rollback also failed.*restore failed/is);
+  });
+
   it('gives every ssh call a time limit, so a stalled connection cannot hang the push', () => {
     const f = fakeSsh();
     sshRunner('cpanel', 'rotaflow.space', f.exec).run('read');

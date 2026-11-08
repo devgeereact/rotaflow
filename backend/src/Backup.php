@@ -148,6 +148,22 @@ final class Backup
             throw new \InvalidArgumentException('The scratch database must be a different database whose name contains "restorecheck"');
         }
         $file = $this->latest();
+        $lock = fopen($this->dir . '/.lock', 'c');
+        if ($lock === false || !flock($lock, LOCK_SH | LOCK_NB)) {
+            throw new \RuntimeException('A backup is running in this folder; try again when it has finished');
+        }
+        try {
+            return $this->checkAgainst($scratch, $tolerancePct, $file);
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    /** @return array{ok:bool,file:string,tables:int,mismatches:array<string,array{restored:?int,expected_min:?int,expected_max:?int}>} */
+    private function checkAgainst(string $scratch, float $tolerancePct, string $file): array
+    {
+        $dsn = $this->dsn();
         $sha = (string) hash_file('sha256', $file);
         if (!hash_equals(explode('  ', trim((string) file_get_contents($file . '.sha256')))[0], $sha)) {
             throw new \RuntimeException('The newest dump does not match its checksum; it is not trusted');
@@ -306,12 +322,19 @@ final class Backup
             }
         }
         $this->ensureDir();
-        $path = tempnam($this->dir, '.rotaflow-dump-'); // inside the private backup folder, not the shared temporary one
-        if ($path === false) {
-            throw new \RuntimeException('Cannot create a temporary credentials file');
+        if (!is_writable($this->dir)) {
+            throw new \RuntimeException('The backup folder is not writable: ' . $this->dir);
         }
-        chmod($path, 0600);
-        file_put_contents($path, implode("\n", $lines) . "\n");
+        // tempnam() quietly falls back to the shared temporary folder when it cannot write where it was told: never accept that.
+        $path = tempnam($this->dir, '.rotaflow-dump-');
+        if ($path === false || realpath(dirname($path)) !== realpath($this->dir)) {
+            if ($path !== false) {
+                @unlink($path);
+            }
+            throw new \RuntimeException('Cannot create a temporary credentials file in the backup folder');
+        }
+        self::must(chmod($path, 0600), 'Cannot make the credentials file private');
+        self::must(file_put_contents($path, implode("\n", $lines) . "\n"), 'Cannot write the credentials file');
         register_shutdown_function(static function () use ($path): void {
             @unlink($path);
         });
