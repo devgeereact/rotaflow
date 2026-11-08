@@ -113,7 +113,7 @@ privacy cases (`seed-before-0164.sql`) and checks them.
 1. Supabase dashboard, SQL editor, the RotaFlow project: paste and run `scripts/cutover/supabase-freeze.sql`.
    Check: `frozen_tables` = number of public tables minus 2; the old site still shows rotas; saving anything fails with
    "RotaFlow is moving: changes are paused".
-2. Wait until `SELECT count(*) FROM notification_outbox WHERE status = 'pending';` is 0 (the drain runs every minute), at
+2. Wait until `SELECT count(*) FROM notification_outbox WHERE status = 'pending';` is 0 (the drain runs on each cron run: every five minutes on the live host), at
    most 5 minutes. Then run `scripts/cutover/supabase-freeze-final.sql`.
    Check: `frozen_tables` = `public_tables`; every `rotaflow-*` cron job `active = false`; write down
    `outbox_pending_not_delivered` (those messages are not sent; normally 0).
@@ -307,7 +307,7 @@ event, Resend) once the live endpoint exists. Rollback: re-enable the old endpoi
 ```zsh
 ssh cpanel 'crontab -l > ~/private_backups/configs/crontab-<utc>.bak; crontab -l'
 ```
-Add in cPanel, Cron Jobs (every minute), exactly:
+Add in cPanel, Cron Jobs (every minute; the live host runs it every five), exactly:
 `* * * * * ROTAFLOW_PRIVATE_ROOT=$HOME/rotaflow-private /usr/local/bin/php $HOME/rotaflow-private/app/bin/cron.php >> $HOME/rotaflow-private/logs/cron.log 2>&1`
 Check after 2 minutes: `ssh cpanel 'tail -5 ~/rotaflow-private/logs/cron.log'` shows runs without errors.
 "Unfreeze" for the new site means nothing more to do: it has been writable since step 8. The **old** site stays frozen

@@ -485,15 +485,16 @@ than an inference from a filename.
 The release snapshots in `~/backups/rotaflow/releases/` hold **code only**. The database is backed up by
 `backend/bin/backup.php` (class `RotaFlow\Backup`, suite `300-backup.php`):
 
-- `php backup.php [--dir=PATH] [--keep=28]` writes `rotaflow-<UTC>.sql.gz` (mode 0600), a `.sha256` and a `.counts.json` (each table's row
+- `php backup.php [--dir=PATH] [--keep=28]` writes `rotaflow-<UTC>.sql.gz` (mode 0600), a `.sha256` and a `.counts.json`. The dump is read back for its completion marker before it is
+  published, and it is published last, so a dump is never visible without its checksum; a run that exceeds 30 minutes is stopped (each table's row
   count just before and just after the dump, bound to the dump's hash), then keeps the newest N. Default folder `~/backups/rotaflow/db`.
   The password reaches `mariadb-dump` through a removed 0600 defaults file, never the command line. A failed or truncated dump leaves no
   file and exits 1.
 - `php backup.php --restore-check --scratch-db=NAME` verifies the newest dump's checksum and counts file, loads it into the scratch
   database, requires every table's restored count to lie in the recorded range (exact, so it can be run days later and live changes do
-  not matter), and empties the scratch database. `NAME` must exist, differ from the live database and contain `restorecheck`; it is
-  refused if it holds any table that is not one of RotaFlow's. The application's database user needs create and drop rights on it (a
-  cPanel user must be added to that database). `--tolerance=PCT` adds slack, and for an old dump with no counts file it is the only way a
+  not matter), and empties the scratch database. `NAME` must exist, differ from the live database, contain `restorecheck` and be **empty** (any table or view in it, even a
+  RotaFlow-named one, makes the check refuse and touch nothing; it leaves the database empty afterwards). The application's database user needs create and drop rights on it (a
+  cPanel user must be added to that database). `--tolerance=PCT` (0 to 100) adds slack, and for an old dump with no counts file it is the only way a
   busy live database can pass.
 - `php backup.php --self-check` lists what would stop a backup on this machine (`proc_open` disabled, a missing `mariadb-dump`, an
   unreachable database). Run it once as cron runs it, before trusting the schedule.

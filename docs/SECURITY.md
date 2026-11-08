@@ -565,7 +565,7 @@ not legal advice.
 | Role           | **Controller** for visitors, account holders, billing contacts, support correspondence and crash reports. **Processor** for everything an employer records about its staff |
 | Live data      | None. Production held 0 organisations and 1 user at the last measurement (2026-08-31). Nothing below has been exercised against a real tenant                              |
 | Database       | MariaDB on RotaFlow's cPanel server, Namecheap UK data centre (Supabase Postgres, `eu-west-1`, until the cutover)                                                          |
-| Backups        | **None.** No backups and no point-in-time recovery, by cost decision (`docs/SECURITY.md` §1). Every deletion is irreversible                                               |
+| Backups        | **No scheduled database backup yet.** A backup command exists (`backend/bin/backup.php`, `docs/DEPLOYMENT.md`) but is not installed on the server; no point-in-time recovery. Every deletion is irreversible until it is                                               |
 
 ---
 

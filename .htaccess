@@ -206,7 +206,7 @@ ServerSignature Off
   #
   # ⚠️ This file is NOT what the live site serves on its own. The server's copy
   # is this file with the Cloudflare origin-lock block PREPENDED, and a deploy
-  # only replaces it when `--with-htaccess <composed-file>` is passed
+  # only replaces it through `pnpm htaccess push`
   # (docs/DEPLOYMENT.md). Deploying this file bare would drop that block and
   # reopen the origin. The composed deploy of 2026-08-31 carried this change
   # through: the live CSP no longer names inn.gs, and direct-to-origin still
