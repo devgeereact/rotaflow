@@ -56,6 +56,33 @@ file_put_contents($staleDir . '/rotaflow-20200101T000000Z.sql.gz.part', 'half');
 (new Backup($cfg, $staleDir))->create();
 check('a partial file left by a crashed run is removed by the next run', !is_file($staleDir . '/rotaflow-20200101T000000Z.sql.gz.part'));
 
+// a write the operating system refuses is a failed backup, never a published one
+$ioDir = test_private_root() . '/backups-io';
+mkdir($ioDir, 0700, true);
+$fixedNow = 1893456000; // 2030-01-01T00:00:00Z
+mkdir($ioDir . '/rotaflow-20300101T000000Z.sql.gz.sha256.tmp', 0700); // a directory where the checksum file must go
+$ioMsg = '';
+set_error_handler(static fn (): bool => true);
+try { (new Backup($cfg, $ioDir))->create($fixedNow); } catch (\Throwable $e) { $ioMsg = $e->getMessage(); }
+restore_error_handler();
+check('a checksum file that cannot be written fails the backup', $ioMsg !== '', 'no exception');
+check('and no dump is published without it', !is_file($ioDir . '/rotaflow-20300101T000000Z.sql.gz') && !is_file($ioDir . '/rotaflow-20300101T000000Z.sql.gz.part'));
+
+// the password file lives in the private backup folder, not in the shared temporary folder
+$spy = test_private_root() . '/spy-bin';
+mkdir($spy, 0700, true);
+file_put_contents($spy . '/mariadb-dump', "#!/bin/sh\nfor a in \"\$@\"; do case \"\$a\" in --defaults-extra-file=*) echo \"\${a#--defaults-extra-file=}\" > " . $spy . "/seen;; esac; done\necho '-- Dump completed on 2030-01-01'\n");
+chmod($spy . '/mariadb-dump', 0700);
+$spyDir = test_private_root() . '/backups-spy';
+$pathKeep = (string) getenv('PATH');
+putenv('PATH=' . $spy . ':' . $pathKeep);
+try { (new Backup($cfg, $spyDir))->create(); } catch (\Throwable) { /* the fake dump is not a real dump; only the path it saw matters */ }
+putenv('PATH=' . $pathKeep);
+$seen = trim((string) @file_get_contents($spy . '/seen'));
+check('the credentials file is created inside the backup folder', $seen !== '' && str_starts_with($seen, $spyDir . '/'), $seen);
+check('and it is gone afterwards', $seen !== '' && !file_exists($seen));
+unlink($spy . '/mariadb-dump');
+
 // ---- retention -----------------------------------------------------------------------------------------------------------
 $keepDir = test_private_root() . '/backups-keep';
 mkdir($keepDir, 0700, true);

@@ -294,7 +294,7 @@ JSON 200, `/api/me` without a token answers 401 JSON (not HTML), and sign-in loa
 
 ## Composing the live `.htaccess`
 
-`--with-htaccess` replaces the file that enforces the Cloudflare origin lock. Get it wrong
+Replacing the web-root `.htaccess` (`pnpm htaccess push`; `--with-htaccess` in the old `cpanel-deploy` tool) replaces the file that enforces the Cloudflare origin lock. Get it wrong
 and the site either goes dark or silently reopens direct-to-origin, so the procedure is
 written down rather than reconstructed each time. Done on 2026-08-31 to carry a CSP change
 through; it worked, and these are the steps that made it safe.
@@ -355,7 +355,10 @@ The steps above are now a command, so a change to the repo `.htaccess` never nee
 - `pnpm htaccess push` is a dry run. `pnpm htaccess push --go` backs the live file up to
   `~/backups/rotaflow/htaccess/`, writes `.htaccess.new` beside it, moves it into place, runs the six `smoke` checks from
   `release.json` (each with a 15 second limit and one retry), and **restores the backup if any fail or the check cannot run**. On any
-  failure it prints where the backup is and the one command to put it back by hand. After a push, also check the response headers
+  failure it prints where the backup is and the one command to put it back by hand. The backup keeps the file's mode (a restore must not
+  leave it unreadable by the web server), a rollback is followed by a second smoke check whose result is reported, and `push` refuses to
+  overwrite live lines the composed file lacks (a hand edit) unless `--accept-extra` is passed: after the 2026-11-08 comment fix the
+  first push needs it for exactly one comment line, which `diff` shows. After a push, also check the response headers
   (`x-turbo-charged-by` should be gone; if LiteSpeed ignores `Header unset` for it, that needs another way). It needs the owner's "approved:" like any deploy.
 - Not covered: the `curl --resolve` lock check in the table above (run it by hand after a push), and replacing the CF-RAY lock
   with Cloudflare Authenticated Origin Pulls (a Cloudflare setting; the lock block stays as live until that exists).
@@ -446,7 +449,7 @@ and in no build, so rsync's `--delete` does not remove them: the ACME challenge 
 deleting a top-level path absent from the local directory, which is the backstop — but the
 backstop aborts the whole deploy, so name them and the rollback proceeds.
 
-**Do not pass `--with-htaccess` during a rollback unless the `.htaccess` is what you are rolling
+**Do not replace the `.htaccess` (`--with-htaccess` / `pnpm htaccess push`) during a rollback unless the `.htaccess` is what you are rolling
 back.** The live file is the repo file with the Cloudflare origin-lock block prepended; shipping
 the repo file alone silently reopens the origin to direct requests. Leaving `.htaccess` out of
 the deploy entirely is the safe default, and it is the default.

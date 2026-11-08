@@ -25,6 +25,11 @@ carries the evidence and the query to re-check it.
 
 ## 1. Backup and restore
 
+> **Superseded on 2026-11-08 for the live site.** Since the 1 November 2026 cutover the database is MariaDB, not Supabase. The
+> nightly `pg_dump` job described below backs up the archived Supabase project. The MariaDB equivalent is `backend/bin/backup.php`
+> (`docs/DEPLOYMENT.md`, "Database backups"); it is built and tested but **not installed on the server**, so the live database has no
+> scheduled backup yet. The rest of this section is the Supabase-era record.
+
 **Current state, read on 11 October 2026 from `.github/workflows/backup.yml` and
 `gh run list`.** A nightly encrypted `pg_dump` of production runs at 02:40 UTC and
 is kept as a GitHub Actions artifact for 90 days. Each run also has a

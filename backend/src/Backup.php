@@ -10,7 +10,7 @@ namespace RotaFlow;
  *                 a 0600 defaults file that is removed afterwards, never on a command line. A failed or truncated dump leaves no file.
  * prune()         keeps the newest N dumps (and their checksums); touches nothing else in the folder.
  * restoreCheck()  checks the newest dump against its checksum, loads it into a SCRATCH database (its name must contain "restorecheck";
- *                 the source database and any database holding tables that are not RotaFlow's are refused), compares every table's row
+ *                 the source database and any database that is not empty are refused), compares every table's row
  *                 count with the range recorded around the dump (rotaflow-<UTC>.sql.gz.counts.json), then empties the scratch database.
  * Time limits: a dump or a restore that runs past the deadline is stopped, so a hung tool cannot hold the lock for ever.
  * selfCheck()     lists what would stop a backup on this machine (a disabled proc_open, a missing tool, an unreachable database).
@@ -31,7 +31,7 @@ final class Backup
         if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
             throw new \RuntimeException('Another backup is already running');
         }
-        foreach (glob($this->dir . '/rotaflow-*{.part,.tmp}', GLOB_BRACE) ?: [] as $stale) {
+        foreach ([...(glob($this->dir . '/rotaflow-*{.part,.tmp}', GLOB_BRACE) ?: []), ...(glob($this->dir . '/.rotaflow-*') ?: [])] as $stale) {
             @unlink($stale); // we hold the lock, so these are from a crashed run
         }
         $cnf = $this->writeDefaultsFile();
@@ -56,14 +56,12 @@ final class Backup
                 $seen = array_filter([$before[$table] ?? null, $after[$table] ?? null], static fn ($n): bool => $n !== null);
                 $ranges[$table] = [min($seen), max($seen)];
             }
-            file_put_contents($sumTmp, $sha . '  ' . basename($final) . "\n");
-            file_put_contents($cntTmp, json_encode(['dump' => basename($final), 'sha256' => $sha, 'at' => gmdate('c'), 'tables' => $ranges], JSON_UNESCAPED_SLASHES) . "\n");
-            chmod($sumTmp, 0600);
-            chmod($cntTmp, 0600);
+            self::must(file_put_contents($sumTmp, $sha . '  ' . basename($final) . "\n"), 'Cannot write the checksum file');
+            self::must(file_put_contents($cntTmp, json_encode(['dump' => basename($final), 'sha256' => $sha, 'at' => gmdate('c'), 'tables' => $ranges], JSON_UNESCAPED_SLASHES) . "\n"), 'Cannot write the counts file');
+            self::must(chmod($sumTmp, 0600) && chmod($cntTmp, 0600), 'Cannot make the checksum files private');
             // Publish the sidecars first and the dump LAST: a dump is only ever visible with its checksum and counts beside it.
-            rename($sumTmp, $final . '.sha256');
-            rename($cntTmp, $final . '.counts.json');
-            rename($part, $final);
+            self::must(rename($sumTmp, $final . '.sha256') && rename($cntTmp, $final . '.counts.json'), 'Cannot publish the checksum files');
+            self::must(rename($part, $final), 'Cannot publish the dump');
             return ['file' => $final, 'bytes' => (int) filesize($final), 'sha256' => $sha];
         } finally {
             @unlink($cnf);
@@ -72,9 +70,23 @@ final class Backup
                     @unlink($f);
                 }
             }
+            if (!is_file($final)) {
+                // the dump never appeared, so sidecars that were already published would only be orphans
+                @unlink($final . '.sha256');
+                @unlink($final . '.counts.json');
+            }
             flock($lock, LOCK_UN);
             fclose($lock);
         }
+    }
+
+    /** @template T @param T|false $result @return T */
+    private static function must(mixed $result, string $message): mixed
+    {
+        if ($result === false) {
+            throw new \RuntimeException($message);
+        }
+        return $result;
     }
 
     /** Reads a gzipped dump to its end and requires mysqldump's completion marker there. @throws \RuntimeException */
@@ -293,7 +305,8 @@ final class Backup
                 $lines[] = 'port=' . (int) $d['port'];
             }
         }
-        $path = tempnam(sys_get_temp_dir(), 'rotaflow-dump-');
+        $this->ensureDir();
+        $path = tempnam($this->dir, '.rotaflow-dump-'); // inside the private backup folder, not the shared temporary one
         if ($path === false) {
             throw new \RuntimeException('Cannot create a temporary credentials file');
         }
@@ -320,7 +333,7 @@ final class Backup
 
     private function dumpTo(string $cnf, string $part): void
     {
-        $errFile = (string) tempnam(sys_get_temp_dir(), 'rotaflow-dumperr-');
+        $errFile = (string) tempnam($this->dir, '.rotaflow-dumperr-');
         try {
             $proc = proc_open($this->dumpCommand($cnf), [1 => ['pipe', 'w'], 2 => ['file', $errFile, 'w']], $pipes);
             if (!is_resource($proc)) {
@@ -381,7 +394,7 @@ final class Backup
 
     private function load(string $cnf, string $scratch, string $file): void
     {
-        $errFile = (string) tempnam(sys_get_temp_dir(), 'rotaflow-loaderr-');
+        $errFile = (string) tempnam($this->dir, '.rotaflow-loaderr-');
         try {
             $proc = proc_open([self::tool(['mariadb', 'mysql']), '--defaults-extra-file=' . $cnf, '--default-character-set=utf8mb4', $scratch],
                 [0 => ['pipe', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', $errFile, 'w']], $pipes);
