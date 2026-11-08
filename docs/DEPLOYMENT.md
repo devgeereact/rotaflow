@@ -72,7 +72,9 @@ client still navigates through the app shell. Two consequences for a deploy:
 - `dist/prerendered/` ships with the rest of `dist/`. If it is missing, the public
   pages still work through the `index.html` fallback; only crawlers lose the static
   copy and an unknown path gets Apache's plain 404 page.
-- **The first deploy carrying this needs `--with-htaccess`**, composed with the
+- **The first deploy carrying this needs the root `.htaccess` replaced** (with the old `cpanel-deploy` tool that was
+  `--with-htaccess`; since the 1 November 2026 cutover releases use `pnpm release`, which never ships it, so use
+  `pnpm htaccess push`, see "The command: `pnpm htaccess`"), composed with the
   origin-lock block as described under
   [Composing the live `.htaccess`](#composing-the-live-htaccess). A deploy without
   it leaves the old routing live, which serves `dist/index.html` for every path and
@@ -143,6 +145,9 @@ generic cPanel-static truths — obey them regardless of tooling:
    docroot holds the domain-validation file certificate renewal depends on. To
    rsync, "not in my source" and "stale, delete it" look identical, so a
    mirror-with-delete removes it and renewal fails.
+
+   (Historical: this block is the old `cpanel-deploy` command from before `pnpm release`; the flag it shows does not exist in
+   `scripts/release.mjs`. For the root `.htaccess` today use `pnpm htaccess push`; Phase 3 rewrites this page.)
 
    The full command for this app — `cgi-bin` is created by cPanel and the deploy
    guard refuses without it, and the live `.htaccess` is the repo file with the

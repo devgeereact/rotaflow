@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // CLI only. Runs scheduled module tasks: every class in src/Mod with `public static function cron(Ctx $ctx): string`
-// (returns a short, non-sensitive summary). One run at a time, via a lock file. For cPanel cron, e.g. every minute:
+// (returns a short, non-sensitive summary). One run at a time, via a lock file. For cPanel cron (live runs it every five minutes; every minute also works):
 //   * * * * * ROTAFLOW_PRIVATE_ROOT=$HOME/rotaflow-private php $HOME/rotaflow-private/app/bin/cron.php >> $HOME/rotaflow-private/logs/cron.log 2>&1
 // Jobs decide for themselves whether they are due (they are idempotent), so the schedule is only a heartbeat.
 if (PHP_SAPI !== 'cli') {

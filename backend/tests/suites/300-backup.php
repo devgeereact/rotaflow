@@ -32,6 +32,30 @@ $bad = new Backup(['password' => 'wrong-password-for-test'] + $cfg, $dir . '-bad
 check('a failing dump throws', $threw(fn () => $bad->create()));
 check('a failing dump leaves no file behind', (glob($dir . '-bad/*') ?: []) === []);
 
+// ---- the dump tool itself failing, in the two ways that matter ------------------------------------------------------------
+$fakeBin = test_private_root() . '/fake-bin';
+mkdir($fakeBin, 0700, true);
+$pathBefore = (string) getenv('PATH');
+$leftovers = static fn (string $d): array => array_values(array_diff(is_dir($d) ? (scandir($d) ?: []) : [], ['.', '..', '.lock']));
+foreach (['exits non-zero even though it printed the completion marker' => "#!/bin/sh\necho '-- partial dump'\necho 'INSERT INTO t VALUES (1);'\necho '-- Dump completed on 2026-11-08'\nexit 3\n", 'ends early without the completion marker' => "#!/bin/sh\necho '-- partial dump'\necho 'INSERT INTO t VALUES (1);'\nexit 0\n"] as $what => $script) {
+    file_put_contents($fakeBin . '/mariadb-dump', $script);
+    chmod($fakeBin . '/mariadb-dump', 0700);
+    putenv('PATH=' . $fakeBin . ':' . $pathBefore);
+    $failDir = test_private_root() . '/backups-fake-' . md5($what);
+    $threwHere = $threw(fn () => (new Backup($cfg, $failDir))->create());
+    putenv('PATH=' . $pathBefore);
+    check("a dump tool that $what throws", $threwHere);
+    check("and leaves no file behind, not even a partial one ($what)", $leftovers($failDir) === [], implode(',', $leftovers($failDir)));
+}
+unlink($fakeBin . '/mariadb-dump');
+
+// a crashed run's partial file is cleared by the next run
+$staleDir = test_private_root() . '/backups-stale';
+mkdir($staleDir, 0700, true);
+file_put_contents($staleDir . '/rotaflow-20200101T000000Z.sql.gz.part', 'half');
+(new Backup($cfg, $staleDir))->create();
+check('a partial file left by a crashed run is removed by the next run', !is_file($staleDir . '/rotaflow-20200101T000000Z.sql.gz.part'));
+
 // ---- retention -----------------------------------------------------------------------------------------------------------
 $keepDir = test_private_root() . '/backups-keep';
 mkdir($keepDir, 0700, true);
@@ -133,7 +157,7 @@ check('a dump swapped together with its checksum is caught by the counts file', 
 $bad2 = test_private_root() . '/backups-unloadable';
 mkdir($bad2, 0700, true);
 $u = (new Backup($cfg, $bad2))->create();
-file_put_contents($u['file'], gzencode("THIS IS NOT SQL;\n" . str_repeat("-- padding to fill the pipe\n", 100000)));
+file_put_contents($u['file'], gzencode("THIS secret-person@example.test IS NOT SQL;\n" . str_repeat("-- padding to fill the pipe\n", 100000)));
 file_put_contents($u['file'] . '.sha256', hash_file('sha256', $u['file']) . '  ' . basename($u['file']) . "\n");
 $uc = json_decode((string) file_get_contents($u['file'] . '.counts.json'), true);
 $uc['sha256'] = hash_file('sha256', $u['file']);
@@ -149,6 +173,7 @@ $msg2 = '';
 try { (new Backup($cfg, $bad2))->restoreCheck($scratch); } catch (\Throwable $e) { $msg2 = $e->getMessage(); }
 restore_error_handler();
 check('an unloadable dump throws a clear error without PHP warnings', str_contains($msg2, 'did not restore') && $warned === false, 'message=' . substr($msg2, 0, 160) . ' warned=' . var_export($warned, true));
+check('the error never quotes the dump, which holds personal data', !str_contains($msg2, 'secret-person') && str_contains($msg2, 'ERROR 1064'), $msg2);
 check('and leaves the scratch database empty', (int) $raw->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$scratch'")->fetchColumn() === 0);
 
 // ---- the lock and the self-check ------------------------------------------------------------------------------------------
@@ -200,3 +225,5 @@ $raw->exec("CREATE DATABASE IF NOT EXISTS `$scratch` CHARACTER SET utf8mb4");
 [$rc6, $out6] = $run('--dir=' . escapeshellarg($cliDir) . ' --restore-check --scratch-db=' . escapeshellarg($scratch));
 check('the command restore-checks the newest dump and exits 0', $rc6 === 0 && str_contains($out6, 'restore-check ok') && !str_contains($out6, $pass));
 $raw->exec("DROP DATABASE IF EXISTS `$scratch`");
+[$rc7, $out7] = $run('--dir=' . escapeshellarg($cliDir) . ' --restore-check --scratch-db=x_restorecheck --tolerance=-1');
+check('a negative tolerance is rejected as bad usage', $rc7 === 2 && str_contains($out7, '--tolerance'));

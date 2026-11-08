@@ -29,6 +29,9 @@ final class Backup
         if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
             throw new \RuntimeException('Another backup is already running');
         }
+        foreach (glob($this->dir . '/rotaflow-*.sql.gz.part') ?: [] as $stale) {
+            @unlink($stale); // we hold the lock, so a partial file is from a crashed run
+        }
         $cnf = $this->writeDefaultsFile();
         $final = $this->dir . '/rotaflow-' . gmdate('Ymd\THis\Z', $now ?? time()) . '.sql.gz';
         $part = $final . '.part';
@@ -338,7 +341,9 @@ final class Backup
         fclose($pipes[1]);
         fclose($pipes[2]);
         if (proc_close($proc) !== 0) {
-            throw new \RuntimeException('The dump did not restore: ' . substr(str_replace($this->config['password'], '***', trim($err)), 0, 300));
+            // The client quotes the SQL near its error, and the dump holds personal data: keep only the error number and line.
+            $brief = preg_match('/ERROR \d+ \(\w+\)( at line \d+)?/', $err, $m) === 1 ? $m[0] : 'the client reported an error';
+            throw new \RuntimeException('The dump did not restore: ' . $brief);
         }
     }
 

@@ -6,7 +6,7 @@ declare(strict_types=1);
 //   php bin/backup.php --restore-check --scratch-db=NAME [--tolerance=PERCENT] [--dir=PATH]
 //   php bin/backup.php --self-check            (what would stop a backup on this machine: run it once from cron's own environment)
 // Env: ROTAFLOW_PRIVATE_ROOT, ROTAFLOW_CONFIG_FILE (default config.php), ROTAFLOW_BACKUP_DIR (default $HOME/backups/rotaflow/db).
-// Exit 0 ok, 1 failed, 2 bad usage. Nothing it prints holds a secret. Schedule it with cron; copy the folder off the server.
+// Exit 0 ok, 1 failed, 2 bad usage. Nothing it prints holds a secret or a row of data (a client error is cut to its number and line). Schedule it with cron; copy the folder off the server.
 // The scratch database must already exist, be EMPTY and have "restorecheck" in its name (cPanel users create it once in the panel).
 if (PHP_SAPI !== 'cli') {
     exit(1);
@@ -32,8 +32,8 @@ if ($opts['restore-check'] && $opts['scratch-db'] === null) {
     fwrite(STDERR, "--restore-check needs --scratch-db=NAME\n");
     exit(2);
 }
-if (preg_match('/^\d+$/', (string) $opts['keep']) !== 1 || (int) $opts['keep'] < 1 || !is_numeric($opts['tolerance'])) {
-    fwrite(STDERR, "--keep must be a whole number of at least 1 and --tolerance a number\n");
+if (preg_match('/^\d+$/', (string) $opts['keep']) !== 1 || (int) $opts['keep'] < 1 || !is_numeric($opts['tolerance']) || (float) $opts['tolerance'] < 0) {
+    fwrite(STDERR, "--keep must be a whole number of at least 1 and --tolerance a number of 0 or more\n");
     exit(2);
 }
 $dir = $opts['dir'] ?? (getenv('ROTAFLOW_BACKUP_DIR') ?: rtrim((string) getenv('HOME'), '/') . '/backups/rotaflow/db');
