@@ -130,7 +130,6 @@ $raw->exec("DROP DATABASE IF EXISTS `$scratch`");
 
 // stripping definers touches schema statements only: row data that happens to contain the same text is never altered
 $strip = new ReflectionMethod(Backup::class, 'withoutDefiners');
-$strip->setAccessible(true);
 $trig = "/*!50003 CREATE*/ /*!50017 DEFINER=`mig`@`localhost`*/ /*!50003 TRIGGER t BEFORE UPDATE ON x FOR EACH ROW SIGNAL SQLSTATE '45000' */;;";
 check('a trigger definer is removed', !str_contains((string) $strip->invoke(null, $trig . "\n"), 'DEFINER='));
 $view = "/*!50013 DEFINER=`mig`@`localhost` SQL SECURITY DEFINER */\n";
