@@ -71,7 +71,7 @@ check('and no dump is published without it', !is_file($ioDir . '/rotaflow-203001
 // the password file lives in the private backup folder, not in the shared temporary folder
 $spy = test_private_root() . '/spy-bin';
 mkdir($spy, 0700, true);
-file_put_contents($spy . '/mariadb-dump', "#!/bin/sh\nfor a in \"\$@\"; do case \"\$a\" in --defaults-extra-file=*) echo \"\${a#--defaults-extra-file=}\" > " . $spy . "/seen;; esac; done\necho '-- Dump completed on 2030-01-01'\n");
+file_put_contents($spy . '/mariadb-dump', "#!/bin/sh\nfor a in \"\$@\"; do case \"\$a\" in --defaults-file=*) echo \"\${a#--defaults-file=}\" > " . $spy . "/seen;; esac; done\necho '-- Dump completed on 2030-01-01'\n");
 chmod($spy . '/mariadb-dump', 0700);
 $spyDir = test_private_root() . '/backups-spy';
 $pathKeep = (string) getenv('PATH');
@@ -82,6 +82,28 @@ $seen = trim((string) @file_get_contents($spy . '/seen'));
 check('the credentials file is created inside the backup folder', $seen !== '' && str_starts_with($seen, $spyDir . '/'), $seen);
 check('and it is gone afterwards', $seen !== '' && !file_exists($seen));
 unlink($spy . '/mariadb-dump');
+
+// A ~/.my.cnf on the host (the live server has one, for another project's account) must never override the configured credentials
+$raw = new PDO("mysql:host=$host;port=$port;charset=utf8mb4", $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$fakeHome = test_private_root() . '/fake-home';
+mkdir($fakeHome, 0700, true);
+file_put_contents($fakeHome . '/.my.cnf', "[client]\nuser=\"someone_else\"\npassword=\"not-the-password\"\n");
+chmod($fakeHome . '/.my.cnf', 0600);
+$homeBefore = (string) getenv('HOME');
+putenv('HOME=' . $fakeHome);
+$homeMsg = '';
+$homeDump = null;
+try { $homeDump = (new Backup($cfg, test_private_root() . '/backups-homecnf'))->create(); } catch (\Throwable $e) { $homeMsg = $e->getMessage(); }
+putenv('HOME=' . $homeBefore);
+check('a ~/.my.cnf for another account does not override the configured credentials when dumping', $homeDump !== null && is_file($homeDump['file']), $homeMsg);
+$raw->exec("CREATE DATABASE IF NOT EXISTS `$scratch` CHARACTER SET utf8mb4");
+putenv('HOME=' . $fakeHome);
+$homeMsg2 = '';
+$homeCheck = null;
+try { $homeCheck = (new Backup($cfg, test_private_root() . '/backups-homecnf'))->restoreCheck($scratch); } catch (\Throwable $e) { $homeMsg2 = $e->getMessage(); }
+putenv('HOME=' . $homeBefore);
+check('and when restoring', $homeCheck !== null && $homeCheck['ok'] === true, $homeMsg2);
+$raw->exec("DROP DATABASE IF EXISTS `$scratch`");
 
 // ---- retention -----------------------------------------------------------------------------------------------------------
 $keepDir = test_private_root() . '/backups-keep';

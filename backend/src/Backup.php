@@ -111,10 +111,15 @@ final class Backup
         }
     }
 
-    /** The dump command, with the credentials in $defaultsFile rather than in the arguments. @return list<string> */
+    /**
+     * The dump command, with the credentials in $defaultsFile rather than in the arguments. It uses --defaults-file (which reads ONLY that
+     * file), not --defaults-extra-file: the extra file is read before the user's ~/.my.cnf, so a ~/.my.cnf on the host (the live server has one
+     * for another project's account) silently overrode the configured credentials. --defaults-file must be the first option.
+     * @return list<string>
+     */
     public function dumpCommand(string $defaultsFile): array
     {
-        return [self::tool(['mariadb-dump', 'mysqldump']), '--defaults-extra-file=' . $defaultsFile, '--single-transaction', '--quick',
+        return [self::tool(['mariadb-dump', 'mysqldump']), '--defaults-file=' . $defaultsFile, '--single-transaction', '--quick',
             '--triggers', '--hex-blob', '--no-tablespaces', '--default-character-set=utf8mb4', $this->dsn()['dbname']];
     }
 
@@ -419,7 +424,7 @@ final class Backup
     {
         $errFile = (string) tempnam($this->dir, '.rotaflow-loaderr-');
         try {
-            $proc = proc_open([self::tool(['mariadb', 'mysql']), '--defaults-extra-file=' . $cnf, '--default-character-set=utf8mb4', $scratch],
+            $proc = proc_open([self::tool(['mariadb', 'mysql']), '--defaults-file=' . $cnf, '--default-character-set=utf8mb4', $scratch],
                 [0 => ['pipe', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', $errFile, 'w']], $pipes);
             if (!is_resource($proc)) {
                 throw new \RuntimeException('Cannot start the restore tool');

@@ -1314,7 +1314,7 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   - `release.json` named `release/cutover`; `scripts/release.mjs` refuses any branch but the one named there, so a release from `main`
     would have been blocked. Now `main`, with `scripts/release-config.test.mjs`.
   - `backend/bin/backup.php` and `RotaFlow\Backup`: private (0600), checksummed, pruned dump; `--restore-check` loads the newest dump
-    into a scratch database and compares every table. Suite `300-backup.php`, 75 checks (26 at first commit). Not scheduled; no off-site copy.
+    into a scratch database and compares every table. Suite `300-backup.php`, 77 checks (26 at first commit). Not scheduled; no off-site copy.
   - `scripts/htaccess.mjs` (`pnpm htaccess compose|diff|push`) and `scripts/htaccess/origin-lock.conf`. A real read-only `diff` against
     the live file listed exactly the 11 hardening lines as missing, and nothing to remove. `push` is tested against a scripted server
     (order, backup-before-write, rollback on a failed move, a failed smoke check or a smoke check that throws, cleanup of a failed
@@ -1350,6 +1350,14 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   backup is running (shared lock), a rollback that also fails reports the first error too, two assertions that could never fail were
   given real targets, and the stale Supabase backup row in `docs/SAAS.md` is marked superseded. Not exercised: GNU `chmod --reference`
   and `sha256sum` on the cPanel host (tested with stand-ins on a Mac).
+- **First run on the live server, 2026-11-08: a bug no local test could find.** After the owner approved the release, the first
+  `backup.php` on the host failed: `mariadb-dump` connected as another project's account. The host has a `~/.my.cnf` for that
+  account, the tools read it AFTER `--defaults-extra-file`, and it overrode the configured credentials (harmless: access denied, nothing
+  written). Fixed test-first with `--defaults-file`, which reads only the file we write; the new test plants a `~/.my.cnf` for a wrong
+  account and requires the dump and the restore to ignore it (77 checks). Also confirmed on the host: GNU coreutils 8.30 (`chmod
+  --reference`, `sha256sum`), PHP 8.4.27, `proc_open` enabled, so the `.htaccess` push ran on the tools assumed. `pnpm htaccess push
+  --go --accept-extra` succeeded (6 smoke checks); the response header `x-turbo-charged-by: LiteSpeed` is STILL sent: LiteSpeed adds it
+  after `.htaccess`, so `Header unset` cannot remove it. It needs a Cloudflare response-header rule or a LiteSpeed setting.
 - **NOT TESTED / NOT DONE (needs the owner):** `backup.php` against the live database (privileges of the application's database user,
   a real restore); installing the cron line; creating the scratch database; the off-site encrypted copy and alerting; `pnpm htaccess push
   --go` on the live server; Cloudflare Authenticated Origin Pulls; Clerk `email_verified`, MFA and Turnstile (no Clerk CLI on this
