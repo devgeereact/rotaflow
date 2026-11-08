@@ -4,6 +4,7 @@ declare(strict_types=1);
 // CLI only. Dumps the database to a private, checksummed, gzipped file and prunes old ones; or proves the newest dump restores.
 //   php bin/backup.php [--dir=PATH] [--keep=28]
 //   php bin/backup.php --restore-check --scratch-db=NAME [--tolerance=PERCENT] [--dir=PATH]
+//   php bin/backup.php --self-check            (what would stop a backup on this machine: run it once from cron's own environment)
 // Env: ROTAFLOW_PRIVATE_ROOT, ROTAFLOW_CONFIG_FILE (default config.php), ROTAFLOW_BACKUP_DIR (default $HOME/backups/rotaflow/db).
 // Exit 0 ok, 1 failed, 2 bad usage. Nothing it prints holds a secret. Schedule it with cron; copy the folder off the server.
 // The scratch database must already exist, be EMPTY and have "restorecheck" in its name (cPanel users create it once in the panel).
@@ -14,10 +15,12 @@ require_once __DIR__ . '/../src/Autoload.php';
 
 use RotaFlow\{Backup, Bootstrap};
 
-$opts = ['dir' => null, 'keep' => '28', 'restore-check' => false, 'scratch-db' => null, 'tolerance' => '0'];
+$opts = ['dir' => null, 'keep' => '28', 'restore-check' => false, 'self-check' => false, 'scratch-db' => null, 'tolerance' => '0'];
 foreach (array_slice($argv, 1) as $a) {
     if ($a === '--restore-check') {
         $opts['restore-check'] = true;
+    } elseif ($a === '--self-check') {
+        $opts['self-check'] = true;
     } elseif (preg_match('/^--(dir|keep|scratch-db|tolerance)=(.+)$/', $a, $m) === 1) {
         $opts[$m[1]] = $m[2];
     } else {
@@ -37,10 +40,18 @@ $dir = $opts['dir'] ?? (getenv('ROTAFLOW_BACKUP_DIR') ?: rtrim((string) getenv('
 $backup = new Backup(Bootstrap::config(Bootstrap::privateRoot(), getenv('ROTAFLOW_CONFIG_FILE') ?: 'config.php'), $dir);
 
 try {
+    if ($opts['self-check']) {
+        $problems = $backup->selfCheck();
+        foreach ($problems as $p) {
+            echo "problem: $p\n";
+        }
+        echo $problems === [] ? "self-check ok\n" : "self-check FAILED\n";
+        exit($problems === [] ? 0 : 1);
+    }
     if ($opts['restore-check']) {
         $r = $backup->restoreCheck((string) $opts['scratch-db'], (float) $opts['tolerance']);
         foreach ($r['mismatches'] as $table => $c) {
-            echo "mismatch $table dump=" . ($c['dump'] ?? 'absent') . ' live=' . ($c['live'] ?? 'absent') . "\n";
+            echo "mismatch $table restored=" . ($c['restored'] ?? 'absent') . ' expected=' . ($c['expected_min'] ?? 'absent') . '..' . ($c['expected_max'] ?? 'absent') . "\n";
         }
         echo ($r['ok'] ? 'restore-check ok' : 'restore-check FAILED') . ' ' . basename($r['file']) . ' tables=' . $r['tables'] . "\n";
         exit($r['ok'] ? 0 : 1);
