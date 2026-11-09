@@ -27,8 +27,8 @@ carries the evidence and the query to re-check it.
 
 > **Superseded on 2026-11-08 for the live site.** Since the 1 November 2026 cutover the database is MariaDB, not Supabase. The
 > nightly `pg_dump` job described below backs up the archived Supabase project. The MariaDB equivalent is `backend/bin/backup.php`
-> (`docs/DEPLOYMENT.md`, "Database backups"); it is built and tested but **not installed on the server**, so the live database has no
-> scheduled backup yet. The rest of this section is the Supabase-era record.
+> (`docs/DEPLOYMENT.md`, "Database backups"); it was installed on the live host on 2026-11-08 (every six hours, restore proven
+> into a scratch database); there is still **no off-site copy** and no alert on a failed run. The rest of this section is the Supabase-era record.
 
 **Current state, read on 11 October 2026 from `.github/workflows/backup.yml` and
 `gh run list`.** A nightly encrypted `pg_dump` of production runs at 02:40 UTC and
@@ -570,7 +570,7 @@ not legal advice.
 | Role           | **Controller** for visitors, account holders, billing contacts, support correspondence and crash reports. **Processor** for everything an employer records about its staff |
 | Live data      | None. Production held 0 organisations and 1 user at the last measurement (2026-08-31). Nothing below has been exercised against a real tenant                              |
 | Database       | MariaDB on RotaFlow's cPanel server, Namecheap UK data centre (Supabase Postgres, `eu-west-1`, until the cutover)                                                          |
-| Backups        | **No scheduled database backup yet.** A backup command exists (`backend/bin/backup.php`, `docs/DEPLOYMENT.md`) but is not installed on the server; no point-in-time recovery. Every deletion is irreversible until it is                                               |
+| Backups        | **On-server backup every six hours since 2026-11-08** (`backend/bin/backup.php`, `docs/DEPLOYMENT.md`), restore proven; **no off-site copy, no alert on failure, no point-in-time recovery**. Every deletion is irreversible until it is                                               |
 
 ---
 

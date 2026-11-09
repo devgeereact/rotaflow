@@ -1364,6 +1364,14 @@ Branch `design/gap-fixes`, local commit only. Every finding in the review file i
   account as the DEFINER of the four audit triggers, and creating them as another account needs SUPER. The restore check now removes
   DEFINER clauses from schema statements while loading into the scratch database (tested, including that row data containing the same
   text is never touched). 82 checks.
+- **Live install, 2026-11-08 (owner-approved step by step):** pushed `main`, `pnpm htaccess push --go --accept-extra` (6 smoke checks;
+  the `x-turbo-charged-by` header persists, see above), released `9b5bbb4`, `fd4ce1b` and `239a6be` (each: checks, snapshot, 6 smoke
+  checks), created the empty `devgeereact_rotaflow_restorecheck` database and the read-only account `devgeereact_rf_backup` with
+  cPanel's own tool, ran the first live backup and the restore proof (**passed**: 70 tables, every count inside the recorded range, scratch
+  left empty), installed the six-hourly cron line. **One mistake of mine:** installing the cron line by piping `(crontab -l; echo LINE) |
+  crontab -` replaced the whole crontab on this host, dropping the `cron.php` job (every five minutes) and the unrelated nightly
+  `flightdeck-backup.sh` job for about two minutes (23:55:26 to 23:57:38 UTC). I had saved the crontab first; it was restored from that
+  file within the gap between two runs, and the 00:00:34 `cron.php` run confirmed it. The nightly job was never due in that window.
 - **NOT TESTED / NOT DONE (needs the owner):** `backup.php` against the live database (privileges of the application's database user,
   a real restore); installing the cron line; creating the scratch database; the off-site encrypted copy and alerting; `pnpm htaccess push
   --go` on the live server; Cloudflare Authenticated Origin Pulls; Clerk `email_verified`, MFA and Turnstile (no Clerk CLI on this
