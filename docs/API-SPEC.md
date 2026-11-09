@@ -138,13 +138,13 @@ Besides the two global buckets, these named buckets are hit by the module that o
   Typical meanings: 409 for a business-rule conflict (`rota_published`, `leave_overlap`, `cover_below_minimum`, `already_exported` ...), 422 for a field that fails validation, 502 and 503 when a provider (AI, Stripe) or a feature is unavailable (`ai_unavailable`, `billing_provider`, `billing_unavailable`, `not_configured`), 507 `storage_full` when the file store has no room (`backend/src/FileStore.php`).
 - **Exceptions to the shape.** The public enquiry route (`backend/src/Mod/Enquiries.php`) answers `{"error":"code"}` with a string for its own failures (`origin_not_allowed`, `unsupported_media_type`, `too_large`, `invalid` with a `fields` list, `verification_failed`, `rate_limited`), and `{"ok":true}` with 201 on success. The Stripe webhook uses the standard shape for its errors and `{"received":true}` on success.
 - **Idempotency of offline writes.** A device mints a `client_event_id` before the first attempt of a clock event, leave request or shift swap; a replay finds its earlier row and answers 200 with `already_applied: true` instead of creating a second one (read in `backend/src/Mod/Clock.php`; the `backend/migrations/006-time-and-requests.sql` header states the same for the others, and each of the three tables has a unique key on `client_event_id`). The browser queue that replays them is described in `docs/ARCHITECTURE.md`.
-- **Pagination.** There is no general convention. The console lists (`organisations` and `users` in `backend/src/Mod/Console.php`) take `limit` (1 to 100, default 50) and `offset` and echo both; every other list returns a fixed, capped set (for example the rota list is limited to 500 rows in `backend/src/Mod/Rotas.php`).
+- **Pagination.** There is no general convention. The console lists (`organisations` and `users` in `backend/src/Mod/Console.php`) take `limit` (1 to 100, default 50) and `offset` and echo both; the organisation audit trail (`GET /orgs/{o}/audit` in `backend/src/Mod/Account.php`) takes `limit` (1 to 100, default 50) and a keyset cursor `before_id`; other lists read so far return a fixed, capped set (for example the rota list is limited to 500 rows in `backend/src/Mod/Rotas.php`). Lists in modules not yet read in this pass are `NOT VERIFIED (not read in this pass)`.
 - **Times.** Instants are ISO 8601 with an offset; dates are `YYYY-MM-DD`; the database stores UTC.
 
 ## 4. Route reference
 
 One subsection per module, in alphabetical order of file name. Each table is generated from the module's `routes()` array: the verb, the path under `/api`, the handler method in that module, and the tuple flag (`public`, `raw`, `upload`, `upload-document`) where there is one.
-The lines under a table say what the module does, who may call it and which tables it writes.
+The lines under a table say what the module does, who may call it and which tables it writes. "Tables written" lists the tables whose rows the module's own SQL inserts, updates or deletes; most state-changing handlers also append an audit row through `Audit::log` (`backend/src/Audit.php`) and queue notifications through `Notify` (`backend/src/Notify.php`), and those are named only where they are the module's job.
 
 ### Account (`backend/src/Mod/Account.php`)
 
@@ -157,11 +157,11 @@ The lines under a table say what the module does, who may call it and which tabl
 | GET | `/orgs/{o}/audit` | `audit` |  |
 | POST | `/orgs/{o}/audit` | `record` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: A person's own settings and profile, finishing an organisation's setup, and the organisation's audit trail.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `/me/settings` and `/me/profile` need only sign-in and act on the caller's own row (no organisation id). `POST /orgs/{o}/onboarding/complete` is `Scope::membership` then owner. `GET /orgs/{o}/audit` is any member: an owner reads every entry visible to the organisation, anyone else only the entries they caused; the list takes `limit` (1 to 100, default 50) and `before_id`. `POST /orgs/{o}/audit` is any member and records one of a fixed list of client actions (`CLIENT_ACTIONS`), 120 an hour per person.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `users`, `organisations`, `app_settings`, and `audit_logs` (the `record` route).
 
 ### AiAssistant (`backend/src/Mod/AiAssistant.php`)
 
@@ -401,11 +401,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/invites/preview` | `preview` | public |
 | POST | `/invites/accept` | `accept` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Join links: a 32-byte token shown once, only its SHA-256 stored, redeemed by a signed-in person whose verified email equals the invited address.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: List, create, revoke and resend are owner or manager (effective role); create and resend also need a writable organisation, and resending an owner invitation is refused (403: owner invitations are issued by the platform). `POST /invites/preview` is public (30 a minute per address, authorised by the token). `POST /invites/accept` is any signed-in person; a different verified email is 403 `invite_email_mismatch`; every failure to redeem looks the same so a token cannot be probed. Invitation limits: 60 an hour per organisation, 10 accepts an hour per person.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `invites`, `memberships` (accepting). Mail goes out through `Mail::forOrg`.
 
 ### LabourCost (`backend/src/Mod/LabourCost.php`)
 
@@ -490,11 +490,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/orgs/{o}/delegations` | `delegate` |  |
 | POST | `/orgs/{o}/delegations/{d}/revoke` | `revokeDelegation` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The signed-in person (`GET /me`: user, memberships, platform role), organisations, members, ownership transfer and temporary manager cover.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `GET /me` and `GET /slug-available` need only sign-in (the slug check is limited to 60 a minute per person and, with `exclude`, requires membership of that organisation). `POST /orgs` needs `org_creation` to be `open` or a platform owner or admin, otherwise 403 `org_creation_closed`; 5 an hour per person. `GET /orgs/{o}`, `GET .../members` and `GET .../delegations` are any member (a manager, including a delegate, sees more member detail). `POST /orgs/{o}` (rename) is owner and writable. Role change, status change and `transfer-ownership` are the real owner and writable (an owner keeps the owner role; an owner cannot be suspended). Creating a delegation is a real owner or manager and writable; revoking one is the lender or a real owner or manager.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `organisations`, `memberships`, `role_delegations`.
 
 ### OrgSettings (`backend/src/Mod/OrgSettings.php`)
 
@@ -506,11 +506,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/orgs/{o}/smtp/test` | `testSmtp` |  |
 | POST | `/orgs/{o}/smtp/delete` | `deleteSmtp` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Settings an owner controls: the notification matrix (5 events by 3 channels), who manages job titles, and the organisation's own mail account (the SMTP password is encrypted at rest and never returned).
 
-Access: NOT VERIFIED (not read in this pass)
+Access: All five routes are owner (effective role); writes also need a writable organisation. `POST /orgs/{o}/smtp/test` is limited to 10 an hour per organisation and checks the SMTP host before connecting (and again before the test send, because DNS can change).
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `organisations` (the `settings` JSON), `org_smtp_settings`.
 
 ### Photos (`backend/src/Mod/Photos.php`)
 
@@ -693,11 +693,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/orgs/{o}/staff/{s}/emergency-contacts/{c}` | `saveContact` |  |
 | POST | `/orgs/{o}/staff/{s}/emergency-contacts/{c}/delete` | `deleteContact` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Staff records, the job-title catalogue, site assignment, pay rates and emergency contacts. A column rule replaces the old column grants: every member reads names, titles, departments, hours, skills and photo; payroll id, start date, phone, email and holiday allowance go only to an owner or manager (including a delegate) and to the person themselves.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Reads of job titles, the staff list and one staff record are any member (with the column rule above). Creating a record, setting locations and adding a pay rate are owner or manager. `POST /orgs/{o}/staff/{s}` is a manager, or the person themselves limited to their phone (403 `self_edit_restricted` otherwise). Pay-rate reads and every emergency-contact route are a manager or the person (`managerOrSelf`); writes also need a writable organisation. Job-title writes are the owner, or a manager when the organisation setting `job_titles_managed_by` is `managers`; anyone else is 403.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `staff_profiles`, `job_titles`, `staff_locations`, `staff_pay_rates`, `emergency_contacts`.
 
 ### StripeWebhook (`backend/src/Mod/StripeWebhook.php`)
 
