@@ -369,8 +369,8 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 111   |
-| 🟡 Partial            | 11    |
+| 🟢 Complete           | 108   |
+| 🟡 Partial            | 14    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -769,43 +769,52 @@ itself: a restore, a real charge, and a phone.
 ### Compliance
 
 - [x] CAP-052 🟢 GDPR anonymisation — **and it was leaving the email address behind until
-      2026-08-31.** `0011` clears the name, phone, photo, payroll id and login link; `0053`
+      2026-08-31 (Supabase era).** `0011` cleared the name, phone, photo, payroll id and login link; `0053`
       added `staff_profiles.email` two months later for account linking and nothing went back,
       so the record read "Deleted Member" with the person's email still on it — the strongest
       identifier of the lot, and usually the very thing an erasure request is made from. This
       row said "live-tested end to end", and it was: the test ran before the column existed.
-      `0111` clears it, revokes any live calendar feed (a URL in somebody's phone would keep
-      serving an erased person's shifts), and adds `erasure_retained_columns()` so the pgTAP
-      test asserts over the COLUMN LIST — the next column added cannot survive an erasure the
-      way this one did
-      `supabase/migrations/0111_erasure_misses_email.sql` · 7 pgTAP assertions
-- [x] CAP-052a 🟢 Subject-access export — **it covered eight datasets and missed the three a
+      `0111` cleared it, revoked any live calendar feed (a URL in somebody's phone would keep
+      serving an erased person's shifts), and added `erasure_retained_columns()` so the retired pgTAP
+      test asserted over the COLUMN LIST. Live: `Gdpr::ERASURE_CLEARED` lists the cleared columns (name, email, phone, photo, payroll id, user link) and
+      `Gdpr::ERASURE_RETAINED` the kept ones, the erasure revokes the person's calendar feed tokens, and the suite fails when a new
+      `staff_profiles` column is in neither list
+      `backend/src/Mod/Gdpr.php` · suite `backend/tests/suites/190-lifecycle.php` · Supabase era: `0111`, 7 pgTAP assertions
+- [ ] CAP-052a 🟡 Subject-access export — **it covered eight datasets and missed the three a
       worker would ask for first.** Timesheets, overtime claims and pay rates were all absent,
       so somebody in a dispute about their hours or their money got their shifts and their
       holidays. Thirteen now, with the calendar feed token excluded and the reason printed in
       the file — it is a live credential, and emailing somebody a working URL to their rota
       would create the disclosure the export exists to answer for. `npm run check:export`
-      covers both exports, so neither can drift again
+      covered both exports, so neither could drift again.
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `listDocumentsForStaff` in `src/services/gdprService.ts` returns an empty list ("Documents arrive with compliance (S10)") although
+      `backend/src/Mod/Compliance.php` now stores documents, so a subject-access package omits the person's uploaded documents. The file bytes were never in it (the file says so);
+      the gap is the `documents` rows. `pnpm run check:export` (`scripts/check-export-coverage.mjs`) still reads the retired Postgres folder, so it no longer guards the live tables
       `src/services/gdprService.ts` · `scripts/check-export-coverage.mjs`
-- [x] CAP-053 🟢 Organisation export and delete, with a pgTAP test — and the export was
+- [ ] CAP-053 🟡 Organisation export and delete, with a PHP suite (Supabase era: pgTAP) — and the export was
       **materially incomplete until 2026-08-31**: 19 tables against 40 carrying an `org_id`,
       missing the organisation's invoices, staff inboxes, minimum-cover rules, integration
       history, GDPR log, support cases and the record of platform support access to its data.
       None of that was a decision; each table was added and nobody went back. Now 33 exported
-      and 7 excluded with a reason printed in the file, and `npm run check:export` fails CI
-      when a tenant table is in neither list
-      `supabase/migrations/0063_delete_organisation.sql` · `scripts/check-export-coverage.mjs`
-- [x] CAP-054 🟢 Retention enforcement — nightly `pg_cron`, running since 2026-08-21
-      `supabase/migrations/0029_retention_enforcement.sql`
-- [x] CAP-055 🟢 Audit trail — severity, scope, visibility, actor snapshot, immutability trigger
-      `supabase/migrations/0016_audit_events.sql`
+      and 7 excluded with a reason printed in the file, and `npm run check:export` failed CI
+      when a tenant table was in neither list (Supabase era).
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** the export is materially incomplete again. Of the 36 names in `EXPORTED_TABLES` (`src/services/orgLifecycleService.ts`) 22
+      have an API route and 14 are written to the file's `omitted` list with "Not available from the API in this release": `staff_locations`, `staff_pay_rates`, `clock_event_corrections`, `emergency_contacts`,
+      `documents`, `announcement_reads`, `notifications`, `notification_deliveries`, `notification_templates`, `support_cases`, `org_integrations`, `integration_sync_runs`, `subscriptions` and `invoice_credits`
+      (two of the names are not MariaDB tables). Clock events and the audit trail are one page each (1000 and 100 rows). The deletion half is complete: deleting an organisation (`backend/src/Mod/Lifecycle.php`) is one transaction with the exact name typed, an audit row first,
+      owed file deletions queued and restricting tables cleared child-first. `scripts/check-export-coverage.mjs` reads the retired Postgres folder, so nothing guards the live tables
+      `backend/src/Mod/Lifecycle.php` · `src/services/orgLifecycleService.ts` · `scripts/check-export-coverage.mjs` · suite `backend/tests/suites/190-lifecycle.php` · Supabase era: `0063`
+- [x] CAP-054 🟢 Retention enforcement — a daily cron step (Supabase era: nightly `pg_cron`, running since 2026-08-21). Live: `Lifecycle::cron` runs `Retention::run` once a day after 02:15 UTC (plain deletes by date for six data types; the audit trail is never removed; the deleted-organisation policy is not enforced). That it has run on the live host is `NOT VERIFIED` (database state: `retention_runs`)
+      `backend/src/Retention.php` · `backend/src/Mod/Lifecycle.php` (`cron`) · `backend/migrations/013-data-lifecycle.sql` (`retention_policies`, `retention_runs`) · suite `backend/tests/suites/190-lifecycle.php` · Supabase era: `0029`
+- [x] CAP-055 🟢 Audit trail — severity, organisation, visibility (`org` or `platform_only`), the organisation's name copied onto the row, immutability triggers
+      `backend/src/Audit.php` · `backend/migrations/002-identity.sql` (`audit_logs`) · `backend/migrations/003-audit-immutable.sql` (`audit_logs_no_update`, `audit_logs_no_delete`) · suites `backend/tests/suites/030-identity.php`, `backend/tests/suites/085-account.php` · Supabase era: `0016`
 - [x] CAP-056 🟢 Audit labelling — every action the system writes has a name, with a readable fallback
       `src/lib/auditActions.ts` · BUG-054 closed #177 · 5 tests
-- [x] CAP-057 🟢 Audit visibility — `visibility='both'` is readable by the tenant it concerns
-      `supabase/migrations/0071_audit_visibility_both_readable.sql` · BUG-055 closed #177 · 7 pgTAP assertions
-- [x] CAP-057a 🟢 Own-activity — the policy has allowed `actor_user_id = auth.uid()` since `0016`, and the
-      writes carry it; the actorless rows are service-role actions, correctly labelled and not anybody's
-      `supabase/migrations/0016_audit_events.sql` · BUG-063 closed #217 — the screen's claims were the bug
+- [x] CAP-057 🟢 Audit visibility — a row with `visibility='org'` is readable by the tenant it concerns (Supabase era: `visibility='both'`); `platform_only` rows never appear in `GET /orgs/{o}/audit`
+      `backend/src/Mod/Account.php` (`audit`) · `backend/migrations/002-identity.sql` · suite `backend/tests/suites/085-account.php` · BUG-055 closed #177 · Supabase era: `0071`, 7 pgTAP assertions
+- [x] CAP-057a 🟢 Own-activity — `GET /orgs/{o}/audit` gives an owner every visible entry and anyone else only the entries they caused (`actor_user_id` equals the caller; Supabase era: the policy allowed `actor_user_id = auth.uid()` since `0016`), and the
+      writes carry it; the actorless rows are system actions (cron and webhooks), correctly labelled and not anybody's
+      `backend/src/Mod/Account.php` (`audit`) · suite `backend/tests/suites/085-account.php` ("staff with no actions see nothing") · BUG-063 closed #217 — the screen's claims were the bug · Supabase era: `0016`
 - [x] CAP-058 🟢 Consent capture — **reopened and built, 2026-09-04.** It was deferred on
       2026-08-31 with reasoning that is still correct about the half it covered: consent is the
       wrong lawful basis for employment data, the ICO's position is that it is rarely valid where
@@ -831,12 +840,13 @@ itself: a restore, a real charge, and a phone.
       is deliberately not drafted here and never will be**: it is a contract needing UK counsel,
       not a description of the system, and what it schedules is written and dated. Keeping the
       row partial for a document that is out of scope by decision made the register look like it
-      was waiting on engineering
+      was waiting on engineering. **Known gaps in the published list, found by reading the code on 2026-11-09 and left for the
+      documentation of Phase 4:** `src/lib/subprocessors.ts` omits the web push services browsers use (`backend/src/Mod/Notifications.php`, `PUSH_HOSTS`) and an organisation's own mail server (`backend/src/Mail.php`); whether they are processors is the owner's call
       `src/pages/legal/TrustPage.tsx` · `src/lib/subprocessors.ts` · GAP-014
-- [x] CAP-060 🟢 Legal pages — Privacy, Cookies and Accessibility are written, from the code
+- [ ] CAP-060 🟡 Legal pages — Privacy, Cookies and Accessibility are written, from the code
       rather than from a template, because each is a DESCRIPTION of what the software does and
-      a description can be checked. The cookie page can say plainly that there are none — no
-      cookies, no analytics, no third-party script — and list every browser key with where it is
+      a description can be checked. The cookie page could say plainly that there were none — no
+      cookies, no analytics, no third-party script (Supabase era; since sign-in moved to Clerk the page lists Clerk's cookies, `src/pages/legal/CookiesPage.tsx`) — and lists every browser key with where it is
       set. Accessibility says what the gate covers AND that an automated scan finds a minority
       of real problems, rather than claiming an audit nobody has done.
       **All five pages are now written (2026-09-04), and two were wrong.** The Privacy page was
@@ -848,10 +858,14 @@ itself: a restore, a real charge, and a phone.
       than omitted. Terms has left the placeholder for the same reason and with the same
       honesty: the descriptive two thirds (eligibility, roles, plans, billing, the grace window,
       deletion) are facts about a system that exists, and the commercial third says what has to
-      be decided instead of inventing it. **Neither is publication-ready and both say so**
+      be decided instead of inventing it. **Neither is publication-ready and both say so**.
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** published text still describes the retired Supabase stack. `src/lib/privacyNotice.ts` (the "How it is protected" section) says each organisation's data is separated "in the database itself rather than by application code",
+      that the site "loads no third-party script", and that "there are no backups and no point-in-time recovery on the production database"; on the live stack the separation is PHP (`backend/src/Scope.php`), sign-in loads Clerk's script,
+      and a six-hourly backup was installed and proven on 2026-11-08 (`docs/AUDIT.md`). Several of its `evidence` strings still name the retired Postgres folder. `src/lib/legalFacts.ts` still opens with "There are **no cookies**".
+      Correcting them is a source change for Phase 4, not a documentation change
       `src/lib/legalFacts.ts` · `src/lib/privacyNotice.ts` · `src/lib/termsDraft.ts` · `src/pages/legal/` · P2
 - [x] CAP-061 🟢 Data-residency claim — corrected when BUG-056 closed (#161) and verified again 2026-08-31:
-      `SECURITY.md` §2 now names both US processors and says the old claim was wrong
+      `SECURITY.md` §2 named both US processors and said the old claim was wrong (Supabase era). Since the cutover section 2 names Clerk, Stripe and OpenRouter as the three that send personal data outside the UK and EU; where the database and files are hosted is `NOT VERIFIED` (hosting dashboard)
       `docs/SECURITY.md` · BUG-056 closed #161 — this row was simply never flipped
 
 ### Integrations and API
