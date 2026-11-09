@@ -2,194 +2,176 @@
 
 This file owns how a notification gets from an event to a person: the outbox,
 the channels, the scheduled jobs that drive them, and web push. Created on
-11 October 2026 from facts read in `supabase/migrations/`, `supabase/functions/`
-and `public/` on that date; the function and trigger notes at the end were moved
-from `docs/DATA-MODEL.md` §6. Delivery numbers from production (how many have
+11 October 2026 and rewritten on 9 November 2026 from `backend/src/Notify.php`,
+`backend/src/Dispatcher.php`, `backend/bin/cron.php` and the modules that call them,
+after the 1 November 2026 cutover. Delivery numbers from production (how many have
 actually been sent) are in `docs/SAAS.md` §2, because they change.
 
-## The PHP implementation (merge slice S6, in progress)
+## How notifications work
 
-Status: **PARTIAL.** This section describes what exists in `backend/` and is tested; the product still delivers through the Supabase
-path below until the cutover. When the cutover happens the rest of this file is rewritten to match, and the Supabase text is deleted.
+Everything is a database outbox drained by cron. There is no HTTP hop, no shared
+secret and no second service: the request that causes an event writes the outbox row
+in its own transaction, and a cron run delivers it.
 
-| Step | Was | Now |
-| ---- | --- | --- |
-| Enqueue | Postgres triggers write `notification_outbox` in the event's transaction | `Notify::enqueue`, called inside the PHP transaction that makes the change (rota publish, leave decision, swap decision, announcement publish and reminder, the missed-clock-in job). Same guarantee: the row commits with the change or not at all |
-| Drain | `pg_cron` every minute posts to `send-notification` with a vault secret | cPanel cron every minute runs `bin/cron.php`, which runs `Mod\Notifications::cron`: scheduled alerts, then `Dispatcher::drain`. No HTTP hop and no shared secret exist, because nothing is called over the network |
-| Claim | The drain marked rows by `request_id` | A row is claimed (`sending`) before delivery; a claim older than ten minutes is returned to `pending`, so a crashed run loses nothing; five attempts then `abandoned`, backing off 1, 2, 4, 8 minutes |
-| Deliver | Edge Function | `Dispatcher::deliver`: drop recipients who are not active members; the organisation's matrix decides channels (an absent or malformed matrix reads as ON); a person's own mute stops email and push but never fills or empties their inbox; inbox row, then email, then push; one `notification_deliveries` row per attempt with a reason when skipped |
-| Email | Deno SMTP | `SmtpMailer`: port 465 implicit TLS, any other port STARTTLS, certificate and host name always verified, header-injection safe. An organisation's own account (password AES-256-GCM encrypted with the private `secret_key`) is preferred, then the platform account (`smtp` in private config), then none |
-| Push | `web-push` over Deno | `WebPushSender`: RFC 8291 encryption and RFC 8292 VAPID with OpenSSL and cURL only, verified against the RFC's own example. The existing VAPID keys go in private config (`vapid`) |
-| Templates | `render_notification` RPC | Organisation row, else platform row, else the built-in wording; `{{name}}` placeholders filled in one pass so a value is never expanded twice |
-| Invitations | `send-invite` function | `Mod\Invites` emails the link on creation and on resend, best effort; the invitation is never lost if the send fails, and its `send_error` says why |
-| Enquiries | `public-enquiry` function | Platform console slice (S8) |
+| Step | How it works | Where |
+| ---- | ------------ | ----- |
+| Enqueue | `Notify::enqueue` is called inside the PHP transaction that makes the change (rota publish, leave decision, swap decision, announcement publish and reminder, support reply, billing events, and the scheduled alerts). It inserts one `notification_outbox` row with the recipients and the wording as JSON. The row commits with the change or not at all, so a closed tab or a crashed request cannot lose a notification. A `dedupe_key` makes a scheduled alert once-only: a second insert with the same key is ignored | `backend/src/Notify.php`, `backend/migrations/007-communication.sql` |
+| Drain | cPanel cron runs `backend/bin/cron.php`, which runs `Mod\Notifications::cron`: scheduled alerts first (so they go out in the same run), then `Dispatcher::drain`. Live runs it every five minutes (the script is also safe to run once a minute) | `backend/bin/cron.php`, `backend/src/Mod/Notifications.php` |
+| Claim and retry | A due row (`pending`, `next_attempt_at` passed) is claimed (`sending`) before delivery; a claim older than ten minutes goes back to `pending`, so a crashed run loses nothing. A failure backs off 1, 2, 4 then 8 minutes (capped at an hour) and the fifth failed attempt marks the row `abandoned`. The delays are minimums: a row waits for the first cron run after its time, so at a five-minute cadence a 60-second back-off waits for the next run | `backend/src/Dispatcher.php` (`MAX_ATTEMPTS`, `CLAIM_STALE_MINUTES`, `drain`) |
+| Deliver | `Dispatcher::deliver`: drop recipients who are not active members of the organisation; the organisation's notification matrix decides which channels an event may use, in-app included (anything absent or malformed reads as ON); a person's own switch (`notifications_enabled`) mutes email and push but never their inbox; then the inbox row, then email, then push. One `notification_deliveries` row per attempt records `sent`, `failed`, `skipped` (with the reason) or `expired` | `backend/src/Dispatcher.php` |
+| Email | `Mail::forOrg` picks the organisation's own SMTP account when one is saved and the private `secret_key` can decrypt it, else the platform account (`smtp` in the private config), else none (email is skipped and the delivery log says why). `SmtpMailer` is a minimal authenticated client: port 465 implicit TLS, any other port STARTTLS, certificate and host name always verified, header-injection checks | `backend/src/Mail.php`, `backend/src/SmtpMailer.php` |
+| Push | `WebPushSender`: RFC 8291 encryption and RFC 8292 VAPID with OpenSSL and cURL only. It needs the `vapid` private config; without it `NullPusher` reports `unavailable` and the push is skipped. A 404 or 410 from the push service marks the delivery `expired` and deletes that subscription | `backend/src/WebPushSender.php`, `backend/src/NullPusher.php` |
+| Templates | The organisation's `notification_templates` row, else the platform row (`org_key` `-`), else the built-in wording; `{{name}}` placeholders are filled in one pass so a value is never expanded twice | `backend/src/Dispatcher.php` (`template`, `fill`) |
+| Invitations | Not an outbox row, because an invitee has no account to address one to: `Mod\Invites` emails the link itself on creation and on resend, best effort; the invitation is kept if the send fails and its `send_error` says why | `backend/src/Mod/Invites.php` |
+| Website enquiries | Not an outbox row (an enquirer belongs to no organisation): `Enquiries::cron` sends one short email per new enquiry to `enquiry_notify_email` over the platform account, with none of the visitor's text in it | `backend/src/Mod/Enquiries.php` |
 
-Compliance (R2 slice S10) adds the document notices, all type `document`. `compliance/submitted` tells the owners and
-managers (not the uploader) that a document awaits review; `compliance/approved` and `compliance/rejected` (with the
-reason) tell the person. The expiring-document alert of `0093` is folded into `Compliance::cron`, not duplicated: on the
-quarter-hour (the job runs at most once in fifteen minutes, keyed by a stamp in the private cache folder) it sends
-`compliance/expiring` 30, 14 and 7 days before an approved document's expiry date and `compliance/expired` the first day
-after it, each stage once per document (`document_reminders` primary key, plus an outbox `dedupe_key`
-`document_reminder:<id>:<stage>:person|managers`). Days are counted in the organisation's timezone; missed runs send only
-the most urgent stage due. The person is told if they have a login, and the owners and managers always (a record with no
-login still alerts them, as `0093` did). Deactivated staff, archived types and replaced rows are skipped. No new cron line
-is needed: the existing one-minute `bin/cron.php` runs it.
+What each event sends, by the module that queues it. Every notice is a row of `type`
+`rota`, `leave`, `swap`, `announcement`, `attendance`, `document`, `billing` or
+`support`; the first four follow the organisation's matrix, the rest are sent on every
+channel the person has not switched off.
 
-Cover (R2 slice S12, only while `cover_tools` is on) adds notices of type `swap`, so they follow the organisation's
-swap matrix: `cover/absence` (owners and managers, not the reporter: someone cannot work a shift), `cover/offered` (up to
-50 eligible people with a login when a manager opens a cover request), `cover/released` (the person taken off the shift),
-`cover/applied` (owners and managers), `cover/approved`, `cover/rejected`, `cover/filled` (an offer turned down because
-someone else was chosen), `cover/absence_dismissed` (the person stays on the shift), and `swap/voided` (both people on a
-swap the module cancelled because its shift changed or started). All are enqueued in the transaction that makes the
-change. `Cover::cron` runs in the same one-minute `bin/cron.php` (no new line): for each organisation with the flag on it
-closes cover requests whose shift started, was cancelled or was filled some other way, closes pending applications on
-shifts no longer open, and cancels stale swaps; it is idempotent.
+| Event | Who is told | Queued by |
+| ----- | ----------- | --------- |
+| `rota/published` | A first publish tells everyone with a shift. An amendment writes one row per affected person, listing what changed for them | `Mod\Rotas::notifyPublished`, `backend/src/RotaDiff.php` |
+| `leave/reviewed` | The requester, when a request is approved or declined | `Mod\Leave` |
+| `swap/requested`, `swap/reviewed`, `swap/voided` | The colleague asked to swap; the requester when a swap is decided; both people when a swap is voided because its shift changed or started | `Mod\Swaps` |
+| `announcement/published` | The announcement's audience on publish, and the audience members who have not read it when a manager presses "Remind unread" (limited per hour) | `Mod\Announcements` |
+| `platform/announcement` | The people a platform announcement is addressed to | `Mod\PlatformAnnouncements` |
+| `support/replied` | The person who raised a case, on a public reply from support (never an internal note); title "Reply on CASE-nnnn", first 240 characters of the reply | `Mod\Support` |
+| `alert/missed_clock_in` | The organisation's owners and managers, once per shift, when a shift started more than 30 minutes ago (and less than 12 hours ago) with nobody clocked in | `Mod\Notifications::scheduledAlerts` |
+| `billing/trial_ending` | The owners of an active organisation whose own free trial ends within three days and whose billing state is still `trial`; deduplicated on the trial end, so an extended trial is reminded again | `Mod\Notifications::trialEndingAlerts` |
+| `billing/trial_will_end`, `billing/payment_failed` | The organisation's active owners, from Stripe events. Deduplicated per subscription and trial end, and per invoice (once per invoice, not per retry) | `Mod\StripeWebhook`, `backend/src/BillingRules.php` |
+| `compliance/submitted`, `compliance/approved`, `compliance/rejected` | Owners and managers (not the person who submitted it) when a document awaits review; the person, with the reason, when it is decided | `Mod\Compliance` |
+| `compliance/expiring`, `compliance/expired` | The person (if they have a login) and always the owners and managers, 30, 14 and 7 days before an approved document's expiry date and on the first day after it | `Mod\Compliance::cron` |
+| `cover/*`, `swap/voided` | Type `swap`, so they follow the swap matrix (below) | `Mod\Cover`, `Mod\Swaps` |
 
-The billing notices (Stripe `trial_will_end`, `payment_failed`, and the free-trial reminder) are in PHP since S7: the first two are written by `Mod\StripeWebhook`, the third by `Notifications::trialEndingAlerts` in the same cron run. The daily and
-weekly email summary remains unbuilt, as before. Web push has never been seen arriving on a real device; that stays **NOT TESTED**.
+**Documents.** `Compliance::cron` runs at most once in fifteen minutes (a stamp in the
+private cache folder), whatever the cron cadence is. Each stage is sent once per
+document (`document_reminders` primary key plus an outbox `dedupe_key` of the form
+`document_reminder:<id>:<stage>:person` or `:managers`). Days are counted in the
+organisation's timezone; missed runs send only the most urgent stage due. Deactivated
+staff, archived types and replaced rows are skipped. Approved documents only.
 
-Two more notices come from S8a. A public reply from support on a case queues one `support/replied` row (type `support`, title "Reply on CASE-nnnn", first 240 characters of the reply) to the person who raised it, never for an internal note. A new website enquiry is announced to `enquiry_notify_email` by `Enquiries::cron` with no visitor text in it (name, address and message stay in the console), and nothing is sent if that address or the platform mail account is not set.
+**Cover** (only while the `cover_tools` flag is on) queues `cover/absence` (owners and
+managers, not the reporter), `cover/offered` (up to 50 eligible people with a login
+when a manager opens a cover request), `cover/released` (the person taken off the
+shift), `cover/applied` (owners and managers), `cover/approved`, `cover/rejected`,
+`cover/filled` (an offer turned down because someone else was chosen) and
+`cover/absence_dismissed` (the person stays on the shift), all in the transaction that
+makes the change. `Cover::cron` closes cover requests whose shift started, was
+cancelled or was filled some other way, closes pending applications on shifts no
+longer open, and voids stale swaps; it is idempotent.
 
-Platform announcements (S8b-2) use the same outbox: `PlatformAnnouncements::cron` runs after `Notifications::cron` (modules run in name order), so a delivery is stamped delivered or failed in the same run that sent it.
+**Billing notices.** `Mod\StripeWebhook` writes the two Stripe notices through the same
+outbox. `billing` has no row in the organisation's notification matrix, so the
+notice goes on every channel the person has not switched off. Only a **Stripe** trial
+produces `billing/trial_will_end`; an organisation in its own no-card trial
+(`organisations.trial_ends_at`) is reminded by `Notifications::trialEndingAlerts`
+instead.
 
-The one cron entry the host needs (the owner adds it; `bin/doctor.php` first):
+**Website enquiries.** `Enquiries::cron` says a message arrived, whether a demo was
+asked for, the team size and sector, and links to `/admin/enquiries`. It carries **no
+text the visitor typed**: the name, address and message stay behind sign-in in the
+console. Without `enquiry_notify_email` or the platform mail account nothing is sent
+and the console inbox still shows the enquiry; nothing is ever sent to the visitor's
+address, so the form cannot be used to mail a third party.
 
-```text
-* * * * * ROTAFLOW_PRIVATE_ROOT=$HOME/rotaflow-private /usr/local/bin/php $HOME/rotaflow-private/app/bin/cron.php >> $HOME/rotaflow-private/logs/cron.log 2>&1
-```
+**Platform announcements.** `PlatformAnnouncements::cron` publishes announcements
+whose scheduled time has come, through the same outbox. It runs after
+`Notifications::cron` (modules run in name order), so a delivery is stamped delivered
+or failed in the same run that sent it.
 
 ## The path, end to end
 
-1. **Enqueue, in the same transaction as the event.** A trigger or RPC writes a
-   row to `notification_outbox` (`0069`) inside the transaction that caused it, so
-   a closed tab or a crashed client cannot lose the notification (GAP-026). Rota
-   publication, leave and swap decisions, announcements and scheduled alerts all
-   enqueue this way. An amendment to a published rota writes one row per affected
-   person, listing what changed for them (`0083`).
-2. **Drain, every minute.** `pg_cron` runs `dispatch_notification_outbox()`
-   (`0069`), which posts each pending row over `pg_net` to the `send-notification`
-   Edge Function with a shared secret in the `x-notification-secret` header. The
-   secret is generated inside Postgres and lives only in `vault` (`0091`); the
-   function compares it in the database and never reads it. A row that keeps
-   failing is marked `abandoned` after five attempts (`0069`).
-3. **Deliver.** `send-notification` drops recipients who are not members of the
-   organisation, applies the organisation's notification matrix and each person's
-   own switch (BUG-048), writes the in-app `notifications` row unless the
-   organisation has muted in-app, and sends email over the organisation's SMTP and
-   web push over VAPID. Its request and response contract is in
-   `docs/API-SPEC.md`.
-4. **Record.** Every attempt per channel is a `notification_deliveries` row
-   (`0067`), status `sent`, `failed`, `skipped` or `expired`. Delivery log and
-   settled outbox rows are kept for twelve months, then removed by the nightly
-   retention job (`0092`); a pending outbox row is never removed.
-
-Invitations are the exception: `send-invite` sends its email directly, because an
-invitee has no account to address an outbox row to.
-
-### Billing notices (`0154`, plan F16)
-
-`stripe-webhook` writes two outbox rows of `type` `billing`, addressed to the
-organisation's active owners, through the same outbox and drain as everything
-else:
-
-| Event                                  | Title                       | Dedupe key                                                                   |
-| -------------------------------------- | --------------------------- | ---------------------------------------------------------------------------- |
-| `customer.subscription.trial_will_end` | "Your trial ends in 3 days" | `stripe:trial_will_end:<mode>:<sub>:<trial end>`                             |
-| `invoice.payment_failed`               | "Payment failed"            | `stripe:payment_failed:<mode>:<invoice>`, so once per invoice, not per retry |
-
-`billing` has no row in the organisation's notification matrix, so
-`send-notification` sends it on every channel the person has not switched off.
-Only a **Stripe** trial produces the `trial_will_end` notice. An organisation in
-its own no-card trial (`organisations.trial_ends_at`, `0154`) is reminded by the
-scheduled job instead (`0157`): `enqueue_scheduled_alerts` queues one
-`billing/trial_ending` row, "Your free trial ends on" and the date, to the active owners
-of an `active` organisation whose trial ends within three days and whose billing
-state is still `trial`. Its dedupe key is `trial_ending:<org>:<trial end>`, so an
-extended trial is reminded again before its new end.
-
-**Website enquiries are the second exception (`0155`).** The outbox cannot carry
-them: `notification_outbox.org_id` is NOT NULL, and `send-notification` drops
-every recipient who is not a member of that organisation, so there is no way to
-address platform staff about a prospect who belongs to no organisation (`0148`
-met the same limit for a prospect's support case and skipped it). Widening the
-outbox and the delivery function for one alert was judged the larger risk. So
-`public-enquiry` sends one short email itself, after the `enquiries` row has
-committed, to `ENQUIRY_NOTIFY_EMAIL` over the platform SMTP account
-(`platformSmtpConfig` in `_shared/smtp.ts`). It says a message arrived, whether
-a demo was asked for, the team size and sector, and links to `/admin/enquiries`.
-It carries **no text the visitor typed**: not the name, the address or the
-message, which stay behind sign-in and RLS and inside the retention job's
-reach. Without `ENQUIRY_NOTIFY_EMAIL` or platform SMTP nothing is sent, and the
-console inbox still shows the enquiry. A send failure is reported to Sentry and
-changes nothing for the visitor. Nothing is ever sent to the visitor's address,
-so the form cannot be used to mail a third party.
+1. **Enqueue, in the same transaction as the event.** `Notify::enqueue` writes a row
+   to `notification_outbox` inside the transaction that caused it (GAP-026). An
+   amendment to a published rota writes one row per affected person.
+2. **Drain, on every cron run.** `bin/cron.php` takes a lock, so only one run is
+   active, and calls each module's `cron()`; `Notifications::cron` queues the
+   scheduled alerts and drains up to 50 due rows with `Dispatcher::drain`.
+3. **Deliver.** `Dispatcher::deliver` applies the rules in the table above and writes
+   the inbox row, the email and the push.
+4. **Record.** Every attempt per channel is a `notification_deliveries` row. Delivery
+   log and settled outbox rows (`sent` or `abandoned`) are kept for twelve months, then
+   removed by the daily retention run in `Lifecycle::cron` (the `notifications` policy
+   in `backend/migrations/013-data-lifecycle.sql`; a pending outbox row is never
+   removed).
 
 ## Channels
 
-| Channel  | State                                                                                                                                                                                                                                                                                                            |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| In-app   | Built. The `notifications` table, read at `/app/notifications`                                                                                                                                                                                                                                                   |
-| Email    | Built. An organisation's own SMTP account (`org_smtp_settings`, `0010`) is preferred, tested from Settings with `test-smtp`; otherwise the platform SMTP secrets, and email is skipped when neither exists. Wording comes from `notification_templates` (`0108`), with an organisation override where one exists |
-| Web push | Built. VAPID keys are Edge Function secrets; the public key is `VITE_VAPID_PUBLIC_KEY`. Subscriptions are `push_subscriptions` (`0009`). Whether a push has ever arrived on a real device is recorded in `docs/SAAS.md`, not assumed                                                                             |
-| SMS      | **Not built.** A reserved seam: no provider, and Settings shows it as unavailable                                                                                                                                                                                                                                |
+| Channel  | State |
+| -------- | ----- |
+| In-app   | Built. The `notifications` table, read with `GET /orgs/{o}/notifications` and shown at `/app/notifications`; marked read with `POST /orgs/{o}/notifications/read`. Only the Dispatcher writes it |
+| Email    | Built. An organisation's own SMTP account (`org_smtp_settings`) is preferred, tested from Settings with `POST /orgs/{o}/smtp/test` (`backend/src/Mod/OrgSettings.php`); otherwise the platform account, and email is skipped when neither exists. Wording comes from `notification_templates`, with an organisation override where one exists |
+| Web push | Built. The VAPID keys are private config (`vapid`); the public key is `VITE_VAPID_PUBLIC_KEY`. Subscriptions are `push_subscriptions` (at most 10 devices per person, newest kept; only addresses of the browsers' push services are accepted). Whether a push has ever arrived on a real device is recorded in `docs/SAAS.md`, not assumed: `NOT VERIFIED` from the repository |
+| SMS      | **Not built.** A reserved seam: the `sms` value exists on `notifications.channel` (`backend/migrations/007-communication.sql`), `backend/src` has no SMS code, and Settings does not offer it (`src/lib/orgPreferences.ts`) |
 
-**Email summaries are not sent.** Since `0163` a person can choose a daily or weekly
-summary on My account, Preferences (`app_settings.digest_frequency`). Nothing reads
-it: every notification is still sent on its own, and the screen says so. A digest
-job would be a new `pg_cron` entry in the table below.
+**Email summaries are not sent.** A person can choose a daily or weekly summary on My
+account, Preferences (`app_settings.digest_frequency`, `backend/src/Mod/Account.php`).
+Nothing reads it: every notification is still sent on its own, and the screen says so.
+A digest job would be a new `cron()` function in a module.
 
 ### Web push on the device
 
 The browser side is `useWebPush` (`docs/ARCHITECTURE.md#hook-contracts` §16), which
-subscribes the device and writes `push_subscriptions`. The service worker that
-displays a push is `public/push-sw.js`, imported into the generated Workbox
-service worker through `workbox.importScripts` (BUG-050).
+subscribes the device and stores it with `POST /me/push-subscriptions`. The service
+worker that displays a push is `public/push-sw.js`, imported into the generated
+service worker through `workbox.importScripts` in `vite.config.ts` (BUG-050); it shows
+the notification and opens `/app/notifications` (or the payload's URL) on a click.
 
 Signing out deliberately releases the device (plan S4, 2026-10-11):
 `releasePushSubscription` in `src/lib/session.ts` deletes this endpoint's
-`push_subscriptions` row and then unsubscribes the browser, before the session
-ends, so the next person to use a shared phone is not shown the last person's
-notifications. It is bounded at 3 seconds and never blocks sign-out. A session
-that expires or is revoked elsewhere does not run it; see
+`push_subscriptions` row (`POST /me/push-subscriptions/delete`) and then unsubscribes
+the browser, before the session ends, so the next person to use a shared phone is not
+shown the last person's notifications. It is bounded at 3 seconds and never blocks
+sign-out. A session that expires or is revoked elsewhere does not run it; see
 `docs/ARCHITECTURE.md`, "Offline and PWA".
 
 ## Scheduled jobs
 
-Seven `pg_cron` jobs are defined in `supabase/migrations/`. Background work runs
-inside Postgres with `pg_cron` and `pg_net`; nothing runs on the cPanel origin, and
-Inngest was retired in `0087`. On 31 August 2026 four of these were verified
-running by reading `cron.job` in production; the fifth was added by `0132`, the sixth by
-`0159` and the seventh by `0162` after that check, and their production state has not
-been re-read for this document.
+There is one cron entry, and it runs every module that defines
+`public static function cron(Ctx $ctx): string`, in file-name order, one run at a time
+(`backend/bin/cron.php`). Jobs decide for themselves whether they are due and are
+idempotent, so the schedule is only a heartbeat. Live runs it every five minutes; the
+script is also safe to run once a minute. The seven modules:
 
-| Job                               | Schedule                      | Runs                                   | Defined in | What it does                                                                                                                                           |
-| --------------------------------- | ----------------------------- | -------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `rotaflow-notification-outbox`    | every minute                  | `dispatch_notification_outbox()`       | `0069`     | Drains the outbox into `send-notification`                                                                                                             |
-| `rotaflow-announcement-scheduler` | every minute                  | `publish_due_platform_announcements()` | `0132`     | Publishes platform announcements whose scheduled time has come, through the outbox                                                                     |
-| `rotaflow-scheduled-alerts`       | every 15 minutes              | `enqueue_scheduled_alerts()`           | `0093`     | Missed clock-ins, **expiring documents** and a **free trial ending** within three days (`0157`), one outbox row per fact, deduplicated by `dedupe_key` |
-| `rotaflow-health-probe`           | every 5 minutes               | `probe_platform_health()`              | `0076`     | Platform health samples, not a notification; listed here because it is a scheduled job (`docs/DATA-MODEL.md` §6)                                       |
-| `rotaflow-storage-deletions`      | every 5 minutes               | `dispatch_storage_deletions()`         | `0159`     | Not a notification: posts queued document and photo files (`0162`) to `purge-storage`, so an erasure or deletion reaches Storage                       |
-| `rotaflow-account-deletions`      | every 5 minutes               | `dispatch_account_deletions()`         | `0162`     | Not a notification: posts logins owed to a completed erasure case to `delete-account`, which removes them through the Auth Admin API                   |
-| `rotaflow-retention`              | daily at 02:15, pg_cron clock | `enforce_retention(false)`             | `0029`     | Deletes rows past their retention window, including the notification log (`docs/SECURITY.md` §3)                                                       |
+| Module | Its `cron()` job |
+| ------ | ---------------- |
+| `Compliance` | Expiry reminders for staff documents, at most once in fifteen minutes (above) |
+| `Cover` | Closes stale cover requests and applications, voids stale swaps, for organisations with `cover_tools` on |
+| `Enquiries` | Emails the team about each new website enquiry (`enquiry_notify_email`) |
+| `Gdpr` | Finishes the logins an erasure case owes: deletes each queued login from Clerk (needs `clerk_secret_key`) and then from the database; five failures abandon a row visibly |
+| `Lifecycle` | Removes queued stored files and folders (`storage_deletions`), then runs the retention policies once a day after 02:15 UTC |
+| `Notifications` | Scheduled alerts (missed clock-in, free trial ending), then `Dispatcher::drain` |
+| `PlatformAnnouncements` | Publishes due scheduled announcements, then reconciles delivery stamps |
 
-`0093` does not alert on leave: the scheduled alerts are a missed clock-in and a
-document nearing its expiry date (GAP-013, CAP-019, CAP-088).
+The one entry the host needs (the owner adds it; run `backend/bin/doctor.php` first;
+install a cron line from a file, never by piping into `crontab -`, see
+`docs/DEPLOYMENT.md`):
 
-## Functions and triggers
+```text
+*/5 * * * * ROTAFLOW_PRIVATE_ROOT=$HOME/rotaflow-private php $HOME/rotaflow-private/app/bin/cron.php >> $HOME/rotaflow-private/logs/cron.log 2>&1
+```
 
-- **`announcement_audience(announcement)`** (`0087`, `security definer`, stable): the
-  user ids an announcement is addressed to, from its own department/location scope.
-  One definition, shared by the publish trigger and the unread reminder — the page
-  used to resolve the audience from its own loaded staff list, so an announcement's
-  reach depended on a client-side cache.
-- **`remind_announcement_unread(announcement)`** (`0087`, `security definer`,
-  owner/manager): enqueues one reminder to everyone in the audience who has no
-  `announcement_reads` row, and returns the count. An RPC rather than a trigger
-  because pressing "Remind unread" changes no row — there is no transition to hang a
-  trigger on. It still commits the outbox row before returning, which is the property
-  that matters.
-- **Notification enqueue triggers** (`0087`): `leave_requests_enqueue_reviewed` and
-  `shift_swaps_enqueue_reviewed` fire when a request moves to `approved`/`rejected`,
-  and `announcements_enqueue_published` when `published_at` first becomes non-null.
-  Each skips the case where the reviewer IS the requester, and an edit to an
-  already-published announcement notifies nobody a second time.
+That the cron job is installed and runs every five minutes on the live host is
+recorded in `docs/AUDIT.md` (the 2026-11-08 section); the host state today is not
+re-checked here. The database backup is a separate job, `backend/bin/backup.php`
+(`docs/DEPLOYMENT.md`, "Database backups").
+
+The scheduled alerts do not cover leave: they are a missed clock-in, a document nearing
+its expiry date (GAP-013, CAP-019, CAP-088) and a free trial ending.
+
+## Classes and routes
+
+- **`Notify`** (`backend/src/Notify.php`): `enqueue` (see the first table),
+  `managers` (the active owners and managers of an organisation) and `userOfStaff`
+  (the login behind a staff record, or null).
+- **`Dispatcher`** (`backend/src/Dispatcher.php`): `drain` and `deliver`, with
+  `matrix` (which channels the organisation permits) and `fill` (templates).
+- **`Mod\Notifications`** (`backend/src/Mod/Notifications.php`): the person's inbox
+  (`GET /orgs/{o}/notifications`, `POST /orgs/{o}/notifications/read`), their push
+  devices (`POST /me/push-subscriptions`, `/me/push-subscriptions/delete`) and `cron()`.
+- **`Pusher`**, **`NullPusher`**, **`WebPushSender`**; **`Mailer`**, **`SmtpMailer`**,
+  **`Mail`** (`backend/src`).
+
+**Legacy.** Before the 1 November 2026 cutover the outbox was filled by Postgres triggers and drained by seven `pg_cron` jobs that posted to the `send-notification` Edge Function with a secret held in the database vault (legacy; none of it runs any more). The previous text of this file, with the trigger and job notes, is available with `git show live-supabase-2026-11-01:docs/NOTIFICATIONS-SPEC.md`.
