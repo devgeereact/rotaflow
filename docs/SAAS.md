@@ -528,30 +528,31 @@ itself: a restore, a real charge, and a phone.
 
 - [x] CAP-001 🟢 Rota builder — weekly/fortnightly/monthly grid, drag-and-drop, copy-previous-week
       `src/pages/app/RotaBuilderPage.tsx`
-- [x] CAP-002 🟢 Rota lifecycle — draft/published/archived, DB-enforced, four guards no client can bypass
-      `supabase/migrations/0061_rota_revisions.sql`, `0114_publication_boundary_in_the_database.sql` · GAP-039 closed #280 · 25 pgTAP assertions
+- [x] CAP-002 🟢 Rota lifecycle — draft/published/archived; the API is the only writer and never edits a published or archived rota (Supabase era: four database guards no client could bypass)
+      `backend/src/Mod/Rotas.php` · `backend/src/Mod/Shifts.php` (`rota_published`, `rota_archived`) · `backend/migrations/005-rota.sql` (`rotas_one_draft`, `rotas_one_published`) · suite `backend/tests/suites/090-rota.php` · GAP-039 closed #280 · Supabase era: `0061`, `0114`, 25 pgTAP assertions
 - [x] CAP-003 🟢 Amendment flow — a published rota is amended via a revision, the original stays visible
-      `supabase/migrations/0061_rota_revisions.sql` (`begin_rota_revision`)
-- [x] CAP-004 🟢 Minimum cover — `publish_rota` refuses a shortfall, counting exactly as the builder
-      does; the escape hatch is lowering that day's minimum, not a force flag
-      `supabase/migrations/0080_enforce_minimum_cover.sql` · GAP-006 closed #192 · 9 pgTAP assertions
+      `backend/src/Mod/Rotas.php` (`beginRevision`, `discardRevision`, `publish`) · suite `backend/tests/suites/090-rota.php` (an amendment is a draft that supersedes the published rota) · Supabase era: `0061` `begin_rota_revision`
+- [x] CAP-004 🟢 Minimum cover — `POST /orgs/{o}/rotas/{r}/publish` refuses a shortfall (409 `cover_below_minimum`), counting exactly as the builder
+      does; the escape hatch is lowering that day's minimum, not a force flag (the route takes no body field)
+      `backend/src/MinimumCover.php` · `backend/src/Mod/Rotas.php` (`publish`, `shortfall`) · `backend/migrations/005-rota.sql` (`minimum_cover_rules`) · suites `backend/tests/suites/089-minimum-cover.php`, `backend/tests/suites/090-rota.php` · GAP-006 closed #192 · Supabase era: `0080` `publish_rota`, 9 pgTAP assertions
 - [ ] CAP-004b 🟡 Scheduling tools (R2 slice S11) — rota warnings (daily rest, weekly hours, approved leave,
       declared unavailability) at assign and in a publish preview; a double-booking blocks publishing, warnings never
       do; recurring patterns (weekly or days on/off, split shifts, 92 days, 500 shifts, wall-clock across clock
-      changes); the shifts that clash with an approved leave request. **Built on the branch `r2/s11-scheduling`,
-      behind the `scheduling_tools` flag (seeded off), not released.** Becomes 🟢 when the owner turns the flag on
+      changes); the shifts that clash with an approved leave request. **Code is on `main` (the branch `r2/s11-scheduling` is gone),
+      behind the `scheduling_tools` flag, seeded off in `backend/migrations/016-scheduling.sql`; whether the flag is on in the live
+      database, and whether a release has carried the module to the live host, is `NOT VERIFIED`.** Becomes 🟢 when the owner turns the flag on
       after a local-live walk-through. `backend/migrations/016-scheduling.sql` · `backend/src/Mod/Scheduling.php` ·
       suites `235-scheduling-rules`, `240-scheduling` · `src/lib/schedulingRules.test.ts`, `src/lib/zonedTime.test.ts`
 - [x] CAP-005 ⚫ Shift templates — removed rather than built. A pre-filled placement is a different
       feature from a shift type, and should be designed as one if it is ever wanted
-      `supabase/migrations/0096_drop_shift_templates.sql` · BUG-051 closed #229
-- [x] CAP-006 🟢 Repeating a week — `repeat_rota_weeks()` copies a week forward up to 26 weeks
+      no `shift_templates` table exists in `backend/migrations` (`git grep -n shift_templates -- backend` prints nothing) · BUG-051 closed #229 · Supabase era: `0096` dropped it
+- [x] CAP-006 🟢 Repeating a week — `POST /orgs/{o}/rotas/{r}/repeat` copies a week forward up to 26 weeks
       in one transaction, rather than twelve rounds of copy-navigate-paste and several hundred
       round trips that can each fail alone. The arithmetic is done in the SITE'S timezone: in
       UTC a 07:00 shift becomes 08:00 after the last Sunday in March, and nobody notices until
       somebody turns up late. It never writes over a published week or a draft already holding
       work, and reports how many it left alone
-      `supabase/migrations/0107_repeat_rota_weeks.sql` · 9 pgTAP assertions
+      `backend/src/Mod/Rotas.php` (`repeat`, `copyShifts`, which moves each shift by local days in its site's time zone with `Time::plusLocalDays`; a published week, or a draft already holding shifts, is skipped and counted) · suite `backend/tests/suites/090-rota.php` (weeks 1 to 26) · Supabase era: `0107` `repeat_rota_weeks()`, 9 pgTAP assertions
 - [x] CAP-007 🟢 Conflict detection — leave, overlap, declared unavailability as hard blockers
       `src/lib/rotaInsights.ts`
 - [x] CAP-008 🟢 Overnight shifts and DST — absolute-instant arithmetic, fall-back day tested
@@ -563,11 +564,11 @@ itself: a restore, a real charge, and a phone.
       before it is sent. One-off royal holidays cannot be derived and have a named place to go
       `src/lib/bankHolidays.ts` · 15 unit tests
 - [x] CAP-010 🟢 Open-shift board — `/app/open-shifts` lists published, unclaimed, future shifts
-      and `claim_open_shift()` takes one. The UPDATE re-checks "still open" in its WHERE, so two
+      and `POST /orgs/{o}/open-shifts/{h}/claim` takes one (Supabase era: `claim_open_shift()`). The claim takes the organisation lock first and re-checks eligibility, so two
       people tapping at once cannot both win. A shift clashing with the reader's own roster is
       shown and flagged rather than filtered — a board that silently hides rows leaves somebody
       staring at "nothing to cover" while a colleague sees four
-      `supabase/migrations/0103_open_shift_claims.sql` · 11 pgTAP assertions
+      `backend/src/Mod/Swaps.php` (`claimOpenShift`) · `backend/src/Mod/Cover.php` (the eligibility check) · suite `backend/tests/suites/110-swaps-open-shifts.php` · `backend/tests/suites/270-open-shift-eligibility.php` · Supabase era: `0103`, 11 pgTAP assertions
 - [ ] CAP-010b 🟡 Cover (R2 slice S12) — staff report that they cannot work a shift and offer to cover; owners and
       managers open a cover request (the person comes off the published shift, eligible people are told), see ranked
       candidates with reasons, and approve or assign in one transaction with the organisation locked first and
@@ -575,30 +576,32 @@ itself: a restore, a real charge, and a phone.
       the instant open-shift claim gains the same check (always, whatever the flag, by owner decision); swaps cancel
       themselves when their shift changes or starts; two-way swaps (one shift for another, both moved or neither) behind
       their own `two_way_swaps` flag (S12d, `019-two-way-swaps.sql`, suite `265-two-way-swaps`).
-      **Built on the branch `r2/s12-cover`, behind the `cover_tools` flag (seeded off), not released.** Becomes 🟢 when
+      **Code is on `main` (the branch `r2/s12-cover` is gone), behind the `cover_tools` flag, seeded off in `backend/migrations/017-cover.sql`;
+      the live flag value and whether a release has carried the module are `NOT VERIFIED`.** Becomes 🟢 when
       the owner turns the flag on after a local-live walk-through. `backend/migrations/017-cover.sql` ·
       `backend/src/Mod/Cover.php` · suites `245-cover-rules`, `250-cover` · `src/lib/coverRules.test.ts`
 - [ ] CAP-011b 🟡 Timesheet flags and payroll export (R2 slice S13) — each timesheet line shows late, early finish
       and overtime chips beyond the organisation's tolerance (default 10 minutes, Settings, Policies), computed on the
       server from UTC instants (exact across clock changes, scheduled break deducted both sides); owners and managers
       export a payroll CSV of approved periods (at most 31 days, UTF-8 with a BOM, fixed columns, formula-injection
-      safe, exact minutes and hours, never to a platform support session). **Built on the branch `r2/s13-timesheets`,
-      behind the `timesheet_tools` flag (seeded off), not released.** Becomes 🟢 when the owner turns the flag on after
+      safe, exact minutes and hours, never to a platform support session). **Code is on `main` (the branch `r2/s13-timesheets` is gone),
+      behind the `timesheet_tools` flag, seeded off in `backend/migrations/018-timesheets.sql`; the live flag value and whether a release has
+      carried the module are `NOT VERIFIED`.** Becomes 🟢 when the owner turns the flag on after
       a local-live walk-through. `backend/migrations/018-timesheets.sql` · `backend/src/TimesheetRules.php` ·
       `backend/src/Mod/Timesheets.php` · suites `255-timesheet-rules`, `260-timesheets` · `src/lib/timesheetRules.test.ts`
 - [x] CAP-011 🟢 Clock in/out — GPS and manual, offline outbox, geofence recorded, duplicates refused server-side
-      `src/pages/app/ClockInPage.tsx`, `supabase/migrations/0115_clock_event_sequence_guard.sql` · GAP-040 closed #281 · 6 pgTAP assertions
+      `src/pages/app/ClockInPage.tsx`, `backend/src/Mod/Clock.php` (clocking in twice within five minutes is refused; a replayed `client_event_id` answers 200 `already_applied`) · suite `backend/tests/suites/100-clock.php` · GAP-040 closed #281 · Supabase era: `0115`, 6 pgTAP assertions
 - [x] CAP-012 🟢 Offline clock-in honesty — a queued write is labelled "Saved on this device, not sent yet"
       `src/pages/app/ClockInPage.tsx` · BUG-043 closed #162
 - [x] CAP-013 🟢 Sync state display — reads queue depth, not `navigator.onLine`
       `src/lib/clockRows.ts` (`syncStatusLabel`, 4 tests) · BUG-044 closed #162
 - [x] CAP-014 🟢 Offline timestamp integrity — the guard still clamps, but records what the device claimed
-      `supabase/migrations/0068_clock_event_reported_time.sql` · BUG-045 closed #172 · 9 pgTAP assertions · applied to production 2026-08-29
+      `backend/src/Mod/Clock.php` (a person's time is trusted only within 5 minutes ahead and 72 hours behind the server clock; the device's claim is kept in `event_at_reported`, `backend/migrations/006-time-and-requests.sql`) · suite `backend/tests/suites/100-clock.php` · BUG-045 closed #172 · Supabase era: `0068`, 9 pgTAP assertions, applied to the Supabase production database 2026-08-29
 - [x] CAP-015 🟢 Replay idempotency — a key minted before the first attempt on all three offline writes,
       a partial unique index, and a collision counted as synced rather than dead-lettered
-      `supabase/migrations/0081_outbox_idempotency.sql`, `src/lib/queuedWrite.ts` · BUG-046 closed #193, GAP-041 closed #282 · 5 pgTAP assertions · 4 unit tests
+      `backend/migrations/006-time-and-requests.sql` (unique keys `clock_events_client_event`, `leave_requests_client_event`, `shift_swaps_client_event`), `src/lib/queuedWrite.ts` · suites `backend/tests/suites/100-clock.php`, `backend/tests/suites/110-swaps-open-shifts.php` · BUG-046 closed #193, GAP-041 closed #282 · Supabase era: `0081`, 5 pgTAP assertions · 4 unit tests
 - [x] CAP-016 🟢 Dead-letter recovery — surfaced, retryable and dismissable, and scoped to the person
-      who queued it; the retry is safe because the idempotency keys (`0081`) recognise a write that
+      who queued it; the retry is safe because the idempotency keys (Supabase era `0081`; now the `client_event_id` unique keys) recognise a write that
       secretly landed
       `src/services/syncQueue.ts` · `src/components/FailedWritesNotice.tsx` · GAP-042 closed #283 · 40 unit tests
 - [ ] CAP-017 ⚫ QR clock-in — **deferred with a reason, 2026-08-31.** The schema accepts `'qr'`
@@ -611,9 +614,9 @@ itself: a restore, a real charge, and a phone.
       `src/pages/app/ClockInPage.tsx` · P3
 - [x] CAP-018 🟢 Timesheets — week approval, amendment, CSV export
       `src/pages/app/TimesheetsPage.tsx`
-- [x] CAP-019 🟢 Missed clock-in — the dashboard keeps its live view, and a pg_cron job now alerts a
-      manager without one being open, deduped per shift
-      `supabase/migrations/0093_scheduled_alerts.sql` · GAP-013 closed #214 · 9 pgTAP assertions
+- [x] CAP-019 🟢 Missed clock-in — the dashboard keeps its live view, and a cron job now alerts a
+      manager without one being open, deduped per shift (Supabase era: `pg_cron`)
+      `backend/src/Mod/Notifications.php` (`scheduledAlerts`, `MISSED_AFTER_MIN` 30 minutes, run by `Notifications::cron` from `backend/bin/cron.php`) · `backend/migrations/007-communication.sql` (`notification_outbox_dedupe`) · suite `backend/tests/suites/120-notifications.php` ("running the job again adds nothing") · GAP-013 closed #214 · Supabase era: `0093`, 9 pgTAP assertions
 
 ### Communications
 
