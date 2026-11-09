@@ -1,487 +1,420 @@
-# Deployment. Static PWA on cPanel
+# Deployment. Static front end and PHP API on cPanel
 
-This app builds to a **static `dist/`** folder and is served as plain files. There is
-**no server runtime**. The cPanel host runs PHP/Apache only (typically `git`,
-`rsync`, `mysql`; **no `node`/`npm`**). So the frontend is **built locally** (or in CI)
-and only the built artifacts are shipped.
+RotaFlow is a **static React front end** (built to `dist/`) and a **PHP 8.4 API** (`backend/`) on the **same cPanel
+host**, released together by `pnpm release` (`scripts/release.mjs`, settings in `release.json`). Nothing in the release
+needs Node on the host: the front end is **built on the machine that runs the release** (the owner's Mac, or the runner of
+`.github/workflows/deploy.yml`), and the release uploads built files and PHP source. The database is MariaDB on the same
+host, and background work is a cPanel cron entry running `backend/bin/cron.php` (a second entry runs the database backup). Migrations are **not** applied by the
+release: `php bin/migrate.php` is a separate step on the host (see "Applying migrations"). The previous version of this
+page, which described a static-only site with no API and the retired `cpanel-deploy` tool, is available with `git show
+live-supabase-2026-11-01:docs/DEPLOYMENT.md`.
 
-> **RotaFlow target:** domain **`rotaflow.space`**, its own registered domain,
-> deployed into its **own** docroot, `~/rotaflow.space/`. Never the shared
-> `public_html/`. If you deploy through a personal wrapper/CI, that tooling still
-> has to obey the safety rules below. They exist because breaking them has caused real
-> outages and leaks.
+> **RotaFlow target:** domain **`rotaflow.space`**, its own registered domain, deployed into its **own** docroot,
+> `~/rotaflow.space/` (the `rotaflow.space` destinations in `release.json`). Never the shared `public_html/`. The PHP source
+> and the private configuration go to `~/rotaflow-private/` (`rotaflow-private/app` in `release.json`), outside every web
+> root. If you deploy through a personal wrapper or CI, that tooling still has to obey the safety rules below. They exist
+> because breaking them has caused real outages and leaks.
 >
-> ⚠️ **Do not use `rotaflow.app`.** It was the placeholder in this repo until
-> 2026-07-29, but it is **not ours**. It resolves to an unrelated shift-scheduling
-> product. It had leaked into `VITE_APP_URL` (the auth redirect target), the VAPID
-> subject and the SMTP identities.
+> ⚠️ **Do not use `rotaflow.app`.** It was the placeholder in this repo until 2026-07-29, but it is **not ours**. It
+> resolves to an unrelated shift-scheduling product. It had leaked into `VITE_APP_URL`, the VAPID subject and the SMTP
+> identities.
 >
-> **The previous host — a subdomain of a personal domain — was retired 2026-08-29:**
-> docroot and mailbox archived to `~/private_backups/docroots/`, mail account deleted,
-> and all 15 of its DNS records removed from the parent zone. It should not appear in
-> any config. It carried SPF and DKIM but **no MX**, which is why mail addressed to it
-> was undeliverable; `rotaflow.space` has the full record set.
+> **The previous host, a subdomain of a personal domain, was retired 2026-08-29:** docroot and mailbox archived, mail
+> account deleted, and all 15 of its DNS records removed from the parent zone. It should not appear in any config. It
+> carried SPF and DKIM but **no MX**, which is why mail addressed to it was undeliverable; `rotaflow.space` has the full
+> record set.
 >
-> **DNS/TLS:** `A @` and `CNAME www` → `185.61.152.45`, both **proxied (orange
-> cloud)**. The origin holds Cloudflare _Origin_ certs that browsers reject directly,
-> so grey-clouding takes the site down instantly. `rotaflow.space` is its own zone
-> with its own Origin cert — the `*.gakinz.com` wildcard does not cover it.
+> **DNS and TLS: `NOT VERIFIED (dashboard setting)`.** As last recorded in this file, `A @` and `CNAME www` point at the
+> host and are **proxied by Cloudflare (orange cloud)**, and the origin holds Cloudflare _Origin_ certificates that
+> browsers reject directly, so switching the proxy off (grey cloud) would take the site down at once. None of that can be
+> read from this repository; check it in the Cloudflare dashboard. The origin address is deliberately not written here (it
+> is in the hosting control panel); where a command below needs it, it is written `<origin-ip>`. Whether the host is in the
+> United Kingdom, as `src/lib/subprocessors.ts` publishes with this page as its evidence, is also a provider fact:
+> `NOT VERIFIED (hosting dashboard)`, owner-confirmed on 1 November 2026.
 >
-> ⚠️ **The live `.htaccess` is not the repo file.** (`pnpm htaccess` now composes and pushes it; see "Composing the live `.htaccess`".) The server copy is the repo file
-> with a `# === BEGIN Cloudflare-origin-lock ===` block prepended, which 403s any
-> request arriving without a `CF-RAY` header (with `/.well-known/` exempt so ACME
-> still works). Ship the repo file alone and that lock is silently removed. Prepend
-> it, or leave `.htaccess` out of the deploy entirely.
+> ⚠️ **The live `.htaccess` is not the repo file.** `pnpm htaccess` composes and pushes it (see "Composing the live
+> `.htaccess`"). The server copy is `scripts/htaccess/origin-lock.conf` (a `# === BEGIN Cloudflare-origin-lock ===` block)
+> **prepended** to the repo file, and the lock 403s any request arriving without a `CF-RAY` header (with `/.well-known/`
+> exempt so certificate renewal still works). Ship the repo file alone and that lock is silently removed, which is why
+> `scripts/release.mjs` never sends the root `.htaccess`.
 >
-> **Auth:** `VITE_APP_URL` must match Supabase → Authentication → URL Configuration
-> (Site URL `https://rotaflow.space`, Redirect URLs `https://rotaflow.space/**`).
-> A mismatch silently bounces every sign-in to the Site URL. Note this allowlist has
-> been clobbered by another project's URLs once before (2026-08-29) — when auth
-> redirects misbehave, read it before assuming the bug is in the app.
+> **Sign-in addresses:** the build sets `VITE_APP_URL=https://rotaflow.space` and the public `VITE_CLERK_PUBLISHABLE_KEY`
+> (`release.json`, `build`). Which origins Clerk lets sign-in redirect to, and the Clerk instance's allowed redirect URLs,
+> are Clerk dashboard settings: `NOT VERIFIED (dashboard setting)`. The API accepts a session token only from the issuer
+> and authorised parties in its private configuration (`clerk_issuer`, `clerk_authorized_parties`;
+> `backend/src/Bootstrap.php`, `backend/private/config.example.php`). When sign-in misbehaves after a domain or port
+> change, read both before assuming the bug is in the app.
 >
-> **PII posture (important. RotaFlow holds staff personal data):** RotaFlow stores
-> names, contact details, emergency contacts, documents (DBS/RTW/visa) and optional
-> health/NHS fields for UK employees. Create the **Sentry project in the EU region**
-> (ingest host like `o<org>.ingest.de.sentry.io`) with **PII scrubbing on**, and set the
-> region up front. It cannot be changed later. Handle data under UK GDPR: honour
-> export/delete, keep audit logs, and never log personal data to the console.
+> **PII posture (important. RotaFlow holds staff personal data):** RotaFlow stores names, contact details, emergency
+> contacts, staff document files and leave records (which can include sickness) for UK employees (`docs/SECURITY.md`, the
+> privacy data map). Create the **Sentry project in the EU region** (ingest host like `o<org>.ingest.de.sentry.io`; the
+> host named in the Content-Security-Policy of `.htaccess` is a `.de.sentry.io` host) with **PII scrubbing on**, and set
+> the region up front: Sentry does not allow it to be changed later (`NOT VERIFIED`, vendor behaviour). Handle data under
+> UK GDPR: honour export and delete, keep audit logs, and never log personal data to the console.
 
 ---
 
 ## 1. Build locally
 
 ```bash
-pnpm run typecheck && pnpm run lint    # gates
-pnpm run build                        # emits ./dist (hashed JS/CSS, sw.js, manifest, source maps)
-pnpm run check:bundle                 # size budgets + "no DEV page shipped"; reads dist/
-pnpm run preview                      # smoke-test the production bundle before shipping
+pnpm run check            # every gate: lint, format, typecheck, vitest, build, bundle, migrations, docs, export, php
+pnpm run build            # tsc --noEmit, vite build, then scripts/prerender.mjs: emits ./dist
+pnpm run check:bundle     # size budgets + "no DEV page shipped"; reads dist/
+pnpm run preview          # smoke-test the production bundle before shipping
+pnpm verify               # scripts/release.mjs --verify: checks, build and the upload guard; never contacts the host
 ```
 
-The only shippable output is `dist/` plus the repo-root **`.htaccess`** (HTTPS
-redirect, prerendered pages, SPA rewrite to `index.html`, a real 404, MIME types,
-cache + security headers).
+`pnpm run check` is the `check` script in `package.json`; its gates are listed in `CLAUDE.md`. The PHP suites inside it
+(`check:php`) need a throwaway local MariaDB (`scripts/test-db.sh`, data under `.local-test/`), and `ci.yml` has no PHP
+step, so a green CI run does not cover them (`qa/README.md` is the table of jobs).
 
-**Since 2026-10-22 `pnpm run build` also writes `dist/prerendered/`**
-(`scripts/prerender.mjs`): one static HTML file per sitemap page and a `404.html`.
-`.htaccess` serves `/` and each public page from there, sends a path whose first
-segment is a route in `src/App.tsx` to `index.html`, and answers anything else with
-**HTTP 404** and the prerendered not-found page. Before this, every unknown path
-answered 200. The service worker does not precache `prerendered/`, so an installed
-client still navigates through the app shell. Two consequences for a deploy:
+The shippable output is `dist/` (the front end) and `backend/` (the API), plus the repo-root **`.htaccess`**, which a
+release never ships (HTTPS redirect, API pass-through, prerendered pages, SPA rewrite to `index.html`, a real 404, MIME
+types, cache and security headers).
 
-- `dist/prerendered/` ships with the rest of `dist/`. If it is missing, the public
-  pages still work through the `index.html` fallback; only crawlers lose the static
-  copy and an unknown path gets Apache's plain 404 page.
-- **The first deploy carrying this needs the root `.htaccess` replaced** (with the old `cpanel-deploy` tool that was
-  `--with-htaccess`; since the 1 November 2026 cutover releases use `pnpm release`, which never ships it, so use
-  `pnpm htaccess push`, see "The command: `pnpm htaccess`"), composed with the
-  origin-lock block as described under
-  [Composing the live `.htaccess`](#composing-the-live-htaccess). A deploy without
-  it leaves the old routing live, which serves `dist/index.html` for every path and
-  never reaches `prerendered/`. After it, also run the four checks under that
-  section's table headed "Prerender and 404".
+**`pnpm run build` also writes `dist/prerendered/`** (`scripts/prerender.mjs`): one static HTML file per sitemap page and
+a `404.html`. `.htaccess` serves `/` and each public page from there, sends a path whose first segment is a route in
+`src/App.tsx` to `index.html`, and answers anything else with **HTTP 404** and the prerendered not-found page. The service
+worker does not precache `prerendered/`, so an installed client still navigates through the app shell. Two consequences:
 
-`check:bundle` runs in CI's `verify` job too, so a breach fails the PR rather
-than the deploy. Run it locally anyway before shipping a build you are about to
-rsync: it is the only check that reads the actual output, and the two bundle
-regressions this repo has had — DEV preview pages precached to every visitor
-(#75) and a lazy route becoming a static import (#69) — were both invisible to
-typecheck, lint and the test suite. Budgets and the reasoning behind each number
-live in `bundle-budget.json`; raising one is a reviewable diff, not a flag.
+- `dist/prerendered/` ships with the rest of `dist/`. If it is missing, the public pages still work through the
+  `index.html` fallback; only crawlers lose the static copy and an unknown path gets the server's plain 404 page.
+- **A change to those rules needs the root `.htaccess` replaced**, and the release never does that: use `pnpm htaccess
+  push` (see "The command: `pnpm htaccess`"), composed with the origin-lock block. Without it the old routing stays live.
+  After it, run the four checks under the table headed "Prerender and 404".
+
+`check:bundle` runs in CI's `verify` job too, so a breach fails the PR rather than the deploy. Run it locally anyway
+before shipping a build: it is the only check that reads the actual output, and the two bundle regressions this repo has
+had, DEV preview pages precached to every visitor (#75) and a lazy route becoming a static import (#69), were both
+invisible to typecheck, lint and the test suite. Budgets and the reasoning behind each number live in
+`bundle-budget.json`; raising one is a reviewable diff, not a flag.
 
 ---
 
 ## 2. Ship the artifacts, into THIS app's own docroot
 
-Deploy `dist/*` and `.htaccess` into **the target site's own document root or a
-dedicated subdirectory**, for example `~/<domain>/` for an addon domain, or
-`public_html/<app>/` for a subpath. **Never** deploy into a shared docroot that other
-sites live in.
+`pnpm release` (`node scripts/release.mjs`) is the only supported way to ship, over SSH with rsync. **No FTP, and no deploy
+from GitHub Actions unless you start it by hand** (below). It is a **dry run** unless you add `--go`, and a real release
+needs the owner's explicit "approved:". In order, per the header of `scripts/release.mjs`:
 
-Typical options:
+1. **Preflight.** On `main` (the `branch` key of `release.json`), working tree clean, and equal to `origin/main`.
+2. **Checks and build.** `release.json` `checks` (`pnpm run check`) unless `--skip-checks` (emergencies only), then
+   `build`: rebuild `dist` from scratch with `VITE_APP_URL` and the public Clerk key set inline, run `check:bundle`, assert
+   the Clerk key is in the bundle, **fail if `dist` holds a retired service host or a secret-key shape** (a `grep` over
+   `dist` for the retired Supabase and ImageKit hosts and for Stripe-style secret keys), and **fail if `dist/.htaccess`
+   exists**. The release also refuses any `.env*`, `.sql.gz`, `.pem` or `.key` file in a part, and a nested `config.php`.
+3. **Plan.** A checksum rsync dry run for each of the three `parts` in `release.json`: `backend` to `rotaflow-private/app`
+   (excluding `/tests/`, `/public/`, `/private/` and `*.md`, allowing `*.sql` so the migration files travel),
+   `backend/public/api` to `rotaflow.space/api` (the API entry point), and `dist` to `rotaflow.space` (excluding `*.map` and
+   `/stats.html`, allowing folder `.htaccess` files and `.well-known/`). Without `--go` it stops here.
+4. **Snapshot.** Every server file about to change is copied to `~/backups/rotaflow/releases/<utc>/` with a
+   `RELEASE.json` (commit, parts, new files). The newest three snapshots are kept. This is **code only**; the database
+   backup is separate (below).
+5. **Upload.** Each part in order, with the entry files `index.html`, `sw.js` and `manifest.webmanifest` last.
+6. **Smoke.** The six `smoke` checks in `release.json` must pass (each is retried): `/` 200; `/api/health` 200 containing
+   `"ok":true`; `/api/me` 401 with an error body; `/app/dashboard` 200 containing the empty app shell; `/no-such-page` 404;
+   `/assets/` 403. **Any failure restores the snapshot automatically.**
 
-- **rsync over SSH** (fast, incremental) into `<docroot>/`.
-- **cPanel Git Version Control** + a `.cpanel.yml` copy step.
-- **FTP/SFTP** upload of `dist/` (CI or manual).
+Other options: `--rollback` (restore the newest snapshot; a dry run without `--go`), `--list` (show snapshots), `--verify`
+(step 2 and the upload guard only, never contacts the host), `--config=FILE`. `pnpm verify` is `--verify`.
 
-After deploy: load the site over **HTTPS** and confirm the app boots and the install
-prompt appears.
+What is **not** shipped: the root `.htaccess` (use `pnpm htaccess`), `*.map`, `/stats.html`, `backend/tests/`, any
+`config.php`, `.env*`, dumps and keys. Private configuration is created once by hand on the host in
+`~/rotaflow-private/config/` and never travels with a release; its key names are in `backend/private/config.example.php`.
 
-> **An HTTP 200 is not evidence that a file deployed.** This is a SPA: the server
-> rewrites unknown paths to `index.html`, so a request for a file that is not on the
-> server returns `200` with the app's HTML, not `404`. Curling a URL and seeing `200`
-> therefore proves nothing — it has already produced one false conclusion in this
-> repo's history. Verify by **content** (`curl -s <url> | head`, or grep the response
-> for something only that file contains) or over **SSH** (`ssh cpanel ls -la <path>`).
+**The GitHub deploy workflow** (`.github/workflows/deploy.yml`) runs the same `node scripts/release.mjs --go` from a GitHub
+runner over SSH. It is `workflow_dispatch` only: push-to-deploy is off. It needs two repository secrets (`CPANEL_SSH_KEY`,
+`CPANEL_KNOWN_HOSTS`) and public repository variables for the `VITE_*` values it names. Whether GitHub Actions can run for
+the owner's account at all is `NOT VERIFIED` (owner action O14 in `docs/SAAS.md`). Its header comments still refer to the
+cutover branch; correcting a workflow file is Phase 5.
+
+After a release: load the site over **HTTPS** and confirm the app boots and the install prompt appears.
+
+> **An HTTP 200 is not evidence that a file deployed.** A path whose first segment is an app route (`/app/anything`) is
+> rewritten to `index.html` and answers `200` with the app's HTML whether or not the file exists, so curling a URL and
+> seeing `200` proves nothing: it has already produced one false conclusion in this repo's history. (Since 22 October 2026
+> an unknown path outside the routes answers a real `404`, and the `/no-such-page` smoke check depends on it.) Verify by
+> **content** (`curl -s <url> | head`, or grep the response for something only that file contains) or over **SSH**
+> (`ssh cpanel ls -la <path>`).
 
 ---
 
 ## 3. Deploy safety rules (non-negotiable)
 
-Three of these were learned by breaking the live site, not by reading a manual. They are
-generic cPanel-static truths — obey them regardless of tooling:
+These were learned by breaking the live site. Each is restated against `scripts/release.mjs`, which enforces most of them
+by construction; the rest are marked.
 
 0. **Three traps that have each cost a live site once.**
-   - **cPanel's Document Root field is relative to `$HOME`.** Typing the absolute path
-     produces `/home/<user>/home/<user>/<domain>`. Leave the auto-filled value alone.
-   - **`rsync -a` preserves local file modes.** This repo's files are `600` locally, so
-     `.htaccess` landed unreadable by the web server and the site served a **directory
-     listing with no SPA routing**. Normalise to dirs `755` / files `644` over SSH after
-     each sync — macOS ships `openrsync`, which rejects `--chmod=D755,F644`.
-   - **The SPA fallback returns 200 for every unknown path.** A `200` is therefore not
-     evidence a file exists. Check the content-type, or verify over SSH.
-
-1. **Dry-run any mirror/delete first.** If your deploy mirrors with `--delete`, run it
-   in dry-run and read the diff before writing. A mirror-delete pointed at the wrong
-   directory silently wipes files that exist in **no repo and no backup** (e.g. a
-   site's `uploads/`).
-2. **Never mirror-delete a shared docroot.** If one directory serves multiple sites or
-   holds loose `api.php` / `config.php` / `.htaccess`, target a **specific
-   subdirectory** instead. Mirroring the shared root deletes the neighbours.
-3. **Exclude runtime & secret files from deletes:** at minimum `uploads/`, `.env`,
-   `config.php`, `*.bak*`, `*.zip`, `*.sql`, `error_log`, `node_modules`, `.git`,
-   and the TLS validation directory — see rule 4.
-4. **Protect the TLS validation directory on every single deploy.** The live
-   docroot holds the domain-validation file certificate renewal depends on. To
-   rsync, "not in my source" and "stale, delete it" look identical, so a
-   mirror-with-delete removes it and renewal fails.
-
-   (Historical: this block is the old `cpanel-deploy` command from before `pnpm release`; the flag it shows does not exist in
-   `scripts/release.mjs`. For the root `.htaccess` today use `pnpm htaccess push`; Phase 3 rewrites this page.)
-
-   The full command for this app — `cgi-bin` is created by cPanel and the deploy
-   guard refuses without it, and the live `.htaccess` is the repo file with the
-   server's Cloudflare origin-lock block prepended:
-
-   ```bash
-   cpanel-deploy dist rotaflow.space \
-     --keep .well-known/pki-validation \
-     --keep .well-known/acme-challenge \
-     --keep cgi-bin \
-     --with-htaccess <composed-file> --go
-   ```
-
-   ⚠️ **This changed on 2026-08-30, and the old form now has a silent failure
-   mode.** It used to be `--keep .well-known`, on the premise that "`dist/` never
-   contains it". That premise stopped being true when `public/.well-known/
-security.txt` was added (GAP-014) — and `--keep` is implemented as an rsync
-   `--exclude`, which is **bidirectional**. So the whole-directory form would have
-   built a `security.txt`, passed CI, and quietly never uploaded it.
-
-   The two paths above are named individually instead. `pki-validation` is what the
-   live docroot actually holds — verified over SSH, it is the only entry —
-   and `acme-challenge` is listed as well because a future change of validation
-   method would write there instead, and an unprotected renewal path is not a thing
-   to discover during an outage.
-
-   Anything else under `.well-known/` is now mirrored from `dist/`, which is what
-   lets `security.txt` reach production.
-
-   This is not optional and not situational. It applies to every deploy of this
-   app, including a one-file hotfix.
-
-5. **Keep backups OUTSIDE every webroot.** Apache serves `.bak` / `.zip` / `.sql` as
-   **plain text**, so a backup left in a docroot leaks its contents (including any
-   credentials) to the public internet. Put backups in a directory that is not served
-   (e.g. `~/private_backups/`).
-6. **Never commit real secrets.** `.env` stays git-ignored; only `.env.example`
-   (key names, no values) is tracked. Confirm with `git status --ignored` after setup.
+   - **cPanel's Document Root field is relative to `$HOME`.** Typing the absolute path produced `/home/<user>/home/<user>/<domain>`.
+     Leave the auto-filled value alone. `NOT VERIFIED` (cPanel behaviour; learned on the live site).
+   - **File modes.** An `rsync -a` upload preserved this repo's local `600` modes, so `.htaccess` landed unreadable by the web
+     server and the site served a directory listing with no routing. `scripts/release.mjs` uses `rsync -rlt` and runs no
+     `chmod`, so whether new files arrive readable on this host is `NOT VERIFIED`; the smoke checks would catch an unreadable
+     `index.html`, but not one unreadable chunk. After a release, check a hashed asset by content.
+   - **A `200` is not evidence a file exists** (the box in section 2).
+1. **A dry run comes first, and is the default.** `pnpm release` without `--go` prints every change and uploads nothing.
+2. **The release never deletes anything on the server, ever.** The rsync calls in `scripts/release.mjs` carry no
+   `--delete`. So a mirror-delete cannot wipe a neighbour, a shared docroot or an `uploads/` folder. The other side of the
+   same fact: a file removed from the repo **stays on the server** until removed by hand over SSH (see "A deploy does not
+   undo a leak"). Never point a `parts[].to` in `release.json` at a shared docroot such as `public_html/`.
+3. **Runtime and secret files are protected.** `PROTECT` in `scripts/release.mjs`: `config.php`, `.htaccess`, `.user.ini`,
+   `php.ini`, `.env`, `.env.*`, `*.sql`, `*.sql.gz`, `*.pem`, `*.key`, `error_log`, `.well-known/` and `.DS_Store` are never
+   sent, unless a part lists the name in `allow` (the `dist` part allows folder `.htaccess` files and `.well-known/`; the
+   `backend` part allows `*.sql`, which goes to a folder outside every web root).
+4. **The TLS validation directory is not touched.** Because nothing is deleted, whatever `.well-known/pki-validation`
+   holds on the server survives a release. (The older tool's `--keep` flags, which were bidirectional excludes, are retired
+   with it; nothing here needs them.) `dist/.well-known/security.txt` is allowed through by the `dist` part.
+5. **Keep backups OUTSIDE every webroot.** A `.bak`, `.zip` or `.sql` left in a docroot would be served and could leak its
+   contents. Release snapshots go to `~/backups/rotaflow/releases/`, database dumps default to `~/backups/rotaflow/db`
+   (`backend/bin/backup.php`), and the private configuration is in `~/rotaflow-private/`: all under the home folder, none
+   under a web root.
+6. **Never commit real secrets.** `.env` stays git-ignored; only `.env.example` (key names, no values) is tracked, and
+   `.githooks/pre-commit` runs gitleaks. `VITE_*` values are public: Vite inlines every one into the bundle whether code
+   reads it or not.
 
 ---
 
 ## 4. Source maps → Sentry
 
-Upload source maps as part of the release so stack traces de-minify, but **do not ship
-`*.map` files to the public docroot**. Exclude them from the deployed set (or delete
-after upload). See `docs/ARCHITECTURE.md` §8 for the security posture.
+`vite.config.ts` sets `build.sourcemap: 'hidden'`, so maps are emitted but never referenced from the code. The
+`sentryVitePlugin` is added to the build **only when `SENTRY_AUTH_TOKEN` is in the build environment** (with
+`SENTRY_ORG` and `SENTRY_PROJECT`); it uploads the maps to Sentry and then deletes `dist/**/*.js.map`. The `dist` part of
+`release.json` also excludes `*.map`, so a map never reaches the public docroot either way. `scripts/release.mjs` itself
+uploads nothing to Sentry. Whether the live build uploads maps depends on that environment variable existing on the
+machine that runs the release: `NOT VERIFIED`. See `docs/ARCHITECTURE.md` for the browser-side posture.
 
 ---
 
 ## 5. Managed-service notes (deploy-relevant)
 
-- **Sentry region is fixed at project creation and cannot be changed later.** Pick the
-  correct data region up front (e.g. an EU/DE ingest host looks like
-  `o<org>.ingest.de.sentry.io`); apps handling EU/UK personal data should be created in
-  the EU region with PII scrubbing on. Only browser-safe DSN ships to the client.
-- **CodeRabbit only reviews pull requests.** Use branch → PR → merge; work pushed
-  straight to the default branch is never reviewed.
-- **Every key shipped to the browser must be write-only or RLS-guarded**
-  (Supabase anon, ImageKit public). The `service_role` key, Stripe's secret and
-  webhook secrets, the VAPID private key and all SMTP credentials are server-only and
-  never touch this static bundle. The Inngest write-only event key is gone as of
-  2026-08-31 — it had gone on shipping, unused, for the four days after `0087`
-  deleted its last reader, because Vite inlines every `VITE_*` variable into
-  `import.meta.env` whether code reads it or not. **Retiring a service means
-  removing its variable from `.env`, then checking the built bundle.**
-- **The billing contact and invoice-link refresh need their function deployed**
-  (GAP-128, GAP-129): `supabase functions deploy billing-account`. It uses the
-  existing `STRIPE_MODE` and Stripe secret key; no new secret. Until then "Use for
-  Stripe invoices" and "Refresh links" on Settings, Billing show an error.
-- **The website contact form needs its function deployed** (CAP-126). Until then
-  `/contact` shows the support address on every send. In order:
-  1. `supabase secrets set ENQUIRY_IP_SALT=<a long random string>` (recommended; the
-     function falls back to the service-role key as HMAC key material, and rotating
-     that would reset every rate limit).
-  2. Optional: `supabase secrets set ENQUIRY_NOTIFY_EMAIL=<the inbox to alert>`, which
-     also needs the platform `SMTP_*` secrets. Without it nobody is emailed and
-     `/admin/enquiries` is the only place an enquiry shows.
-  3. `supabase functions deploy public-enquiry --no-verify-jwt`.
-  4. Optional, and **both halves or neither**: `supabase secrets set
-TURNSTILE_SECRET_KEY=...` and `VITE_TURNSTILE_SITE_KEY=...` in the build `.env`,
-     then rebuild. The secret alone refuses every enquiry, because no widget renders
-     to produce a token.
-- **Private staff documents need `purge-storage` deployed** (`0159`, GAP-056).
-  Merging applies the bucket, policies, queue and cron job; until the function is
-  deployed, deletions wait in `storage_deletions` and nothing is lost. Run
-  `supabase functions deploy purge-storage`. It needs no secret of its own: it
-  verifies the outbox drains' shared secret through `verify_notification_secret`.
-  Deploy it before a site build whose Privacy Notice says files are removed
-  "within minutes" reaches the live site.
-- **Erasure needs `delete-account` deployed** (`0162`, GAP-057). Merging applies
-  the `staff-photos` bucket, the `account_deletions` queue and its cron job; until
-  the function is deployed, logins owed to completed erasure cases wait in the
-  queue. Run `supabase functions deploy delete-account`. Like `purge-storage` it
-  verifies the outbox drains' shared secret and needs no secret of its own, and
-  `purge-storage` must be redeployed too, because it now removes photos as well.
+Names of settings only; no value belongs in this repository. The API's private configuration keys are in
+`backend/private/config.example.php`; the public build variables are in `src/lib/env.ts` and `.env.example`.
+
+| Service | What the deploy needs | State |
+| ------- | --------------------- | ----- |
+| **Clerk** (sign-in) | Build: public `VITE_CLERK_PUBLISHABLE_KEY` (set inline by `release.json`). API: `clerk_issuer`, `clerk_authorized_parties`, and `clerk_secret_key` for deleting a login after an erasure (`backend/src/Mod/Gdpr.php`) | Instance settings (redirect URLs, Google sign-in, bot protection): `NOT VERIFIED (dashboard setting)` |
+| **Stripe** | API only: `stripe.mode` and the test or live secret and webhook secret for that mode (`backend/src/StripeClient.php`). The webhook is `POST /stripe/webhook`, signature-checked | Test or live mode on the host: `NOT VERIFIED` (server configuration) |
+| **Sentry** | Build: public `VITE_SENTRY_DSN`. Optional source-map upload variables (section 4) | Region is fixed at project creation (`NOT VERIFIED`, vendor behaviour); alert rules: none known (below) |
+| **OpenRouter** (AI) | API only: `openrouter_api_key`, optional `openrouter_model` and `openrouter_fallback_model` (`backend/src/Mod/AiAssistant.php`). The key never reaches the browser | Whether the key is set on the host: `NOT VERIFIED` |
+| **Outbound mail** | API only: the platform `smtp` block in the private configuration, or an organisation's own account saved in the app (`backend/src/Mail.php`). Web push also needs `vapid` there and the public `VITE_VAPID_PUBLIC_KEY` at build | Which provider sends platform mail: `NOT VERIFIED` |
+| **Cloudflare** | DNS, TLS and the proxy; Turnstile on the contact form needs both `turnstile_secret` (API) and `VITE_TURNSTILE_SITE_KEY` (build), or neither (`src/lib/env.ts`). The proxy header handling is `trust_cf_connecting_ip` | Dashboard settings: `NOT VERIFIED` |
+| **Hosting** (cPanel) | SSH access as the `cpanel` host alias used by `release.json`; PHP 8.4 for the account (`php backend/bin/doctor.php` checks the extensions) | PHP version and extensions on the host today: `NOT VERIFIED` until `doctor.php` is run |
+
+- **Run `php bin/doctor.php` on the host before a release**, from the folder the cron entry uses: it checks that the PHP the
+  web server and cron will use is 8.4 or newer and has the extensions the API needs (`backend/bin/doctor.php`). The host's
+  default PHP has changed under the project before.
+- **Retired services.** The Supabase project is archived and kept read-only until about 2027-01-30 (owner decision, `NOT
+  VERIFIED` from the repository); its previous Edge Function deploy steps, secrets and storage buckets no longer apply.
+  Legacy pointer: `git show live-supabase-2026-11-01:docs/DEPLOYMENT.md`. ImageKit and Inngest are retired. **Retiring a
+  service means removing its variable from `.env`, then checking the built bundle:** the build step in `release.json`
+  fails if `dist` still holds a retired service host.
+- **CodeRabbit only reviews pull requests** (`NOT VERIFIED`: a GitHub app setting; no CodeRabbit file is tracked). Use
+  branch, pull request, merge.
+
+## Applying migrations
+
+`backend/bin/migrate.php` applies the numbered `NNN-*.sql` files of `backend/migrations` in order, using the **migration
+identity** in the private `config/migrate.php` (a different database account from the one the API runs as). `--dry-run`
+lists what it would apply. It records each file in `schema_migrations` with a SHA-256 checksum, and a file that was
+applied and later edited **aborts the run (exit 2) before anything else is applied**; a statement that fails exits 3. MariaDB
+commits DDL implicitly, so a file that fails halfway leaves its earlier statements in place and no log row: write
+migrations as additive, re-runnable statements (`IF NOT EXISTS`) so the fixed file can be applied again.
+
+`pnpm release` only **uploads** the `.sql` files (to `~/rotaflow-private/app/migrations`); it never runs them. So after a
+release that carries a migration, someone runs `php bin/migrate.php --dry-run` and then `php bin/migrate.php` on the host,
+as the owner, with the owner's approval (a migration on real data is an "ask first" act). Code that needs a new column
+fails until the migration is applied (`NOT TESTED`). Whether a migration is pending on the live host today, and who runs the
+step, is `NOT VERIFIED` (server state). The files are forward-only: there is no down migration in `backend/migrations`.
+
+`pnpm run check:migrations` reads the legacy `supabase/migrations` tree, not `backend/migrations`, so it does not guard
+these files (`docs/DATA-MODEL.md` section 8).
+
+## The scheduled job
+
+`backend/bin/cron.php` runs every module's `cron()` (seven today: `docs/NOTIFICATIONS-SPEC.md`) under a lock file, one run at
+a time. Its header gives the cPanel cron line (using `$HOME/rotaflow-private`, output to `logs/cron.log`) and says the live
+host **runs it every five minutes**; the jobs decide for themselves whether they are due, so the schedule is only a
+heartbeat. The retention run, the file and login deletion queues and the notification outbox all ride on it. If it stops,
+nothing sends email or push and nothing is purged. Its log is a file on the host; nothing alerts on it (below).
 
 ## The live release tag is the deployed commit, not `main`
 
-`vite.config.ts` bakes the git SHA into the bundle as `__SENTRY_RELEASE__`, so every error
-carries the commit it shipped from. Two consequences that look like bugs and are not:
+`vite.config.ts` bakes the git short SHA into the bundle as `__SENTRY_RELEASE__` (`resolveSentryRelease`), so every error
+carries the commit it shipped from. `scripts/release.mjs` also records the commit in the snapshot's `RELEASE.json`, and its
+preflight requires `main` to equal `origin/main`, so a release is always a pushed `main` commit. Two consequences that look
+like bugs and are not:
 
-- **A docs-only commit changes the bundle hash.** `index-*.js` is content-hashed and the SHA
-  is content, so merging a change that touches no code still produces a different filename.
-  Do not read a hash difference between `dist/` and the live site as "the code is stale" —
-  check whether `git diff --stat <live-sha>..HEAD -- src/ public/ index.html vite.config.ts`
-  is empty first.
-- **The live tag lagging `main` is correct, not drift.** It names what was deployed, which
-  is the only thing an error report can honestly be attributed to. A live tag equal to
-  `main` when `main` was never deployed would be the actual lie.
+- **A docs-only commit changes the bundle hash.** `index-*.js` is content-hashed and the SHA is content, so merging a change
+  that touches no code still produces a different filename. Do not read a hash difference between `dist/` and the live site
+  as "the code is stale": check whether `git diff --stat <live-sha>..HEAD -- src/ public/ index.html vite.config.ts` is
+  empty first.
+- **The live commit lagging `main` is correct, not drift.** It names what was deployed, which is the only thing an error
+  report can honestly be attributed to.
 
-Verify what is live rather than inferring it: fetch the `index-*.js` the live HTML
-references and grep it for the short SHA.
+Verify what is live rather than inferring it: fetch the `index-*.js` the live HTML references and grep it for the short SHA.
 
 ## The API and Clerk in `.htaccess` (S9, applies from the R1 cutover)
 
-The cutover itself (freeze, backups, migrations, data move, files, release with `pnpm release`, Clerk, Stripe, cron,
-rollback at every stage) is `docs/CUTOVER.md`. From the cutover on, releases use the kit script (`release.json`,
-`scripts/release.mjs`) instead of `cpanel-deploy`.
+The cutover itself (freeze, backups, migrations, data move, files, release, Clerk, Stripe, cron, rollback at every stage)
+is the dated runbook `docs/CUTOVER.md`; it ran on 1 November 2026. Releases use `pnpm release`; the older
+`cpanel-deploy` tool is retired.
 
-The repository `.htaccess` now carries two things the cutover depends on. Both must survive the composition
-below (merge, never overwrite):
+The repository `.htaccess` carries two things the API depends on. Both must survive the composition below (merge, never
+overwrite):
 
-- **`/api` pass-through.** `RewriteRule ^api(/.*)?$ api/index.php [L,QSA]`, placed before the file check, the
-  prerendered pages and the SPA fallback, plus the `HTTP_AUTHORIZATION` pass-through so PHP receives the bearer
-  token. `backend/public/api/index.php` is deployed to `api/index.php` in the webroot; everything else in
-  `backend/` goes to `~/rotaflow-private/app/` outside it.
-- **CSP naming Clerk.** `script-src` adds `https://clerk.rotaflow.space`, `https://cdn.protect.clerk.com`,
-  `https://challenges.cloudflare.com`; `connect-src` adds `https://clerk.rotaflow.space`,
-  `https://clerk-telemetry.com`; `frame-src https://challenges.cloudflare.com`; `img.clerk.com` is covered by
-  `img-src https:`. The Supabase and ImageKit origins are removed. `src/lib/htaccessRoutes.test.ts` checks all of it.
+- **`/api` pass-through.** `RewriteRule ^api(/.*)?$ api/index.php [L,QSA]`, placed before the file check, the prerendered
+  pages and the SPA fallback, plus the `HTTP_AUTHORIZATION` pass-through so PHP receives the bearer token.
+  `backend/public/api/index.php` is deployed to `api/index.php` in the webroot; everything else in `backend/` goes to
+  `~/rotaflow-private/app/` outside it.
+- **A Content-Security-Policy naming Clerk.** `script-src` adds `https://clerk.rotaflow.space`,
+  `https://cdn.protect.clerk.com`, `https://challenges.cloudflare.com`; `connect-src` adds `https://clerk.rotaflow.space`,
+  `https://clerk-telemetry.com` and Sentry's EU ingest host; `frame-src https://challenges.cloudflare.com`; `img.clerk.com`
+  is covered by `img-src https:`. The Supabase and ImageKit origins are removed. `src/lib/htaccessRoutes.test.ts` checks it.
 
-The build needs `VITE_CLERK_PUBLISHABLE_KEY` (the GitHub variable already holds the live `pk_live_…`); without it
-the build renders signed out. `VITE_SUPABASE_*`, `VITE_IMAGEKIT_*` and `VITE_ENABLE_OAUTH` are no longer read.
+The build needs `VITE_CLERK_PUBLISHABLE_KEY` (set inline by `release.json`); without it the build renders signed out.
+`VITE_SUPABASE_*`, `VITE_IMAGEKIT_*` and `VITE_ENABLE_OAUTH` are no longer read.
 
-**Folder `.htaccess` files ship with the release (2 November 2026).** `public/assets/`, `public/icons/` and
-`public/fonts/` each carry an `.htaccess` with `Options -Indexes`, so the host's directory listing is off where the
-release can reach. `release.json` allows `.htaccess` in the dist part; the build step and `scripts/release.mjs` both
-refuse a `dist/.htaccess`, so the web-root file stays hand-composed. A smoke check expects `/assets/` to answer 403.
-The PHP entry point removes `X-Powered-By` itself. Still only in the composed root file: `ServerSignature Off`,
-unsetting `X-Turbo-Charged-By`, and the origin lock (see `docs/SECURITY.md` open items).
+**Folder `.htaccess` files ship with the release (2 November 2026).** `public/assets/`, `public/icons/` and `public/fonts/`
+each carry an `.htaccess` with `Options -Indexes`, so the host's directory listing is off where the release can reach.
+`release.json` allows `.htaccess` in the `dist` part; the build step and `scripts/release.mjs` both refuse a
+`dist/.htaccess`, so the web-root file stays hand-composed. A smoke check expects `/assets/` to answer 403. The PHP entry
+point removes `X-Powered-By` itself. Still only in the composed root file: `ServerSignature Off`, unsetting
+`X-Turbo-Charged-By`, and the origin lock (`docs/SECURITY.md`, open items).
 
-NOT TESTED: this `.htaccess` behind Apache and Cloudflare. Verify after the cutover deploy: `/api/health` answers
-JSON 200, `/api/me` without a token answers 401 JSON (not HTML), and sign-in loads with no CSP violation.
+The release's smoke checks assert, on every release, that `/api/health` answers 200 containing `"ok":true` and that
+`/api/me` without a token answers 401 with a JSON error body (not HTML). That sign-in loads with no CSP violation is not
+automated: check it in a browser after a change to the policy (`NOT TESTED` behind Cloudflare in this pass).
 
 ## Composing the live `.htaccess`
 
-Replacing the web-root `.htaccess` (`pnpm htaccess push`; `--with-htaccess` in the old `cpanel-deploy` tool) replaces the file that enforces the Cloudflare origin lock. Get it wrong
-and the site either goes dark or silently reopens direct-to-origin, so the procedure is
-written down rather than reconstructed each time. Done on 2026-08-31 to carry a CSP change
-through; it worked, and these are the steps that made it safe.
+Replacing the web-root `.htaccess` replaces the file that enforces the Cloudflare origin lock. Get it wrong and the site
+either goes dark or silently reopens direct-to-origin. The composition is `scripts/htaccess/origin-lock.conf` followed by the
+repo `.htaccess` (`composeHtaccess` in `scripts/htaccess.mjs`, which refuses to compose if the lock block lacks its BEGIN
+and END markers). It was first done by hand on 2026-08-31 to carry a CSP change through, with these steps, which the
+command below now performs or checks: back the live file up outside every docroot; diff it against the repo file minus the
+lock block (**if the diff shows anything you cannot explain, stop**: the live file carries a hand-edit nobody wrote down);
+compose lock plus repo file; dry-run; verify from outside afterwards:
 
-1. **Back the live file up outside every docroot first.**
-   `ssh cpanel 'cp ~/rotaflow.space/.htaccess ~/private_backups/configs/rotaflow.space-htaccess.bak-<date>'`
-2. **Fetch it and diff it against the repo file minus the lock block.** They should differ
-   only where the repo has moved on. In the 2026-08-31 run the whole difference was three
-   things — the CSP entry being removed, two references to a document deleted weeks earlier,
-   and the new comment — which is what makes "prepend the lock to the current repo file" a
-   safe composition rather than a guess. **If the diff shows anything you cannot explain,
-   stop:** it means the live file carries a hand-edit nobody wrote down.
-3. **Compose as `lock + repo file`, and assert on the result before uploading.** Thirteen
-   properties were checked in that run: the lock is first, `CF-RAY` guard present,
-   `/.well-known/` exempted, the `[F,L]` refusal rule present, the SPA fallback intact,
-   exactly one CSP header, HSTS and nosniff still there, and the specific change actually
-   made. Cheap, and it is the only opportunity to catch a bad splice.
-4. **Dry-run.** The only change should be `.htaccess` itself, with no deletions.
-5. **Verify from outside afterwards**, all of it:
+| Check                                             | Expect                                                                   |
+| ------------------------------------------------- | ------------------------------------------------------------------------ |
+| `/` and a deep route (`/app/dashboard`)           | 200, and the second proves the SPA fallback survived                     |
+| the hashed bundle and `/.well-known/security.txt` | 200                                                                      |
+| `curl --resolve <domain>:443:<origin-ip>`         | **403**: the lock is intact                                              |
+| the same, to `/.well-known/security.txt`          | **200**: the ACME exemption survived, or renewal fails months later      |
+| response headers                                  | CSP reflects the change; HSTS and `X-Content-Type-Options` still present |
 
-   | Check                                             | Expect                                                                   |
-   | ------------------------------------------------- | ------------------------------------------------------------------------ |
-   | `/` and a deep route (`/app/dashboard`)           | 200 — the second proves the SPA fallback survived                        |
-   | the hashed bundle and `/.well-known/security.txt` | 200                                                                      |
-   | `curl --resolve <domain>:443:185.61.152.45`       | **403** — the lock is intact                                             |
-   | the same, to `/.well-known/security.txt`          | **200** — the ACME exemption survived, or renewal fails months later     |
-   | response headers                                  | CSP reflects the change; HSTS and `X-Content-Type-Options` still present |
+The fourth row is the one that fails silently. A lock with no `/.well-known/` exemption looks perfect until a certificate
+comes up for renewal. **Prerender and 404**, for any change to the rewrite rules: read the status with `curl -s -o
+/dev/null -w '%{http_code}'` and the body with `curl -s`, never a browser with the service worker installed, which answers
+every navigation from its own shell:
 
-   The fourth row is the one that fails silently. A lock with no `/.well-known/` exemption
-   looks perfect until a certificate comes up for renewal.
+| Check                            | Expect                                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `/no-such-page`                  | **404**, and the body contains `This page doesn’t exist` and `noindex`                           |
+| `/features` and `/legal/privacy` | 200, and the body has `data-prerendered="/features"` (or that path) and the page's own `<title>` |
+| `/app/dashboard` and `/invite/x` | 200, and the body is the empty app shell (`<div id="root"></div>`)                               |
+| a missing `/assets/missing.js`   | **404**, still                                                                                   |
 
-   **Prerender and 404**, from the first deploy carrying `dist/prerendered/` (2026-10-22).
-   Read the status with `curl -s -o /dev/null -w '%{http_code}'` and the body with
-   `curl -s`, never a browser with the service worker installed, which answers every
-   navigation from its own shell:
-
-   | Check                            | Expect                                                                                           |
-   | -------------------------------- | ------------------------------------------------------------------------------------------------ |
-   | `/no-such-page`                  | **404**, and the body contains `This page doesn’t exist` and `noindex`                           |
-   | `/features` and `/legal/privacy` | 200, and the body has `data-prerendered="/features"` (or that path) and the page's own `<title>` |
-   | `/app/dashboard` and `/invite/x` | 200, and the body is the empty app shell (`<div id="root"></div>`)                               |
-   | a missing `/assets/missing.js`   | **404**, still                                                                                   |
-
-   If the second row returns the empty shell, the prerendered copy is not being found:
-   check that `dist/prerendered/` deployed, then that `%{DOCUMENT_ROOT}` on this host is
-   the site's own document root. The pages still work in that state; only the static
-   copy is missing. If the first row returns 200, the new `.htaccess` did not deploy.
+If the second row returns the empty shell, the prerendered copy is not being found: check that `dist/prerendered/`
+deployed, then that `%{DOCUMENT_ROOT}` on this host is the site's own document root. The pages still work in that state;
+only the static copy is missing. If the first row returns 200, the new `.htaccess` did not deploy.
 
 ### The command: `pnpm htaccess` (Phase 1, November 2026)
 
-The steps above are now a command, so a change to the repo `.htaccess` never needs a hand edit on the server
-(`scripts/release.mjs` still never ships the root file, on purpose).
+A change to the repo `.htaccess` never needs a hand edit on the server. `scripts/release.mjs` still never ships the root
+file, on purpose. The command is `node scripts/htaccess.mjs` (`pnpm htaccess`):
 
-- `pnpm htaccess compose` prints the file that should be live: `scripts/htaccess/origin-lock.conf` (the lock block, copied
-  verbatim from the live file) followed by the repo `.htaccess`. Composing its own output changes nothing.
+- `pnpm htaccess compose [--out=FILE]` prints (or writes) the file that should be live: the lock block followed by the repo
+  `.htaccess`. Composing its own output changes nothing.
 - `pnpm htaccess diff` reads the live file over SSH (read-only) and lists the lines to add or remove. On 2026-11-08 it showed
   exactly the 11 banner-hardening lines (`ServerSignature Off`, `Header unset X-Powered-By`, `Header unset X-Turbo-Charged-By`).
-- `pnpm htaccess push` is a dry run. `pnpm htaccess push --go` backs the live file up to
-  `~/backups/rotaflow/htaccess/`, writes `.htaccess.new` beside it, moves it into place, runs the six `smoke` checks from
-  `release.json` (each with a 15 second limit and one retry), and **restores the backup if any fail or the check cannot run**. On any
-  failure it prints where the backup is and the one command to put it back by hand. The backup keeps the file's mode (a restore must not
-  leave it unreadable by the web server), a rollback is followed by a second smoke check whose result is reported, and `push` refuses to
-  overwrite live lines the composed file lacks (a hand edit) unless `--accept-extra` is passed: after the 2026-11-08 comment fix the
-  first push needs it for exactly one comment line, which `diff` shows. After a push, also check the response headers
-  (`x-turbo-charged-by` should be gone; if LiteSpeed ignores `Header unset` for it, that needs another way). It needs the owner's "approved:" like any deploy.
-- Not covered: the `curl --resolve` lock check in the table above (run it by hand after a push), and replacing the CF-RAY lock
-  with Cloudflare Authenticated Origin Pulls (a Cloudflare setting; the lock block stays as live until that exists).
+- `pnpm htaccess push` is a dry run. `pnpm htaccess push --go` backs the live file up to `~/backups/rotaflow/htaccess/`,
+  writes `.htaccess.new` beside it, moves it into place, runs the six `smoke` checks from `release.json` (each with a 15
+  second limit and one retry), and **restores the backup if any fail or the check cannot run**. On any failure it prints where
+  the backup is and the one command to put it back by hand. The backup keeps the file's mode (a restore must not leave it
+  unreadable by the web server), a rollback is followed by a second smoke check whose result is reported, and `push` refuses
+  to overwrite live lines the composed file lacks (a hand edit) unless `--accept-extra` is passed: after the 2026-11-08
+  comment fix the first push needs it for exactly one comment line, which `diff` shows. After a push, also check the
+  response headers (`x-turbo-charged-by` should be gone; if LiteSpeed ignores `Header unset` for it, that needs another
+  way). It needs the owner's "approved:" like any deploy.
+- Not covered: the `curl --resolve` lock check in the table above (run it by hand after a push), and replacing the CF-RAY
+  lock with Cloudflare Authenticated Origin Pulls (a Cloudflare setting; the lock block stays as live until that exists).
 
 ## A deploy does not undo a leak
 
 Learned on 2026-08-31, deploying the removal of a retired credential (HARDEN-010).
 
-`dist/assets/*` is served with `cache-control: public, max-age=31536000, immutable`, which
-is correct — the filenames are content-hashed, so a changed file is a changed name. The
-consequence is that **Cloudflare keeps serving a superseded chunk from its edge for up to a
-year**, at a URL that nothing links to any more but that anybody who has seen it can still
-fetch. Verified: the pre-`0087` `useInngestDispatch-*.js` returned 200 with
-`cf-cache-status: HIT` after the deploy that removed it from the origin.
+`dist/assets/*` is served with `cache-control: public, max-age=31536000, immutable`, which is correct: the filenames are
+content-hashed, so a changed file is a changed name. The consequence is that **Cloudflare keeps serving a superseded chunk
+from its edge for up to a year**, at a URL that nothing links to any more but that anybody who has seen it can still fetch.
+Verified at the time: a chunk from a retired Inngest dispatcher returned 200 with `cf-cache-status: HIT` after the deploy
+that removed it from the origin. And because `scripts/release.mjs` never deletes (section 3), the file also stays on the
+origin's disk until someone removes it over SSH.
 
 So the checks after a deploy that exists to _remove_ something must be:
 
-1. **Over SSH, not over HTTP.** `ssh cpanel 'ls ~/<docroot>/assets/ | grep <thing>'`. HTTP
-   answers from the edge, and the SPA fallback answers 200 for a missing file anyway —
-   `docs/SAAS.md` has a security finding that was false for exactly that reason.
-2. **Then the served bundle by content**, not by status code: fetch the `index-*.js` the
-   live HTML actually references and grep it.
-3. **Then accept that the old URL stays fetchable.** Purge it if a token exists; the
-   account has none stored on the deploying machine today. Either way a purge is not the
-   remedy for a leaked credential — **rotation is.** A cached artefact you cannot reach is
-   still an artefact somebody else already has.
+1. **Over SSH, not over HTTP.** `ssh cpanel 'ls ~/rotaflow.space/assets/ | grep <thing>'`. HTTP answers from the edge, and
+   the SPA fallback answers 200 for a missing file under an app route anyway.
+2. **Then the served bundle by content**, not by status code: fetch the `index-*.js` the live HTML actually references and
+   grep it.
+3. **Then accept that the old URL stays fetchable.** Purge it if a token exists; the account has none stored on the
+   deploying machine today (`NOT VERIFIED`). Either way a purge is not the remedy for a leaked credential: **rotation is.**
+   A cached artefact you cannot reach is still an artefact somebody else already has.
 
-The general rule: shipping a new artefact hides the old one from new visitors. It does not
-retract it. Anything secret that was ever in a built bundle is compromised, and the only
-action that changes that is revoking it at the service that issued it.
+The general rule: shipping a new artefact hides the old one from new visitors. It does not retract it. Anything secret that
+was ever in a built bundle is compromised, and the only action that changes that is revoking it at the service that issued it.
 
 ## Rolling back
 
-`qa/LAUNCH-CHECKLIST.md` recorded gate 29 ("Rollback documented and feasible") as **FAIL**
-until 2026-09-04, on the accurate grounds that this file described how to deploy and nowhere
-described how to undo one. This is that section. It has been reasoned through against the
-constraints below, and the mechanical part has been exercised — a deploy from a named commit —
-but **a rollback has never been performed under pressure**, so treat the timings as estimates.
+`qa/LAUNCH-CHECKLIST.md` recorded gate 29 ("Rollback documented and feasible") as **FAIL** until 2026-09-04, on the
+accurate grounds that this file described how to deploy and nowhere described how to undo one. This section is written from
+`scripts/release.mjs`. **A rollback has never been performed under pressure on this release path**, so treat the timings
+as estimates (`NOT TESTED`).
 
-### The frontend rolls back. The database does not.
+### The files roll back. The database does not.
 
-These are two different systems with two different answers, and conflating them is the way a
-rollback makes things worse:
+- **The release is files.** `pnpm release --rollback` (a dry run) and `pnpm release --rollback --go` restore the files the
+  newest snapshot in `~/backups/rotaflow/releases/` recorded as changed, then run the smoke checks. The snapshot is **used
+  up** (the next `--rollback` goes one release further back; `--list` shows what is left; the newest three are kept). **Files
+  the release added are left in place**, because nothing is ever deleted.
+- **A migration is not.** Migrations are forward-only and are applied by hand (`php bin/migrate.php`), so rolling the files back
+  leaves the new schema in place. A schema change that turns out to be wrong is corrected by a _new forward migration_,
+  not by reverting the old one: reverting the file in git changes nothing on the host, and an applied file whose checksum
+  changes aborts the next run. Check that the older code still works against the newer schema before shipping it (usually it
+  does, because migrations here are additive). The data itself is protected only by the database backups below.
 
-- **`dist/` is disposable.** It is rebuilt from a commit, so rolling back is "build an older
-  commit and ship it". There is no state in it.
-- **A migration is not.** Migrations apply to production on merge, through the Supabase GitHub
-  integration. There is no down-migration in this repository and no backup to restore from
-  (GAP-001: `pitr_enabled` is false and the backup list is empty). A schema change that turns
-  out to be wrong is corrected by a _new forward migration_, written deliberately, not by
-  reverting the old one. Reverting the file in git changes nothing in production — the
-  migration is already applied and will not be re-run.
+### Going back to a specific older commit
 
-So: **if a release contains both a migration and frontend code, rolling the frontend back leaves
-the new schema in place.** Check that the older bundle still works against the newer schema
-before shipping it. Usually it does, because migrations here are additive; when it does not, the
-answer is to fix forward.
-
-### Rolling the frontend back
-
-```bash
-# 1. What is actually live? Do not assume it is the previous commit on main.
-curl -s https://rotaflow.space/ | grep -o 'assets/index-[^"]*\.js'
-ssh cpanel 'ls -la ~/rotaflow.space/assets/ | head'
-
-# 2. Build the commit you want to return to, in a clean tree.
-git worktree add ../rotaflow-rollback <good-sha>
-cd ../rotaflow-rollback && cp ~/WebstormProjects/rotaflow/.env .   # a fresh tree has no .env
-pnpm install --frozen-lockfile && pnpm run build && pnpm run check:bundle
-
-# 3. Dry run first. It prints every change and every deletion.
-cpanel-deploy dist rotaflow.space \
-  --keep .well-known/pki-validation \
-  --keep .well-known/acme-challenge \
-  --keep cgi-bin
-
-# 4. Then --go, and verify as after any deploy.
-```
-
-`pnpm install --frozen-lockfile`, not `npm install`: `install` rewrites the lockfile, so it does not prove the older
-commit's dependency tree still resolves.
-
-### What `--keep` is protecting, and why omitting it is the real risk
-
-The docroot is not only this app's output. `--keep` names the subtrees that exist on the server
-and in no build, so rsync's `--delete` does not remove them: the ACME challenge directories
-(deleting one mid-renewal fails the renewal), and `cgi-bin`. `cpanel-deploy` aborts rather than
-deleting a top-level path absent from the local directory, which is the backstop — but the
-backstop aborts the whole deploy, so name them and the rollback proceeds.
-
-**Do not replace the `.htaccess` (`--with-htaccess` / `pnpm htaccess push`) during a rollback unless the `.htaccess` is what you are rolling
-back.** The live file is the repo file with the Cloudflare origin-lock block prepended; shipping
-the repo file alone silently reopens the origin to direct requests. Leaving `.htaccess` out of
-the deploy entirely is the safe default, and it is the default.
+`--rollback` restores the snapshot of the previous release, which is not always the commit you want. `scripts/release.mjs`
+refuses to release from anything but `main` equal to `origin/main`, so returning to an older commit means committing the
+revert on `main`, pushing it (both need the owner's approval), and releasing as normal. Do not edit files on the server
+by hand.
 
 ### What a rollback does not fix
 
-- **The edge keeps the bad build reachable.** Hashed assets are `immutable` for a year, so the
-  chunk you just rolled back stays fetchable at its own URL from Cloudflare's cache. See "A
-  deploy does not undo a leak" above. If the reason for the rollback was an exposed credential,
-  the rollback is not the remedy — **revoking it at the issuer is.**
-- **Service workers do not roll back on their own schedule.** `skipWaiting` is false and
-  `registerType` is `prompt`, so a client that already installed the bad build keeps running it
-  until the person accepts an update. Rolling back produces a _new_ `sw.js`, which those clients
-  will offer as an update — so recovery for an already-updated client is one more prompt, not
-  instant. `UpdatePrompt` polls hourly, so an app left open recovers within the hour.
-- **`index.html`, `sw.js` and `manifest.webmanifest` are `no-store`**, so the entry point itself
-  does flip immediately. That is what makes the rollback take effect for new visitors at all.
-  It also carries the site's JSON-LD block (publisher and product, no ratings or prices), so a
-  rollback restores the structured data of that build too.
+- **The edge keeps the bad build reachable.** Hashed assets are `immutable` for a year, so the chunk you just rolled back
+  stays fetchable at its own URL from Cloudflare's cache. See "A deploy does not undo a leak". If the reason for the rollback
+  was an exposed credential, the rollback is not the remedy: **revoking it at the issuer is.**
+- **Service workers do not roll back on their own schedule.** `skipWaiting` is false and the update is offered to the person
+  (`vite.config.ts`), so a client that already installed the bad build keeps running it until the person accepts an update.
+  Rolling back produces a _new_ `sw.js`, which those clients will offer as an update, so recovery for an already-updated client
+  is one more prompt, not instant. `UpdatePrompt` polls hourly, so an app left open recovers within the hour.
+- **`index.html`, `sw.js` and `manifest.webmanifest` are `no-store`** (`.htaccess`), so the entry point itself does flip
+  immediately, which is what makes the rollback take effect for new visitors at all. It also carries the site's JSON-LD
+  block (publisher and product, no ratings or prices), so a rollback restores the structured data of that build too.
 
 ### Verifying a rollback
 
-Identical to verifying a deploy, plus one: confirm the served bundle carries the _intended_ SHA,
-by content rather than by status code.
+Identical to verifying a deploy, plus one: confirm the served bundle carries the _intended_ SHA, by content rather than by
+status code.
 
 ```bash
 LIVE=$(curl -s https://rotaflow.space/ | grep -o 'assets/index-[^"]*\.js')
 curl -s "https://rotaflow.space/$LIVE" | grep -o '<short-sha>' | head -1
 ```
 
-`vite.config.ts` bakes the git SHA in as `__SENTRY_RELEASE__`, so this is a direct answer rather
-than an inference from a filename.
+`vite.config.ts` bakes the git SHA in as `__SENTRY_RELEASE__`, so this is a direct answer rather than an inference from a
+filename.
 
 ## Database backups (MariaDB, since the 1 November 2026 cutover)
 
@@ -512,130 +445,78 @@ The release snapshots in `~/backups/rotaflow/releases/` hold **code only**. The 
 - **Installed on the live host on 2026-11-08** (owner-approved): every six hours at minute 17,
   `17 */6 * * * ROTAFLOW_PRIVATE_ROOT=$HOME/rotaflow-private ROTAFLOW_CONFIG_FILE=backup.php /usr/local/bin/php $HOME/rotaflow-private/app/bin/backup.php >> $HOME/rotaflow-private/logs/backup.log 2>&1`,
   plus a monthly `--restore-check` drill (not scheduled yet). The first live backup and the restore proof into
-  `devgeereact_rotaflow_restorecheck` both passed (70 tables, counts inside the recorded ranges, scratch left empty).
+  `devgeereact_rotaflow_restorecheck` both passed (70 tables counted in the live database, which is the 69 `CREATE TABLE` names of the migrations plus `schema_migrations`, created by `backend/bin/migrate.php`; counts inside the recorded ranges, scratch left empty). The record of that
+  session is in `docs/AUDIT.md`, section "2026-11-08: Phase 1, live safety and ground truth"; this repository cannot re-run it, and the host as it
+  is today has not been re-checked (`NOT VERIFIED`, server state). The six-hour cadence is the suggested schedule in this section; neither
+  `backup.php` nor `Backup.php` states one.
 - **Install a cron line from a FILE, never by piping.** On this host `(crontab -l; echo LINE) | crontab -` replaced the whole crontab and
   dropped the `cron.php` job and another project's nightly job for about two minutes (restored from the saved copy, no run missed).
   Save `crontab -l` first, append to a copy, load it with `crontab FILE`, and check every original line is still there.
-- Do not point `~/bin/prune-backups` at the `db` folder: it keeps five per file pattern, which at six-hourly dumps is thirty hours.
-- Still missing: an encrypted off-site copy (key custody is an owner decision), alerting on a failed run, and a run on the live
-  database. Until then the command is tested against the throwaway test database only.
+- Do not point `~/bin/prune-backups` (a host script, not in this repository) at the `db` folder: it keeps five per file pattern, which at six-hourly dumps is thirty hours.
+- **Still missing, and never to be written as done until it is:** an encrypted off-site copy (key custody is an owner decision), alerting on a
+  failed run, a scheduled monthly restore drill, point-in-time recovery, and any copy of the stored files (`backup.php` dumps the database
+  only; the upload folder is `backend/src/FileStore.php`'s). Restoring the **live** database from a dump is not scripted: `--restore-check`
+  proves a dump loads into a scratch database, and loading one into the live database is a manual act that has never been performed
+  (`NOT TESTED`). The owner's pilot targets are a 6 hour data-loss window (the backup interval) and a 4 hour recovery time; they are targets,
+  and no recovery has been timed.
 
-## Recovery: configuring the backup and auth-monitor jobs
+## Recovery: the scheduled workflows that still target the retired Supabase project
 
-**Current state, 11 October 2026** (from `gh run list`): all three secrets were
-set on 5 September. `backup.yml` has succeeded on every scheduled run since, to
-10 October, and a human restore was rehearsed on 7 September (GAP-001).
-`auth-config.yml` succeeded on 5 and 7 September and has failed on every run
-since 14 September with `401 Unauthorized`, so `SUPABASE_ACCESS_TOKEN` needs
-replacing (GAP-036). The table of every scheduled workflow is in `qa/README.md`.
-The rest of this section is the runbook as written on 5 September, still the
-procedure for setting or rotating any of the three secrets.
+Two scheduled GitHub workflows were written for the previous stack and **still target it** (read 9 November 2026,
+`.github/workflows`): `backup.yml` takes a nightly `pg_dump` of the archived (retired) Supabase project, and `auth-config.yml` checks
+that retired project's Auth settings against `scripts/check-auth-config.mjs`. Their secrets (`SUPABASE_DB_URL`,
+`BACKUP_PASSPHRASE`, `SUPABASE_ACCESS_TOKEN`) belong to that retired stack. **Do not create them, and do not follow the old runbook to set
+them.** `backup.yml`'s scheduled runs were failing when last read (five consecutive failures, 5 to 9 November 2026, `gh run
+list`, read only), which is expected after the cutover and means nothing about the live database. Neither is a backup or a
+monitor of anything live. Repairing or removing them is Phase 5 (workflow files); `ci.yml`'s `scheduled-checks` job reads their
+last runs and annotates pull requests, so a red status there comes from these two. The 2026-09-05 runbook for setting those
+secrets, and its notes on what a restore rehearsal into legacy stock PostgreSQL does and does not prove, are at the tag:
+`git show live-supabase-2026-11-01:docs/DEPLOYMENT.md`.
 
-Written 2026-09-05 for the delivery audit's RF-13. **Neither scheduled workflow
-had ever succeeded** at that date — `.github/workflows/backup.yml` and `auth-config.yml` both
-fail on their first step because the secrets they need do not exist. The
-repository holds one secret, `OPENROUTER_API_KEY`. So there is no backup of
-production, and nothing is watching the Auth settings.
+### What is still missing for recovery of the live site
 
-That is not a code defect and cannot be fixed from a branch. It needs three
-credential values pasted into GitHub by the account owner, and nothing here
-collects, reads or echoes any of them.
+Recording these so that "backups are configured" is not mistaken for "we can recover":
 
-### The three secrets, and where each comes from
-
-| Secret                  | Used by           | Where to get it                                                                                                                                                                                                                                |
-| ----------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SUPABASE_DB_URL`       | `backup.yml`      | Supabase dashboard → Project Settings → Database → Connection string → **URI**, session mode. Use the **pooler** host on port 5432, not 6543: `pg_dump` needs a session, and the transaction pooler will drop it partway through a large dump. |
-| `BACKUP_PASSPHRASE`     | `backup.yml`      | Generate a fresh one and store it in the password manager **before** setting it here. It is symmetric: a dump encrypted with a passphrase nobody kept is a dump nobody can restore, which is indistinguishable from having no backup.          |
-| `SUPABASE_ACCESS_TOKEN` | `auth-config.yml` | Supabase dashboard → Account → Access Tokens. Scope it to this project if the plan allows.                                                                                                                                                     |
-
-Set them at Settings → Secrets and variables → Actions → New repository secret.
-**A value written into a workflow file, a commit, or this document instead is
-a leak**, and a deploy does not undo a leak — see the section of that name
-above.
-
-### Confirming it actually worked
-
-A secret that exists is not a backup. Run the workflow once by hand and read
-the result, rather than waiting for the schedule and assuming silence is good:
-
-```bash
-gh workflow run backup.yml
-gh run list --workflow=backup.yml --limit 3
-gh run view --log-failed          # if it is red
-```
-
-A green run means: the dump ran, was encrypted, was uploaded as an artifact,
-and a **restore rehearsal** brought it back into a stock PostgreSQL 17 and
-found at least 40 public tables including `organisations`, `shifts`,
-`clock_events` and `audit_logs`.
-
-Read what that does and does not establish, because the rehearsal says so
-itself and it is easy to over-read:
-
-- It proves the **data** survives a round trip.
-- It does **not** prove auth, storage or RLS survive. Those are Supabase's and
-  are not in the dump. Restoring this file into a fresh project gives you the
-  tables and rows and none of the accounts.
-- It restores into stock PostgreSQL, so errors about `supabase_admin`, `auth`
-  and `storage` are expected and `ON_ERROR_STOP` is deliberately off. The
-  assertion is what came back, not that every statement applied.
-- Row counts are **reported, not asserted**, because production is pre-launch
-  and legitimately near-empty. A count threshold would fail nightly for a
-  reason that is not a backup problem, and would be deleted by whoever tired
-  of it first.
-
-### What is still missing after all three secrets exist
-
-Recording these so that "backups are configured" is not mistaken for "we can
-recover":
-
-- **A restore into a compatible Supabase environment**, with roles, auth and
-  RLS, and one full rota-and-attendance journey exercised there by a real user
-  session. Stock PostgreSQL cannot answer that question.
-- **Off-platform retention.** A GitHub Actions artifact expires, and it lives
-  with the repository. A backup that disappears with the account it protects is
-  not an independent copy.
-- **A named owner, a recovery-point objective and a recovery-time objective.**
-  Without them there is no threshold to be in breach of, and no one for the
-  alert to reach.
-- **An escalation destination that a human acknowledges.** A red scheduled
-  workflow has already proved insufficient: it blocks no merge, marks no pull
-  request red, and appears on no screen anyone opens. That is the whole reason
-  these two went red for three days unnoticed.
+- **An off-site copy** that survives the loss of the hosting account (above).
+- **A restore of the live database into a working copy of the whole app**, with the private configuration, and one full
+  rota-and-attendance journey exercised there. A scratch-database row-count check proves the dump loads, not that the app
+  runs on it.
+- **A named owner and recovery objectives.** The owner's pilot targets (6 hours, 4 hours) are stated above; nobody has
+  measured against them.
+- **An escalation destination that a human acknowledges.** A failing cron entry writes to a log file on the host and tells
+  no one; the same is true of the backup job.
 
 ### Alert owners
 
-A scheduled workflow fails where nobody is standing, so each one has a named
-person who acts on a red run. Today that is one person for all of them. GitHub
-emails the account that owns the schedule when a scheduled run fails, if that
-account's notification settings allow it; whether they do has not been checked
-from this repository.
+A scheduled job fails where nobody is standing, so each one has a named person who acts when it is red or silent. Today that
+is one person for all of them.
 
-| Workflow               | What a red run means                                              | Owner            | First action                                                                                        |
-| ---------------------- | ----------------------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------- |
-| `backup.yml`           | Last night's production dump or its restore check failed          | Gideon Akinlotan | `gh run view --log-failed`; treat a backup older than 26 hours as a release blocker                 |
-| `auth-config.yml`      | Supabase Auth settings drifted, or the check cannot read them     | Gideon Akinlotan | A `401` means a new `SUPABASE_ACCESS_TOKEN`; otherwise compare with `scripts/check-auth-config.mjs` |
-| `plan-drift-audit.yml` | The weekly register-against-code audit did not run or found drift | Gideon Akinlotan | Read the drift log at the end of `docs/SAAS.md` and the run log                                     |
-| `codeql.yml`           | A code-scanning finding, or the analysis failed                   | Gideon Akinlotan | Security tab, then a fix or a dismissal with a reason                                               |
+| Job | What failure means | Owner | First action |
+| --- | ------------------ | ----- | ------------ |
+| `backend/bin/backup.php` (cPanel cron, every six hours) | The newest dump is older than the schedule allows | Gideon Akinlotan | Read `~/rotaflow-private/logs/backup.log` over SSH and run `php backup.php --self-check`. **No alert reaches anyone today** |
+| `backend/bin/cron.php` (cPanel cron, every five minutes) | Notifications, retention and file deletion have stopped | Gideon Akinlotan | Read `~/rotaflow-private/logs/cron.log`. **No alert reaches anyone today** |
+| `plan-drift-audit.yml` | The weekly register-against-code audit did not run or found drift | Gideon Akinlotan | Read the drift log at the end of `docs/SAAS.md` and the run log |
+| `codeql.yml` | A code-scanning finding, or the analysis failed | Gideon Akinlotan | Security tab, then a fix or a dismissal with a reason |
+| `backup.yml`, `auth-config.yml` | Red is expected: they target the retired stack | Gideon Akinlotan | None until Phase 5 repairs or removes them |
 
-**What does not alert anyone yet** (decided with the 2026 plan pack, 10 October
-2026; work queue O2 in `docs/SAAS.md`). Until each of these exists, a failure is
-found by a customer first:
+GitHub emails the account that owns a schedule when a scheduled run fails, if that account's notification settings allow it;
+whether they do, and whether Actions can run at all (owner action O14 in `docs/SAAS.md`), has not been checked from this
+repository (`NOT VERIFIED`).
+
+**What does not alert anyone yet** (decided with the 2026 plan pack, 10 October 2026; owner action O2 in `docs/SAAS.md`).
+Until each of these exists, a failure is found by a customer first:
 
 1. GitHub email notifications for failed scheduled runs, switched on and tested.
-2. Sentry alert rules that email the owner on a new issue and on an error-rate
-   spike. None was found when the pack was written.
-3. A free external uptime check on `/` and on the REST endpoint.
-4. The health probe (`0076`) only writes samples; it should queue a notification
-   to a named owner when it records an outage.
+2. Sentry alert rules that email the owner on a new issue and on an error-rate spike. None was found when the pack was written.
+3. A free external uptime check on `/` and on `/api/health`.
+4. An alert when the backup job or the cron job stops. The scheduled health probe of the Supabase era is gone with that
+   database; `/admin/platform-health` only probes from an administrator's browser.
 
 The exit is a test alert that reaches the owner's phone.
 
 ### A standing check before any release
 
-`gh run list --workflow=backup.yml --limit 3` before shipping, and treat a
-backup older than 26 hours as a release blocker rather than a note. Migrations
-apply to production the moment a pull request merges, so the window between "a
-destructive migration merged" and "we noticed" is the window the backup has to
-cover.
+Before shipping, over SSH: `ls -l ~/backups/rotaflow/db | tail -3` and the tail of `~/rotaflow-private/logs/backup.log`. A
+newest dump more than one backup interval (six hours) plus the minutes a run takes old means a run was missed: stop and read
+the log before shipping a release that carries a migration. This is a rule proposed here; no script enforces it. The
+window between "a destructive migration merged" and "we noticed" is the window the backup has to cover.
