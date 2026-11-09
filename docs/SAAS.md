@@ -1322,15 +1322,15 @@ An enterprise review recommended replacing per-org SMTP with a transactional pro
 per-tenant domain claim, DNS verification, DKIM signing and reputation isolation.
 
 **Rejected.** `org_smtp_settings` already reaches the stated goal more cheaply: each organisation
-supplies its own SMTP account, `send-notification` resolves org SMTP → global fallback → skip, and
-`test-smtp` is the only writer of `verified_at`, so "saved" and "known to work" stay distinct.
+supplies its own SMTP account, `Mail::forOrg` (`backend/src/Mail.php`) resolves org SMTP → platform account → skip (Supabase era: `send-notification`), and
+`OrgSettings::testSmtp` (`backend/src/Mod/OrgSettings.php`) is the only writer of `verified_at` (Supabase era: the `test-smtp` function), so "saved" and "known to work" stay distinct.
 Mail leaves the organisation's own server, which already holds valid SPF and DKIM and carries its
 own reputation. The proposed workstream would rebuild that at significant cost.
 
-The platform half is now better than that review assumed. Migration `0064` records the real
+The platform half is now better than that review assumed. Migration `0064` (Supabase era) recorded the real
 cause of the old deliverability failure: a **missing MX**, not missing SPF/DKIM. The old host
 signed outbound mail correctly while silently dropping every reply. `rotaflow.space` carries MX
-×3, one SPF, one DKIM and one DMARC.
+×3, one SPF, one DKIM and one DMARC (DNS: `NOT VERIFIED` from the repository).
 
 The same review's pillar tree assumed QR clock-in, calendar sync, working push and eight live
 connectors. None of those exist (CAP-017, CAP-063, CAP-023, CAP-064). A structure drawn over
@@ -1344,21 +1344,21 @@ resolved ones are not re-litigated.
 
 | #   | Decision                                                                 | Status                                                                                                                                                                                                                                                     |
 | --- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Platform staff can read every tenant; a support session does not gate it | ✅ **Resolved** — `0028` redefines `is_org_member`/`has_org_role` onto `has_support_access`, so a time-boxed session is now the actual RLS gate                                                                                                            |
+| 1   | Platform staff can read every tenant; a support session does not gate it | ✅ **Resolved** — in the Supabase era `0028` redefined `is_org_member`/`has_org_role` onto `has_support_access`, so a time-boxed session was the actual RLS gate; live it is `Scope::supportMembership` in `backend/src/Scope.php` (CAP-044) |
 | 2   | Demo data attached to real organisations                                 | 🟡 Dataset torn down 2026-08-14; seed scripts deleted in `#120`. `is_demo` survives as an unread column                                                                                                                                                    |
-| 3   | Feature flags control nothing                                            | ✅ **Resolved** — `my_feature_access` returns them and the AI gate honours one (CAP-076). This row still read "🔴 Still true" against a capability marked 🟢; corrected 2026-09-02                                                                         |
-| 4   | No payment provider                                                      | ✅ **Resolved** — Stripe shipped (`0050`, `0058`). Open sub-item: no charge has completed (CAP-036)                                                                                                                                                        |
-| 5   | Retention is a published policy nothing enforces                         | ✅ **Resolved** — nightly since 2026-08-21 (`0029`, fixed by `0057`)                                                                                                                                                                                       |
-| 6   | Three RPCs callable from nowhere                                         | ✅ Resolved 2026-08-30. All three now have callers — `rate_support_case` was the last, from `/app/help` (CAP-079)                                                                                                                                          |
-| 7   | Health and uptime figures are seeded, not measured                       | ✅ **Resolved** — `pg_cron` probes every five minutes, unattended (CAP-078). This row read 🟡 after the capability went 🟢; corrected 2026-10-21                                                                                                           |
+| 3   | Feature flags control nothing                                            | ✅ **Resolved** — `GET /orgs/{o}/features` returns them (Supabase era: `my_feature_access`) and the AI gate honours one (CAP-076). This row still read "🔴 Still true" against a capability marked 🟢; corrected 2026-09-02 |
+| 4   | No payment provider                                                      | ✅ **Resolved** — Stripe shipped (`0050`, `0058`, Supabase era; live: `backend/src/Mod/Billing.php`, `backend/src/Mod/StripeWebhook.php`). Open sub-item: no charge has completed (CAP-036) |
+| 5   | Retention is a published policy nothing enforces                         | ✅ **Resolved** — nightly since 2026-08-21 (`0029`, fixed by `0057`, Supabase era); live: `Lifecycle::cron` runs `Retention::run` daily (CAP-054) |
+| 6   | Three RPCs callable from nowhere                                         | ✅ Resolved 2026-08-30 (Supabase era). All three had callers — `rate_support_case` was the last, from `/app/help` (CAP-079; live: `Support::rate`) |
+| 7   | Health and uptime figures are seeded, not measured                       | ✅ **Resolved** in the Supabase era — `pg_cron` probed every five minutes, unattended (CAP-078). This row read 🟡 after the capability went 🟢; corrected 2026-10-21. **Since the cutover nothing probes and CAP-078 is 🔴** (2026-11-09) |
 | 8   | Eleven console screens show demonstration figures                        | ✅ Resolved 2026-08-30. `adminOverviewDemo.ts` is deleted; every console figure is measured or reads "Not sampled" (CAP-077)                                                                                                                               |
-| 9   | An orphan `incident_events` table in production                          | ✅ **Resolved** — dropped by `0028`                                                                                                                                                                                                                        |
-| 10  | Public repo, `main` unprotected                                          | 🟡 Four checks are now required — `verify`, `e2e`, `db-tests` and `e2e-authenticated` (GAP-003 closed 2026-08-30, CAP-097). `enforce_admins` remains off by the owner's decision. This row still said the last two were not required; corrected 2026-09-02 |
+| 9   | An orphan `incident_events` table in production                          | ✅ **Resolved** — dropped by `0028` (Supabase era) |
+| 10  | Public repo, `main` unprotected                                          | 🟡 Four checks were required — `verify`, `e2e`, `db-tests` and `e2e-authenticated` (GAP-003 closed 2026-08-30, CAP-097); a GitHub setting, `NOT VERIFIED` on 2026-11-09. `enforce_admins` remains off by the owner's decision. This row still said the last two were not required; corrected 2026-09-02 |
 | 11  | Support cases have no way in                                             | ✅ **Resolved** — `/app/help` opens one and the requester sees their own thread (CAP-080). Email ingress is a separate gap (GAP-035); corrected 2026-10-21                                                                                                 |
 | 12  | The public status page                                                   | ⚫ Correctly deferred (GAP-024)                                                                                                                                                                                                                            |
 
 **Settled, recorded so it is not re-opened:** every write to the platform tables goes through
-a `SECURITY DEFINER` function with table grants revoked, so reference numbers, resolution
+the PHP API, which is the only database client (Supabase era: a `SECURITY DEFINER` function with table grants revoked), so reference numbers, resolution
 notes and audit rows cannot be skipped by a client. The marketing site carries no invented
 traction, testimonials or logos.
 
@@ -1370,7 +1370,7 @@ is ours and live since 2026-08-29.
 
 Three features were built from written specs, since merged here: Stripe billing (`0050`,
 `0058`), admin-assisted organisation creation (`0052`) and admin billing real data
-(`2e1b924`). Their rationale now lives in the migration headers, which are the durable
+(`2e1b924`) (Supabase era; the migration numbers are the retired Postgres ones). Their rationale now lives in the migration headers, which are the durable
 record — each explains what it does to existing rows and why. The separate plan and spec
 plan and spec files were deleted on 2026-08-29: all three specs still read
 "pending implementation plan" for features that had shipped, and all 99 of their task
@@ -1379,7 +1379,7 @@ checkboxes were unticked against code that was already on `main`.
 **Two deliberate loose ends.** Applied migrations are frozen, so four of them still name
 `docs/audit01.md` (deleted 2026-08-04) in comments, and `0050_stripe_billing.sql` writes a
 **column comment into production** that cites one of the deleted spec files. Editing an
-applied migration risks a checksum mismatch on `supabase db push` for a comment nobody
+applied migration risks a checksum mismatch on the legacy `supabase db push` for a comment nobody
 executes, and correcting the column comment would mean a migration that auto-applies to a
 database with no backups. Both are recorded here instead of chased.
 
