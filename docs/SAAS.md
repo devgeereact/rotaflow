@@ -369,8 +369,8 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 113   |
-| 🟡 Partial            | 9     |
+| 🟢 Complete           | 112   |
+| 🟡 Partial            | 10    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -620,21 +620,23 @@ itself: a restore, a real charge, and a phone.
 
 ### Communications
 
-- [x] CAP-020 🟢 Notification dispatch — a rota publish enqueues its own notification in the same transaction; pg_cron drains it
-      `supabase/migrations/0069_notification_outbox.sql` · BUG-047 #166, GAP-026 #174 · 10 pgTAP assertions
-      ✅ **Draining since 2026-08-31.** `0091` moved the shared secret into `vault` alone, generated
-      in-database; `send-notification` v20 verifies against it. Confirmed live: only `service_role` may ask,
-      and the drain's value and the verifier agree.
-- [x] CAP-020a 🟢 Leave, swap and announcement dispatch — triggers, in the same transaction as the decision;
-      the unread reminder is an RPC, because no row changes when you press it
-      `supabase/migrations/0087_server_side_dispatch.sql` · GAP-026 closed #200 · 13 pgTAP assertions
-      ⚠️ `0088` follow-up: `announcement_audience` was still executable by `authenticated` — `0075` leaves a
-      default ACL granting new functions to that role, so revoking `public`/`anon` alone is not enough (#201)
+- [x] CAP-020 🟢 Notification dispatch — a rota publish enqueues its own notification in the same transaction; cron drains it (Supabase era: `pg_cron`)
+      `backend/src/Notify.php` (`enqueue`) · `backend/src/Dispatcher.php` (`drain`) · `backend/src/Mod/Notifications.php` (`cron`) · `backend/migrations/007-communication.sql` (`notification_outbox`) · suite `backend/tests/suites/120-notifications.php` · BUG-047 #166, GAP-026 #174 · Supabase era: `0069`, 10 pgTAP assertions
+      ✅ **Draining since 2026-08-31 (Supabase era).** `0091` moved the shared secret into `vault` alone, generated
+      in-database; `send-notification` v20 verified against it, and the drain's value and the verifier agreed.
+      Live now: there is no secret and no HTTP hop; `Dispatcher::drain` runs inside `Notifications::cron`, which
+      `backend/bin/cron.php` runs every five minutes on the live host (`docs/AUDIT.md`, 2026-11-08). That a
+      notification has been delivered from the live host is `NOT VERIFIED`.
+- [x] CAP-020a 🟢 Leave, swap and announcement dispatch — the handler enqueues in the same request as the decision (Supabase era: triggers);
+      the unread reminder is its own route, `POST /orgs/{o}/announcements/{n}/remind`, because no row changes when you press it
+      `backend/src/Mod/Leave.php` · `backend/src/Mod/Swaps.php` · `backend/src/Mod/Announcements.php` (`remind`) · suites `backend/tests/suites/120-notifications.php`, `backend/tests/suites/125-communication.php` · GAP-026 closed #200 · Supabase era: `0087`, 13 pgTAP assertions
+      ⚠️ Supabase era, history: the `0088` follow-up found `announcement_audience` still executable by `authenticated` because `0075` left a
+      default ACL on new functions (#201). The PHP API has no database functions to grant, so the mechanism is retired.
 - [x] CAP-021 🟢 Notification preferences — org matrix and per-user switch both read on the send path
-      `supabase/functions/send-notification/index.ts` · BUG-048 closed #165 · deployed v17, 2026-08-29
+      `backend/src/Dispatcher.php` (the organisation's matrix, 5 events by 3 channels, decides which channels an event may use; a person's own switch mutes only email and push, never their inbox; absent or malformed settings read as on) · suite `backend/tests/suites/120-notifications.php` · BUG-048 closed #165 · Supabase era: `send-notification` deployed v17, 2026-08-29
 - [x] CAP-022 🟢 Channel record — the column says what kind of record the row is (`in_app`); per-channel
       outcomes live in `notification_deliveries`, which is where the question belonged
-      `supabase/migrations/0082_notification_channel_is_in_app.sql` · BUG-049 closed #195
+      `backend/migrations/007-communication.sql` (`notification_deliveries`, channel `in_app`, `email`, `push`) · `backend/src/Dispatcher.php` · BUG-049 closed #195 · Supabase era: `0082`
 - [x] CAP-023 🟢 Web push — handler shipped and imported into the generated service worker,
       VAPID keys server-side, delivery outcomes recorded. **Whether one has ever arrived on a
       real device is CAP-023a**, which is a verification rather than a build and has its own
@@ -643,17 +645,20 @@ itself: a restore, a real charge, and a phone.
 - [ ] CAP-023a ❓-007 A push has still never been seen arriving on a real device
       **Test:** subscribe on a phone, publish a rota, confirm the notification appears and opens `/app/notifications` · P1
 - [x] CAP-024 🟢 Delivery tracking — one row per recipient per channel, with why a send was skipped
-      `supabase/migrations/0067_notification_deliveries.sql` · GAP-004 closed #168 · 11 pgTAP assertions · migration applied and send-notification redeployed v18, 2026-08-29
-- [x] CAP-025 🟢 Invite emails — sent automatically on **every** path, including the two sales-led ones
-      that were still copy-a-link until 2026-08-30; the copyable link stays as the fallback
-      `supabase/functions/send-invite/index.ts` · GAP-005 closed #198 · deployed v1, 2026-08-29
-- [x] CAP-026 🟢 In-app notifications — per-recipient rows, no client insert policy
-      `supabase/migrations/0002_rotaflow.sql`
+      `backend/migrations/007-communication.sql` (`notification_deliveries`: status `sent`, `failed`, `skipped`, `expired`, with a `detail`) · `backend/src/Dispatcher.php` · suite `backend/tests/suites/120-notifications.php` · GAP-004 closed #168 · Supabase era: `0067`, 11 pgTAP assertions, applied and `send-notification` redeployed v18, 2026-08-29
+- [ ] CAP-025 🟡 Invite emails — sent automatically from an organisation's Team page (create and resend); the copyable link stays as the fallback.
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** the two platform-led paths, `POST /platform/orgs` and `POST /platform/orgs/{o}/owner-invites`
+      (`backend/src/Mod/Platform.php`, `createOrg` and `inviteOwner`), return the token and send no email (the file has no mail call), so a first-owner
+      invitation is copy-a-link again. In the Supabase era the register claimed every path sent (the two sales-led paths were copy-a-link until 2026-08-30, then emailed); the front end
+      still reads `email_sent` from the owner-invite response (`src/services/inviteService.ts`) and falls back to "Copy the link and send it yourself."
+      `backend/src/Mod/Invites.php` (`create`, `resend`, through `Mail::forOrg`) · `backend/src/Mod/Platform.php` · suite `backend/tests/suites/050-invites.php` · GAP-005 closed #198 · Supabase era: `send-invite` deployed v1, 2026-08-29
+- [x] CAP-026 🟢 In-app notifications — per-recipient rows; the inbox is written only by the Dispatcher, so nobody can put a row into someone else's inbox through the API (Supabase era: no client insert policy)
+      `backend/src/Mod/Notifications.php` (header, `list`) · `backend/src/Dispatcher.php` · `backend/migrations/007-communication.sql` (`notifications`) · suite `backend/tests/suites/120-notifications.php` · Supabase era: `0002`
 - [x] CAP-027 🟢 Announcements with read receipts
-      `supabase/migrations/0046_announcement_reads.sql`
+      `backend/src/Mod/Announcements.php` (`read`, `reads`: staff see the read flag and no count, managers see who has not read) · `backend/migrations/007-communication.sql` (`announcement_reads`) · suite `backend/tests/suites/125-communication.php` · Supabase era: `0046`
 - [x] CAP-028 🟢 Rota change notice — one message per affected person, naming the day and the before
       and after; people whose shifts did not change are not notified at all
-      `supabase/migrations/0083_rota_amendment_diff.sql` · GAP-007 closed #197 · 8 pgTAP assertions
+      `backend/src/RotaDiff.php` · `backend/src/Mod/Rotas.php` (`publish` enqueues one message per person whose shifts changed) · suite `backend/tests/suites/120-notifications.php` ("an amendment tells each person only what changed for them") · GAP-007 closed #197 · Supabase era: `0083`, 8 pgTAP assertions
 - [ ] CAP-029 ⚫ SMS — channel reserved in schema, no provider. A toggle that sends nothing is worse than none
       `src/lib/orgPreferences.ts`
 
