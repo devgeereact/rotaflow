@@ -540,11 +540,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/orgs/{o}/departments/{d}` | `saveDepartment` |  |
 | POST | `/orgs/{o}/departments/{d}/delete` | `deleteDepartment` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Locations (sites with a geofence and a time zone) and the departments inside them.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Any member reads; owner or manager (effective role) writes, on a writable organisation.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `locations`, `departments`; deleting a department first clears `staff_profiles.department_id` for its people.
 
 ### Planning (`backend/src/Mod/Planning.php`)
 
@@ -560,11 +560,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | GET | `/orgs/{o}/minimum-cover` | `listCover` |  |
 | POST | `/orgs/{o}/minimum-cover` | `setCover` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The ingredients of a rota: shift types, people's availability, and each site's minimum cover.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Reads of shift types and minimum cover are any member. Writes to shift types and minimum cover are owner or manager, writable organisation, plan not read-only. Availability: a manager reads every record, anyone else their own; adding or deleting availability is the person for their own record or a manager for anyone's, on a writable organisation.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `shift_types`, `availability`, `minimum_cover_rules`.
 
 ### Platform (`backend/src/Mod/Platform.php`)
 
@@ -638,11 +638,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/orgs/{o}/rotas/{r}/discard` | `discardRevision` |  |
 | POST | `/orgs/{o}/rotas/{r}/repeat` | `repeat` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Rotas and their lifecycle: a draft, then published, then archived when an amendment replaces it. A published or archived rota is never edited; an amendment is a draft copy that supersedes it, and publishing it archives the original in the same transaction.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Listing is any member, but staff see only published and archived rotas, never a draft. Every write (create, rename, publish, unpublish, revision, discard, repeat) goes through one guard: owner or manager (effective role), a writable organisation, and a plan that is not read-only (402 `billing_read_only`). `POST /orgs/{o}/rotas/{r}/publish` takes no body field: the rota is in the path; it answers 409 `rota_not_draft`, `shift_overlap` (with the `scheduling_tools` flag on) or `cover_below_minimum`, and queues a rota-published notification. `unpublish` is refused with 409 `open_amendment` while an amendment is open. `repeat` copies a rota's shifts into the next 1 to 26 weeks, skipping weeks that are published or already have shifts.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `rotas` and `shifts` (the `repeat` copy and the discard of an amendment).
 
 ### Scheduling (`backend/src/Mod/Scheduling.php`)
 
@@ -651,11 +651,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | GET | `/orgs/{o}/rotas/{r}/publish-preview` | `preview` |  |
 | POST | `/orgs/{o}/rotas/{r}/patterns/generate` | `generate` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Scheduling tools: a publish preview with warnings (rest, weekly hours, leave clash, declared unavailability) and recurring patterns that fill one draft rota (at most 92 days and 500 shifts per generation). Warnings never block; a double booking does, when the module is on.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Owner or manager (effective role), and the `scheduling_tools` flag must be on for the organisation, else 403 `feature_off` (checked after membership). Writes (`patterns/generate`) also need a writable organisation and a plan that is not read-only; `publish-preview` is a read.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `shifts` (`patterns/generate`; with `preview: true` the generation is rolled back).
 
 ### Shifts (`backend/src/Mod/Shifts.php`)
 
@@ -667,11 +667,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/orgs/{o}/shifts/{h}` | `update` |  |
 | POST | `/orgs/{o}/shifts/{h}/delete` | `delete` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Shifts. A published rota is immutable and an archived one is history, so a write goes only into a draft rota; every write takes the rota's row lock so it queues behind a publish of the same rota.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `GET /orgs/{o}/shifts` is any member: published and archived rotas' shifts plus loose shifts that belong to no rota; an owner or manager also reads drafts. Create, batch (at most 500 shifts), update and delete are owner or manager (effective role), writable organisation and a plan that is not read-only; a shift in a published or archived rota answers 409 `rota_published` or `rota_archived`.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `shifts`.
 
 ### Staff (`backend/src/Mod/Staff.php`)
 
@@ -761,11 +761,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/platform/notification-templates` | `save` |  |
 | POST | `/platform/notification-templates/delete` | `delete` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The wording of notification emails, written by platform owners and admins: a platform-wide row, or one for a single organisation, which wins. Only placeholders the `Dispatcher` fills may appear.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Platform routes. A caller without the platform role gets 404 (`Templates::staff`). The list is platform owner, admin or support; save and delete are platform owner or admin.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `notification_templates`.
 
 ### Timesheets (`backend/src/Mod/Timesheets.php`)
 
