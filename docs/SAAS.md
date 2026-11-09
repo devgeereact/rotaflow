@@ -369,8 +369,8 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 102   |
-| 🟡 Partial            | 19    |
+| 🟢 Complete           | 101   |
+| 🟡 Partial            | 20    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -1121,21 +1121,20 @@ itself: a restore, a real charge, and a phone.
       department, job title, person and status; sort by expected start, actual start, name or
       exception severity; a detail panel with the full event timeline, the planned-versus-actual
       comparison and the correction history; and an export of every matching row carrying its
-      own scope and timezone. Corrections go through `correct_clock_event` (`0128`), which
-      demands a reason, records the row either side and the actor, refuses a stale write, and
-      flags an already-approved timesheet for a fresh decision rather than moving a signed total.
-      The direct `UPDATE` grant on `clock_events` is withdrawn in the same migration, so the
-      audited path is not optional. **Evidence:**
-      `supabase/tests/database/clock_corrections_are_kept.test.sql` (14) ·
+      own scope and timezone. Corrections go through `POST /orgs/{o}/clock-events/{e}/correct` (Supabase era: `correct_clock_event`, `0128`), which
+      demands a reason of 3 to 500 characters, keeps the row before and after and the actor in `clock_event_corrections` (append-only triggers refuse an update or delete of a correction), and
+      flags an already-approved timesheet (`recalculation_required_at`) for a fresh decision rather than moving a signed total.
+      The API offers no other way to edit a clock event, so the audited path is not optional (Supabase era: the direct `UPDATE` grant was withdrawn). **Evidence:**
+      `backend/src/Mod/Clock.php` (`correct`, `corrections`) · `backend/migrations/006-time-and-requests.sql` · suite `backend/tests/suites/100-clock.php` (corrections block) · Supabase era: `clock_corrections_are_kept.test.sql` (14) ·
       **NOT verified:** a real offline device syncing a queued clock-in into a corrected period
 - [x] CAP-112 🟢 Job-title catalogue — `job_titles` (`0127`), org-owned, with case- and
       whitespace-insensitive unique names, one colour per active title, archive rather than
       delete, and a twelve-colour palette solved for separation under simulated protanopia,
       deuteranopia and tritanopia (worst pair ΔE 16.4) with every ink measuring at least 4.60:1
       on its wash in both themes. Owners always manage it; managers only where the organisation
-      has said so, enforced by `can_manage_job_titles` in the policy rather than in the picker.
+      has said so, enforced by `Staff::titleManager` reading `job_titles_managed_by` in the API (Supabase era: `can_manage_job_titles` in the policy) rather than in the picker.
       The free-text `staff_profiles.job_title` is kept in step and retires later.
-      **Evidence:** `supabase/tests/database/job_titles_catalogue.test.sql` (14),
+      **Evidence:** `backend/src/Mod/Staff.php` · `backend/migrations/004-people-places.sql` (`job_titles_name`, `job_titles_colour`) · suite `backend/tests/suites/080-staff.php` (job titles block) · Supabase era: `job_titles_catalogue.test.sql` (14),
       `src/lib/jobTitlePalette.test.ts` (14) · **NOT verified:** the backfill against real tenant
       data — production holds no organisations, so it has only run against synthetic rows
 - [x] CAP-113 🟢 One filter contract — `src/lib/filters.ts` and `useFilterState`. Declared
@@ -1151,7 +1150,7 @@ itself: a restore, a real charge, and a phone.
       contract is written for it to adopt, and adopting it is not done
 
 - [x] CAP-114 🟢 Setup is a report, not a wizard — `/app/setup` lists the ten things an
-      organisation needs, each with its status derived from a **count read back through RLS**
+      organisation needs, each with its status derived from a **count read back through the API with the caller's own access** (Supabase era: through RLS)
       rather than a stored progress flag, so it cannot drift from what it describes and it goes
       back to "to do" if somebody deletes their last location. Ordered as a dependency chain: a
       blocked step names what it is waiting for rather than being a dead end, and the required
@@ -1161,12 +1160,12 @@ itself: a restore, a real charge, and a phone.
       last three into "pending". The dashboard carries a banner only while the essentials are
       unfinished, because a board reporting zero of everything is otherwise indistinguishable
       from a quiet Tuesday. **Evidence:** `src/lib/setupProgress.test.ts` (19),
-      `supabase/tests/database/invite_send_is_recorded.test.sql` (8) · **NOT verified:**
+      `backend/src/Mod/Invites.php` (writes `last_sent_at` and `send_error` on every send; no suite assertion on the recorded outcome was found, `NOT VERIFIED`) · Supabase era: `invite_send_is_recorded.test.sql` (8) · **NOT verified:**
       resending a failed invitation end to end — that needs a real mail endpoint, and none is
       configured here
 
-- [x] CAP-115 🟢 Every swap read works again — `0123` added `applied_shift_id`, a second foreign
-      key from `shift_swaps` to `shifts`, and PostgREST then refused the un-hinted
+- [x] CAP-115 🟢 Every swap read works again — (Supabase era) `0123` added `applied_shift_id`, a second foreign
+      key from `shift_swaps` to `shifts`, and PostgREST (retired) then refused the un-hinted
       `shift:shifts(*)` embed outright with `PGRST201 · Could not embed because more than one
 relationship was found`. Every read of a swap has failed since that migration merged,
       which took the dashboard's whole "waiting on a decision" half with it — and it was
@@ -1175,7 +1174,8 @@ relationship was found`. Every read of a swap has failed since that migration me
       Found by the setup banner failing to appear in `e2e/owner-workforce.spec.ts`: the banner
       is set at the end of the dashboard's load, so anything throwing earlier removes it, which
       is what makes that assertion a guard on this rather than only on the banner.
-      **Evidence:** `e2e/owner-workforce.spec.ts` against a real session ·
+      Live: the swap reads are plain SQL in `Swaps::list` (`backend/src/Mod/Swaps.php`), so that embed failure cannot recur; `applied_shift_id` is a column of `shift_swaps` (`backend/migrations/006-time-and-requests.sql`).
+      **Evidence:** suite `backend/tests/suites/110-swaps-open-shifts.php` ("each swap carries its shift") · Supabase era: `e2e/owner-workforce.spec.ts` against a real session ·
       **NOT verified:** whether any production organisation was affected — production holds no
       swaps, and no organisations
 
@@ -1200,36 +1200,36 @@ relationship was found`. Every read of a swap has failed since that migration me
       closed GAP-078 for why
 - [x] CAP-117 🟢 The platform directories are counted by the database — `/admin/organisations`
       and `/admin/users` loaded whole tables and filtered, sorted, counted and exported the
-      arrays. PostgREST truncates at `db.max_rows` in silence, so past the cap the total tile
+      arrays. PostgREST (retired) truncated at `db.max_rows` in silence, so past the cap the total tile
       was the cap, a search for an older tenant reported "no match", and Export CSV wrote the
-      loaded page under the name of the whole set. `platform_organisation_directory` (`0130`)
-      and `platform_user_directory` (`0131`) filter, sort, page and count under one set of
-      predicates; the facet functions beside them supply the estate-wide tiles and the filter
-      option lists, so a plan or a role only older records hold is still offered. Both are
-      aggregate-only, and owner contact is returned only to an operational platform role.
-      **Evidence:** `supabase/tests/database/platform_directory.test.sql` (24) and
+      loaded page under the name of the whole set. In the Supabase era `platform_organisation_directory` (`0130`)
+      and `platform_user_directory` (`0131`) filtered, sorted, paged and counted under one set of
+      predicates. **Live it is done differently:** `GET /platform/orgs` and `GET /platform/users` filter by name, status and plan and page by `limit` and `offset`, and the screens walk every page
+      (`estate()` in `src/services/platformDirectoryService.ts`, 100 a page) before filtering, sorting and counting, so no total is silently capped. Owner contact and the directories are for the operational platform roles. A full walk per load is `NOT VERIFIED` at production volumes
+      **Evidence:** `backend/src/Mod/Console.php` (`orgDirectory`, `userDirectory`) · suite `backend/tests/suites/150-console.php` ("the directory filters by name, status and plan") · Supabase era: `platform_directory.test.sql` (24) and
       `platform_user_directory.test.sql` (14), against 60- and 5-record fixtures ·
       **NOT verified:** production volumes — production holds no tenant
 
-- [x] CAP-118 🟢 A multi-organisation account is findable — the user search matched
+- [ ] CAP-118 🟡 A multi-organisation account is findable — the user search matched
       `soleOrgName`, which the membership summary set only for an account belonging to
       exactly one organisation, so the accounts a support case is most often about could not
-      be found by either of their organisations' names. `platform_user_directory` searches
-      every membership and returns one row per account; organisation and role are AND-ed
-      within a single membership, so "owner at Beta" cannot match somebody who owns Alpha and
+      be found by either of their organisations' names. In the Supabase era `platform_user_directory` searched
+      every membership and returned one row per account; organisation and role were AND-ed
+      within a single membership, so "owner at Beta" could not match somebody who owns Alpha and
       merely belongs to Beta.
-      **Evidence:** `supabase/tests/database/platform_user_directory.test.sql`
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `GET /platform/users` (`Console::userDirectory`, `backend/src/Mod/Console.php`) matches only the email and the name and returns a count of active memberships; the screen's service sets `orgNames: []` and says per-organisation detail is on the person's page (`src/services/platformDirectoryService.ts`, lines 380 to 384), so an account cannot be found by an organisation's name or role. Becomes 🟢 when the directory searches memberships
+      **Evidence:** `backend/src/Mod/Console.php` · suite `backend/tests/suites/150-console.php` · Supabase era: `platform_user_directory.test.sql`
 
 - [x] CAP-119 🟢 A platform announcement is composed, scheduled and dispatched — the console
       disabled its composer with "There is no announcement table to write to" while listing
       rows from that table. `publish_platform_announcement` also stamped `sent_at` at insert,
       so every recipient counted as delivered before anything carried anything, and
-      `status = 'scheduled'` was read by no job at all. `0132` queues one dispatch per
+      `status = 'scheduled'` was read by no job at all. `0132` (Supabase era) queued one dispatch per
       recipient organisation through `notification_outbox` — the queue that has drained rota
-      publications since `0069` — leaves deliveries visibly queued until reconciliation
-      confirms them, publishes what is due on the minute tick, and adds the cancel path the
-      status value never had.
-      **Evidence:** `supabase/tests/database/announcement_delivery.test.sql` (15) ·
+      publications since `0069` — left deliveries visibly queued until reconciliation
+      confirmed them, published what was due on the minute tick, and added the cancel path the
+      status value never had. Live: `PlatformAnnouncements` queues the organisation's owners and managers through the same outbox, a delivery counts as delivered only when the outbox row really went, and `PlatformAnnouncements::cron` publishes what is due on the cron heartbeat (every five minutes on the live host, so "the minute tick" is five minutes).
+      **Evidence:** `backend/src/Mod/PlatformAnnouncements.php` · `backend/migrations/014-platform-comms.sql` (`platform_deliveries_once`) · suite `backend/tests/suites/200-platform-comms.php` · Supabase era: `announcement_delivery.test.sql` (15) ·
       **NOT verified:** real email or push arriving on a device. That needs a live
       environment and sends real messages to real people; see ❓-007
 
@@ -1240,7 +1240,8 @@ relationship was found`. Every read of a swap has failed since that migration me
       with a period filter and an id tie-break so paging cannot repeat a row. The export walks
       every matching event and writes its range, its filters and its truncation state into the
       file's own header.
-      **Evidence:** `src/services/platformService.ts` · driven in the preview harness ·
+      Live: `GET /platform/audit` filters by scope, actor, severity, search text and period (newest first, id as the tie-break) for platform owner, admin and support.
+      **Evidence:** `src/services/platformService.ts` · `backend/src/Mod/PlatformAudit.php` · suite `backend/tests/suites/200-platform-comms.php` · driven in the preview harness ·
       **NOT verified:** behaviour above the API cap against a real audit table
 
 - [x] CAP-121 🟢 Billing totals are summed per currency, over every row — Collected,
@@ -1248,9 +1249,9 @@ relationship was found`. Every read of a swap has failed since that migration me
       had loaded, printed as platform totals, and every one of them added `amount_pence`
       across currencies and printed the result with a pound sign. `platform_billing_summary`
       (`0134`) groups by currency and never converts; the console shows one currency at a
-      time and says which. `platform_invoice_directory` pages the list and resolves the
-      organisation name server-side.
-      **Evidence:** `supabase/tests/database/platform_billing_summary.test.sql` (11)
+      time and says which. `platform_invoice_directory` paged the list and resolved the
+      organisation name server-side (Supabase era; live: `PlatformBilling` keeps totals per currency and never converts).
+      **Evidence:** `backend/src/Mod/PlatformBilling.php` · suite `backend/tests/suites/150-console.php` · Supabase era: `platform_billing_summary.test.sql` (11)
 
 - [x] CAP-122 🟢 Bulk organisation import — the Import button was disabled with "Bulk import
       is not built" while `admin_create_organisation_with_invite` (`0051`) had been available
@@ -1259,7 +1260,8 @@ relationship was found`. Every read of a swap has failed since that migration me
       database and against the file, per-row outcome and retry of the refused rows only.
       Nothing is emailed: fifty invitations is not a fan-out to trigger from a preview screen,
       so every link is shown and offered as a CSV.
-      **Evidence:** `src/lib/organisationImport.test.ts` (15) · driven in the preview harness ·
+      Live: each row posts `POST /platform/orgs` (`Platform::createOrg`, `backend/src/Mod/Platform.php`), which is **limited to 20 creations an hour per administrator** (`platform-org-create`; the function of the Supabase era was exempt from the self-serve limit), so a long file is refused part-way and the refused rows are retried later.
+      **Evidence:** `src/lib/organisationImport.test.ts` (15) · `backend/src/Mod/Platform.php` · suite `backend/tests/suites/060-invite-only-orgs.php` · driven in the preview harness ·
       **NOT verified:** fifty real transactions. The harness answers the creation RPC from a
       fixture
 
@@ -1268,9 +1270,9 @@ relationship was found`. Every read of a swap has failed since that migration me
       else. `Promise.allSettled` now, with each source named, each panel reporting its own
       unavailability, and every figure rendering an em dash rather than a zero when unread —
       a zero is a claim, and "no open cases" is what somebody acts on by going home. Growth,
-      churn and the support queue moved to server aggregates (`0133`) rather than being
-      bucketed or counted from bounded lists.
-      **Evidence:** `supabase/tests/database/platform_overview.test.sql` (9) · the preview
+      churn and the support queue moved to server aggregates (`0133`, Supabase era) rather than being
+      bucketed or counted from bounded lists. Live: `GET /platform/summary` (`Console::summary`) returns counts by organisation status, plan and subscription status, users, active staff, monthly recurring pence, open support sessions, published rotas and shifts this month; no server aggregate for growth or churn was found (`NOT VERIFIED`).
+      **Evidence:** `backend/src/Mod/Console.php` (`summary`) · suite `backend/tests/suites/150-console.php` · Supabase era: `platform_overview.test.sql` (9) · the preview
       harness's `?fail=` mode, which is what makes the partial-failure states reviewable
 
 - [x] CAP-124 🟢 No console control is decorative — seven disabled buttons resolved by asking
@@ -1283,41 +1285,35 @@ relationship was found`. Every read of a swap has failed since that migration me
       **2026-10-11:** Subscriptions "Change plan" is removed too (it only opened the organisation, where no
       plan control exists; the customer changes plan in their Stripe Billing Portal), and Platform settings
       hides its General and Maintenance fields, which saved values nothing reads. Only the second-factor
-      switch, the retention facts and the administrator grants remain
+      switch, the retention facts and the administrator grants remained. Since the cutover the second-factor switch is rejected in the front end (two-step sign-in is a Clerk setting, CAP-049)
       **Evidence:** each page · driven in the preview harness
 
 - [ ] CAP-126 🟡 Website enquiries are received, not handed to a mail client — `/contact`
-      posts to the `public-enquiry` Edge Function, which checks the origin, validates every
+      posts to `POST /enquiries` (`backend/src/Mod/Enquiries.php`; Supabase era: the `public-enquiry` Edge Function), which checks the origin, validates every
       field, drops a filled honeypot silently, verifies Turnstile when its secret is set and
-      stores the row through `receive_enquiry` (`0155`), rate-limited per HMAC-hashed address
-      and in total. `anon` holds nothing on `enquiries`; operational platform roles read and
+      stores the row (Supabase era: `receive_enquiry`, `0155`), rate-limited per keyed-hash address
+      and in total. No browser reaches the table (Supabase era: `anon` held nothing on `enquiries`); operational platform roles read and
       move it on at `/admin/enquiries` (New, Replied, Demo booked, Closed). Kept 24 months by
       the nightly job. Every "Book a demo" link ticks the demo box. From the 2026 plan pack.
-      **Partial because:** the function has not been deployed, and its handler (origin
-      refusal, Turnstile, the RPC call, the notice email) has been `deno check`ed and read,
-      never executed. The notice to platform staff is a direct email to `ENQUIRY_NOTIFY_EMAIL`,
-      not an outbox row, because the outbox cannot address anybody outside an organisation
-      (`docs/NOTIFICATIONS-SPEC.md`); without that secret and platform SMTP, nobody is told
+      **Partial because:** no enquiry from the live site has been seen arriving, and the live configuration is `NOT VERIFIED` (private config `turnstile_secret`, `enquiry_notify_email` and the platform `smtp` account). The PHP handler is exercised by a suite (`backend/tests/suites/170-ops.php`); in the Supabase era the function was never deployed. The notice to platform staff is one email per new enquiry to `enquiry_notify_email`, sent by cron (`Enquiries::cron`) with no visitor text in it, not an outbox row, because the outbox cannot address anybody outside an organisation
+      (`docs/NOTIFICATIONS-SPEC.md`); without that address and a platform mail account, nobody is told
       and the inbox is the only place an enquiry shows. The `mailto:` form this replaces lost
       every enquiry from a device with no mail client configured.
-      **Evidence:** `supabase/tests/database/enquiries.test.sql` (16) ·
-      `supabase/functions/public-enquiry/validate.test.ts` (19) · the preview harness at
+      **Evidence:** `backend/src/Mod/Enquiries.php` · `backend/migrations/011-platform-ops.sql` (`enquiries`) · suite `backend/tests/suites/170-ops.php` · Supabase era: `enquiries.test.sql` (16),
+      `public-enquiry/validate.test.ts` (19) · the preview harness at
       `/admin-preview/enquiries`
 
 - [ ] CAP-127 🟡 Invoices in the app: Settings, Billing lists the owner's last 12 invoices
       (date, number, amount in the invoice's currency, status in words) with "View" and
       "Download PDF" links to the hosted page and PDF Stripe issued. `invoices` stores both
-      links (`0156`), each CHECKed to https on `invoice.stripe.com` or `pay.stripe.com`;
-      `stripe-webhook` writes them on `invoice.paid` and `invoice.payment_failed`, retrieving
-      the invoice when the event lacks them. RLS is unchanged: only the organisation's owners
-      (and platform billing roles) read a row. From the 2026 plan pack.
-      **Partial because:** the webhook change has not been deployed, so no stored invoice has
-      a link yet, and none has been written from a real Stripe event. Stripe expires these
-      links within 120 days; "Refresh links" now asks Stripe for working ones, and "Use for
-      Stripe invoices" sends the billing contact to the Stripe customer, both through the
-      owner-only `billing-account` function, which is not deployed yet (GAP-128, GAP-129).
-      **Evidence:** `supabase/tests/database/invoice_documents.test.sql` (14) ·
-      `supabase/functions/stripe-webhook/reconcile.test.ts` (invoice documents block) ·
+      links (`backend/migrations/008-billing.sql`; Supabase era `0156`), each CHECKed to https on `invoice.stripe.com` or `pay.stripe.com`;
+      `Mod/StripeWebhook.php` writes them on `invoice.paid` and `invoice.payment_failed` (and `invoice.finalized`), retrieving
+      the invoice when the event lacks them. Only the organisation's real owner (and platform billing roles) read a row: `Mod/Billing.php` checks it (Supabase era: RLS). From the 2026 plan pack.
+      **Partial because:** no stored invoice has been written from a real Stripe event, so none is known to carry a link (the live Stripe endpoint and mode are `NOT VERIFIED`, owner action O3). Stripe expires these
+      links within 120 days; "Refresh links" asks Stripe for working ones (`POST /orgs/{o}/billing/invoices/{i}/links`), and "Use for
+      Stripe invoices" sends the billing contact to the Stripe customer (`POST /orgs/{o}/billing/sync-contact`), both owner-only in `Mod/Billing.php` (Supabase era: the `billing-account` function, never deployed) (GAP-128, GAP-129).
+      **Evidence:** `backend/src/BillingRules.php` (`documentUrl`, `documentsToWrite`) · suite `backend/tests/suites/140-billing.php` · Supabase era: `invoice_documents.test.sql` (14),
+      `stripe-webhook/reconcile.test.ts` (invoice documents block) ·
       `src/components/settings/BillingInvoices.test.tsx` (5) · `src/lib/billingState.test.ts`
 
 ## §5 The recommendation we rejected
