@@ -264,11 +264,11 @@ Tables written: `clock_events`, `clock_event_corrections`, and `timesheets` (a c
 | GET | `/orgs/{o}/compliance/summary` | `summary` |  |
 | GET | `/document-files` | `serve` | public |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Document types, staff documents with review, the eligibility service the cover module consumes, and expiry reminders. An upload never counts until an owner or manager approves it; replacing a document adds a row and the earlier approved row becomes `superseded` when the new one is approved.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Every route refuses a platform support session (403: Super Admin has no role in compliance) and answers 403 `feature_off` while the `staff_documents` flag is off (the plain read `GET /orgs/{o}/documents` stays open while it is off, because it answered before the module existed). Reads of document types, `compliance/me` and `compliance/summary` are any member. Creating, updating or archiving a document type, `documents/queue` and `review` are owner or manager. Documents are visible only to the person and to owners and managers (delegates included). `POST /orgs/{o}/documents` adds the caller's own document (403 `You can only add your own documents` otherwise) and is the 14 MiB upload route; `submit` and `withdraw` are the person the record belongs to or an owner or manager (anyone else gets 404); withdrawing an approved document is refused (403: ask a manager to remove it). Four eyes: nobody reviews a document about themself, and a manager who uploaded a document for someone else cannot approve it (an owner can). `GET .../documents/{d}/link` issues a 60-second signed link. Limits: 60 an hour per person for types and for documents, 500 a day per organisation.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `document_types`, `documents`, `document_reminders`.
 
 ### Console (`backend/src/Mod/Console.php`)
 
@@ -368,11 +368,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | GET | `/me/data-requests` | `mine` |  |
 | POST | `/orgs/{o}/staff/{s}/erase` | `eraseStaff` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Data-subject requests and erasure. Platform staff keep a register of requests (one month to answer, extendable); a person can also ask for their own data. Closing an erasure request as completed queues the person's login for deletion from Clerk and then locally, and is refused while the person is the only owner of an organisation or still holds a platform role. Erasing a staff member's data keeps their rota history on an anonymous row (`Gdpr::ERASURE_CLEARED` and `Gdpr::ERASURE_RETAINED` list the columns).
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `GET /platform/gdpr`, `POST /platform/gdpr` and `.../status` are platform owner, admin or support; `.../extend` is platform owner or admin; a caller without the platform role gets 404. `GET /orgs/{o}/gdpr` and `POST /orgs/{o}/staff/{s}/erase` are the real owner (a delegate cannot), erase also writable. `POST /me/data-requests` is any signed-in person for `access`, `portability`, `rectification` or `erasure`; an `org_id` in the body must be one they belong to (403); at most 5 open requests and 10 an hour per person. `GET /me/data-requests` lists the caller's own requests.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `gdpr_requests`, `account_deletions`, `storage_deletions`, `staff_profiles`, `emergency_contacts`, `calendar_feed_tokens`, `documents`, `cover_absences`, `cover_applications`, `support_access_sessions` and `users` (erasure and the `Gdpr::cron` login deletion).
 
 ### Incidents (`backend/src/Mod/Incidents.php`)
 
@@ -384,11 +384,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/platform/incidents/{i}/updates` | `update` |  |
 | POST | `/platform/incidents/{i}/resolve` | `resolve` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The platform status record: declaring an incident, posting updates on its timeline and resolving it.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: All five routes are platform owner, admin or support; a caller without the role gets 404. Declaring is limited to 30 an hour per person.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `incidents`, `incident_updates`, `incident_counter`.
 
 ### Invites (`backend/src/Mod/Invites.php`)
 
@@ -452,11 +452,11 @@ Tables written: `leave_requests`, `overtime_requests`.
 | GET | `/platform/retention` | `retention` |  |
 | POST | `/platform/retention/dry-run` | `dryRun` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Deleting an organisation, finishing the file deletions an erasure or a removal owes, and retention. Deleting an organisation is immediate and cannot be undone; it needs the exact name typed, writes the audit row first, and the audit trail, support cases, data-subject requests and billing events survive detached from the tenant.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `deletion-preview` and `delete` under `/orgs/{o}` are the real owner of that organisation (`confirm_name` must equal the name exactly, else 422 `name_mismatch`; 10 an hour per person). The same two under `/platform/orgs/{o}` are platform owner or admin (404 otherwise). `GET /platform/retention` is any platform role; `POST /platform/retention/dry-run` is platform owner or admin.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `organisations` (and, by cascade or the `CLEAR_FIRST` clearing, every tenant table), `storage_deletions`; retention writes `retention_runs` and deletes by date from the tables listed in `docs/DATA-MODEL.md` section 6.
 
 ### Notifications (`backend/src/Mod/Notifications.php`)
 
@@ -521,11 +521,11 @@ Tables written: `organisations` (the `settings` JSON), `org_smtp_settings`.
 | GET | `/orgs/{o}/staff/{s}/photo-link` | `link` |  |
 | GET | `/files` | `serve` | public |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Staff photos in the private file store, shown through short-lived signed links so a picture is never at a guessable address. A photo is JPEG, PNG or WebP of at most 2 MiB and 4096 pixels a side, judged by its bytes and re-encoded to drop metadata.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Upload and delete are the person themself or an owner or manager, on a writable organisation; `photo-link` is any member of the organisation (colleagues appear on the rota); `GET /files` is public and authorised by the signed link. Upload is the 3 MiB route and is limited to 20 an hour per person; the body field is `data`, the picture base64 encoded.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `staff_profiles` (`photo_path`, `photo_url`), `storage_deletions`.
 
 ### Places (`backend/src/Mod/Places.php`)
 
