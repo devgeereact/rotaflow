@@ -907,21 +907,20 @@ itself: a restore, a real charge, and a phone.
 
 - [x] CAP-069 🟢 Deterministic rota review — pure functions over the org's own rows
       `src/lib/rotaInsights.ts`
-- [x] CAP-070 🟢 AI grounding for rota suggestions — every id validated against real rows before return
-      `supabase/functions/ai-rota-assistant/index.ts`
+- [x] CAP-070 🟢 AI grounding for rota suggestions — every id validated against real rows before return; staff are sent to the model as aliases (S1, S2) without names, and an alias is mapped back to a real staff id and nothing else
+      `backend/src/Mod/AiAssistant.php` (`POST /orgs/{o}/ai/rota`) · `backend/src/AiGrounding.php` · `backend/src/AiStaffAliases.php` · suite `backend/tests/suites/180-ai.php` · Supabase era: `supabase/functions/ai-rota-assistant`
 - [x] CAP-071 🟢 AI announcement drafting — a date in neither the rota period nor the manager's
       own prompt is refused, and a name matching nobody on the roster is warned about. **Numbers
       are deliberately not checked**: "we need three more people on Saturday" is a statement
       about the business, not a claim about the rota, and a grounding rule that refused it would
       block the sentences managers most want to write. The two things a model actually
       hallucinates here — a date and a person — are caught
-      `supabase/functions/ai-rota-assistant/grounding.ts` · BUG-058 closed #202 · 17 unit tests
-- [x] CAP-072 🟢 AI cost control — `max_tokens`, a prompt cap, a context-size cap, per-user AND per-org
-      hourly limits, and real token usage recorded on every audit row
-      `supabase/migrations/0089_org_rate_limit.sql` · HARDEN-004 closed #204 · 6 pgTAP assertions · deployed v20, 2026-08-30
-- [x] CAP-072a 🟢 AI resilience — a fallback model is configured and deployed: `google/gemini-3.5-flash-lite`,
-      a different provider, so an outage routes away rather than returning 502
-      `supabase/functions/ai-rota-assistant/index.ts` · HARDEN-010 closed #233 · deployed 2026-08-31
+      `backend/src/AiGrounding.php` (`extractDates`, `extractNameCandidates`) · `backend/src/Mod/AiAssistant.php` (`POST /orgs/{o}/ai/announcement`) · suite `backend/tests/suites/180-ai.php` · BUG-058 closed #202 · Supabase era: `grounding.ts`, 17 unit tests
+- [x] CAP-072 🟢 AI cost control — `max_tokens` (2000), a prompt cap (2000 characters), a context-size cap (about 30k tokens), per-user AND per-org
+      hourly limits (30 an hour per person, 200 an hour per organisation), and real token usage recorded on every audit row
+      `backend/src/Mod/AiAssistant.php` (`MAX_PROMPT_CHARS`, `limits->hit`, `Audit::log`) · `backend/src/RateLimiter.php` · suite `backend/tests/suites/180-ai.php` · HARDEN-004 closed #204 · Supabase era: `0089`, 6 pgTAP assertions, deployed v20, 2026-08-30
+- [x] CAP-072a 🟢 AI resilience — a fallback model can be configured (`openrouter_fallback_model`, optional), and OpenRouter routes to it inside the same request when the first model fails, so an outage routes away rather than returning 502. In the Supabase era the fallback was `google/gemini-3.5-flash-lite`, a different provider; which models the live host is configured with is `NOT VERIFIED` (private config)
+      `backend/src/Mod/AiAssistant.php` (`models`, `complete`) · HARDEN-010 closed #233 · Supabase era: deployed 2026-08-31
 - [ ] CAP-073 ⚫ Predictive insight — **deferred, 2026-08-31, for a reason that is about data
       rather than difficulty.** Coverage risk and absence patterns are predictions, and production
       holds zero clock events and zero organisations. A model or heuristic fitted to nothing is a
