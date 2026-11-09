@@ -369,8 +369,8 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 112   |
-| 🟡 Partial            | 10    |
+| 🟢 Complete           | 111   |
+| 🟡 Partial            | 11    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
@@ -665,66 +665,69 @@ itself: a restore, a real charge, and a phone.
 ### Organisation identity
 
 - [x] CAP-030 🟢 Per-org SMTP — org sends from its own mailbox; password never readable by the client
-      `supabase/migrations/0010_org_smtp_settings.sql`
-- [x] CAP-031 🟢 Platform sender — `rotaflow.space` carries MX ×3, SPF, DKIM and DMARC, and
-      since `0108` the messages are templated rather than `subject = title`. They are **plain
+      `backend/src/Mod/OrgSettings.php` (`saveSmtp`, `testSmtp`; the owner only) · `backend/src/Secret.php` · `backend/src/Mail.php` (`forOrg`) · `backend/migrations/007-communication.sql` (`org_smtp_settings`, password stored encrypted) · suite `backend/tests/suites/125-communication.php` ("the password is never returned", "the database holds it encrypted") · Supabase era: `0010`
+- [x] CAP-031 🟢 Platform sender — `rotaflow.space` carries MX ×3, SPF, DKIM and DMARC (DNS records at Cloudflare and the platform mail account: `NOT VERIFIED` from the repository), and
+      since the template work (Supabase era `0108`; now `notification_templates`) the messages are templated rather than `subject = title`. They are **plain
       text on purpose**: text renders everywhere, carries no tracking pixel, and cannot be the
       reason a rota notice lands in spam. HTML mail is not planned, and that is a decision
       rather than an omission
-      `supabase/migrations/0064_rotaflow_space_domain.sql` · `0108` · P2
+      `backend/src/Mail.php` (the platform `smtp` private config when the organisation has none) · `backend/src/Dispatcher.php` (the text body only: `Mailer::send` is given no HTML) · `backend/src/SmtpMailer.php` · P2 · Supabase era: `0064`, `0108`
 - [ ] CAP-032 ⚫ Per-tenant branding — **Phase 2, and `CLAUDE.md` has said so all along.** The
       register carried it as 🔴 "missing", which reads as an oversight; it is a scope decision. Not
       free either: a tenant logo is an upload path, a moderation question and a second place every
       email template has to be correct
       `src/types/database.types.ts` · GAP-016 · P3
 - [x] CAP-033 🟢 Email templates — `notification_templates` with a platform default per event
-      and an organisation's own wording overriding it, substituted in TWO passes so a value
-      containing `{{…}}` cannot rewrite the email around it. In the database rather than the
-      Edge Function on purpose: functions do not deploy on merge, so copy living in one is copy
-      nobody can fix. **Deployed 2026-08-31: `send-notification` v26**, verified after —
-      unauthenticated and wrong-secret both still 401, and `render_notification` returns a real
+      and an organisation's own wording overriding it, substituted in ONE pass (Supabase era: two) so a value
+      containing `{{…}}` is never expanded again and cannot rewrite the email around it. In the database rather than the
+      Edge Function on purpose (Supabase era): functions did not deploy on merge, so copy living in one was copy
+      nobody could fix. **Deployed 2026-08-31 (Supabase era): `send-notification` v26**, verified after —
+      unauthenticated and wrong-secret both still 401, and `render_notification` returned a real
       message ("Sunnyvale Care: Your leave request was approved"). What is still unproven is
       the same thing that is unproven for push: nobody has read one of these in a mailbox. That
       is a real-recipient test, tracked with ❓-004, not a build
-      `supabase/migrations/0108_notification_templates.sql` · 10 pgTAP assertions · deployed v26
+      `backend/src/Dispatcher.php` (`fill`) · `backend/src/Mod/Templates.php` (platform owners and admins write the wording; only known placeholders are accepted) · `backend/migrations/007-communication.sql` (`notification_templates`) · suite `backend/tests/suites/120-notifications.php` ("template filling is one pass") · Supabase era: `0108`, 10 pgTAP assertions, deployed v26
 - [x] CAP-034 🟢 Stripe Checkout, Billing Portal, signature-verified webhook
-      `supabase/functions/stripe-webhook/index.ts`
+      `backend/src/Mod/Billing.php` (`checkout`, `portal`) · `backend/src/Mod/StripeWebhook.php` (`POST /stripe/webhook`, signature checked by `BillingRules::verifySignature`) · `backend/src/StripeClient.php` · suite `backend/tests/suites/140-billing.php` · Supabase era: `supabase/functions/stripe-webhook`
 - [x] CAP-035 🟢 Dual test/live credentials coexisting
-      `supabase/migrations/0058_stripe_dual_mode.sql`
+      `backend/src/StripeClient.php` (`stripe.test_secret_key` and `stripe.secret_key` as separate private-config names, the mode selects one) · `backend/migrations/008-billing.sql` (`subscriptions.stripe_mode`, `billing_events_identity` on provider, mode and event) · suite `backend/tests/suites/140-billing.php` · Supabase era: `0058`
 - [ ] CAP-036 ❓-002 No real charge has ever completed end to end
       **Test:** run one Stripe test-mode charge, then one live charge, and confirm the `subscriptions` row.
       Was blocked on `STRIPE_TEST_SECRET_KEY`. **Corrected 2026-10-11:** the test keys were set on
       7 September 2026 and signature rejection and duplicate delivery were proven against Stripe
       (GAP-073). What is still missing is the capability itself: no completed charge, test or live,
       is recorded · **P0**
-- [x] CAP-037 🟢 `STRIPE_MODE` fails closed — unset is refused with a 503 naming the secret, never assumed live
-      `supabase/functions/_shared/stripe.ts` · BUG-052 closed #163 · deployed v11, 2026-08-29
+- [x] CAP-037 🟢 The Stripe mode fails closed — unset is refused with a 503 `billing_unavailable` (Supabase era: a 503 naming `STRIPE_MODE`), never assumed live; a key of the other mode is refused before any request
+      `backend/src/StripeClient.php` (`modeFrom`, `stripe.mode`: `stripe_mode_invalid`, `stripe_key_mode_mismatch`) · `backend/src/Mod/Billing.php` · suite `backend/tests/suites/140-billing.php` ("a live key while in test mode is a 503 and sends nothing") · BUG-052 closed #163 · Supabase era: `supabase/functions/_shared/stripe.ts` deployed v11, 2026-08-29. The live mode setting is `NOT VERIFIED` (server config)
 - [x] CAP-038 🟢 Feature entitlements — every name in `plans.features` is now read by something:
-      `ai_rota_assistant` in the Edge Function that spends the money, `advanced_reporting` on the
+      `ai_rota_assistant` in the module that spends the money (Supabase era: an Edge Function), `advanced_reporting` on the
       Reports screen, and `gps_clock_in` removed because a gate every plan passes is not a gate
-      `supabase/migrations/0090_entitlements_say_what_they_gate.sql` · BUG-064 closed #208 · 10 pgTAP assertions
-- [x] CAP-039 🟢 Plan-limit enforcement — seats and sites refused at the database, inclusive of the cap
-      `supabase/migrations/0070_enforce_plan_limits.sql` · GAP-008 closed #176 · 8 pgTAP assertions
-- [x] CAP-040 🟢 Price source of truth — the duplication is structural and stays: the pricing
-      page is unauthenticated and `plans` has an RLS policy requiring a session, so it cannot be
+      `backend/src/Billing.php` (`hasFeature`) · `backend/src/Mod/AiAssistant.php` (`ai_rota_assistant`) · `backend/migrations/008-billing.sql` (the seeded `plans.features`; `gps_clock_in` is part of every plan and is not an entitlement) · suite `backend/tests/suites/140-billing.php` · BUG-064 closed #208 · Supabase era: `0090`, 10 pgTAP assertions
+- [x] CAP-039 🟢 Plan-limit enforcement — seats and sites refused by the API inside the transaction that adds them (Supabase era: at the database), inclusive of the cap
+      `backend/src/Billing.php` (`requireSeat`, `requireLocationRoom`, which lock the organisation row; 402 `seat_limit`, `location_limit`) · suite `backend/tests/suites/140-billing.php` · GAP-008 closed #176 · Supabase era: `0070`, 8 pgTAP assertions
+- [ ] CAP-040 🟡 Price source of truth — the duplication is structural and stays: the pricing
+      page is unauthenticated and `GET /plans` needs a sign-in (`backend/src/Mod/Billing.php`; Supabase era: an RLS policy requiring a session), so it cannot be
       fetched at render time. What was missing was anything that noticed a disagreement, and
       `marketing.test.ts` now reads the seeded rows out of the migrations — including later
       `update ... set description` statements — and fails when the two drift. The capability is
-      "the page quotes what the customer is charged", and that is enforced
-      `src/lib/marketing.test.ts` · BUG-053 closed #219
+      "the page quotes what the customer is charged", and that was enforced.
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `src/lib/marketing.test.ts` still reads its seed from the retired Postgres tree
+      (its constants `SEED` and `MIGRATIONS`, lines 32 and 33, point into the retired folder), not from the live seed in `backend/migrations/008-billing.sql`, so nothing now
+      notices when the page and the plans the PHP stack charges disagree. The four prices agree today (£29, £129, £299 and £790 a month in `src/lib/marketing.ts`
+      and in the seed, compared by hand on 2026-11-09). Becomes 🟢 when that test reads the MariaDB seed (a code change, out of scope for the documentation phase)
+      `src/lib/marketing.test.ts` · `backend/migrations/008-billing.sql` · BUG-053 closed #219
 - [x] CAP-041 🟢 Subscription state — a failed payment now records when dunning opened and the date the
       subscription is at risk, and the billing page says so instead of showing a bare `past_due` badge
-      `supabase/migrations/0098_subscription_grace_window.sql` · 6 pgTAP assertions
+      `backend/src/Billing.php` (`setStatus`: the grace window starts on the first move to `past_due` and a further failure never extends it) · `backend/src/BillingRules.php` (`invoiceFailure`) · `backend/migrations/008-billing.sql` (`subscriptions.grace_until`, 14 days) · suite `backend/tests/suites/140-billing.php` · Supabase era: `0098`, 6 pgTAP assertions
 - [ ] CAP-125 🟡 Trial, then a plan or read-only (decision D2): every new organisation trials
       for 30 days on Professional limits, server-set; without a trial, a paid or trialing
       subscription or a grace window the organisation is read-only: rotas, shifts and invites
-      refuse authenticated writes with `BILL1`, plan features stop, and clock-in, leave, reads
+      refuse authenticated writes with 402 `billing_read_only` (Supabase era: `BILL1`), plan features stop, and clock-in, leave, reads
       and exports keep working. Checkout carries the trial into Stripe (`trial_end`) and the
       webhook queues "Your trial ends in 3 days" and "Payment failed". The no-card trial's
-      owner is reminded three days before it ends (`0157`, GAP-127). Partial because no Stripe
+      owner is reminded three days before it ends (`Notifications::trialEndingAlerts`; Supabase era `0157`, GAP-127). Partial because no Stripe
       trial has been run in test mode
-      `supabase/migrations/0154_a_trial_then_a_plan.sql` · GAP-126 closed · 17 pgTAP assertions ·
-      `supabase/tests/database/trial_end_reminder.test.sql` (8)
+      `backend/src/Billing.php` (`state`, `requireNotReadOnly`) · `backend/src/BillingRules.php` (`checkoutTrialEnd`, `trialEndingNotice`) · `backend/src/Mod/Orgs.php` (a new organisation gets `trial_ends_at` 30 days out) · `backend/src/Mod/Notifications.php` · suites `backend/tests/suites/030-identity.php`, `backend/tests/suites/140-billing.php` · GAP-126 closed · Supabase era: `0154`, 17 pgTAP assertions, `trial_end_reminder.test.sql` (8)
 
 ### Security
 
