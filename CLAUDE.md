@@ -108,7 +108,8 @@ tracked as GAP-114 (`lib/reportsCatalogue.ts`).
   and served as files. The API is PHP under `backend/`, run by the cPanel host out of
   a private app root outside the web root, with only `backend/public/api` inside the
   web root (`release.json`, `parts`). It is released with `pnpm release`
-  (`scripts/release.mjs`; a dry run unless `--go`) and checked with `pnpm verify`. The
+  (`scripts/release.mjs`; a dry run unless `--go`); `pnpm verify` runs the checks, the
+  build and the upload guard without contacting the host. The
   live root `.htaccess` is composed by `pnpm htaccess` (`scripts/htaccess.mjs`), never
   released with the build. `docs/DEPLOYMENT.md` holds the procedure.
 - **TypeScript strict.** No implicit `any`; explicit return types on functions and
