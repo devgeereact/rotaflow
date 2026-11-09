@@ -1,5 +1,17 @@
 # RotaFlow — SaaS Capability Register
 
+> **Which stack this register describes (9 November 2026).** It was written in the Supabase era:
+> the product ran on Supabase (retired). On 1 November 2026 it moved to a PHP 8.4 JSON API
+> (`backend/src/Api.php`, modules in `backend/src/Mod`), MariaDB (`backend/migrations`) and
+> Clerk sign-in. A capability row whose evidence names a retired Supabase object, a retired
+> row-level security policy, a retired Edge Function, a retired pgTAP test, retired `pg_cron`
+> or `pg_net` jobs, retired Inngest or retired ImageKit describes the Supabase era; the live
+> equivalent is the PHP module or migration. The owners are `docs/API-SPEC.md` for routes,
+> `docs/DATA-MODEL.md` for tables and `docs/RLS-TO-PHP.md` for the retired policies. Statuses
+> are set here, and only the code proves them: this clean-up changes a status only where the
+> row says so. State of the clean-up: this clean-up is in progress (Phase 3): evidence cells are
+> being re-pointed group by group, and a row that still names retired Supabase has not been reached yet.
+
 **The single plan of record.** Five planning documents were merged into this file on
 2026-08-29: the root project-memory file, the 13 August transformation plan, its 20 August
 v2, the go-live decisions list, and the six shipped-feature plans and specs that lived
@@ -32,20 +44,24 @@ Each needs the owner's account, money, signature or a production change.
 
 | #   | Action                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Unblocks                                                                        |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| O1  | Mint a new `SUPABASE_ACCESS_TOKEN` GitHub secret, re-run `auth-config.yml`, then repair `plan-drift-audit.yml` (red since 14 September)                                                                                                                                                                                                                                                                                                                                                                                                                                              | GAP-036                                                                         |
-| O2  | Switch on GitHub email for failed scheduled runs, add Sentry alert rules that email, and add a free external uptime check on `/` and the REST endpoint                                                                                                                                                                                                                                                                                                                                                                                                                               | `docs/DEPLOYMENT.md#alert-owners`, GAP-036                                      |
-| O3  | Merge #338 (it applies `0154` to `0156` to production on merge), then the work-queue PRs or their integration branch (they apply `0157` to `0162`), then deploy by name: `public-enquiry`, `stripe-webhook`, `create-checkout-session`, `billing-account`, `calendar-feed` (with `--no-verify-jwt`), `purge-storage`, `delete-account` and `send-invite`. Deploy `purge-storage` and `delete-account` before a site build carrying the new Privacy Notice goes live. Then, in the Stripe dashboard for both modes, add `invoice.finalized` to the `stripe-webhook` endpoint's events | CAP-126, CAP-127, BUG-107, BUG-108, GAP-128, GAP-129, GAP-052, GAP-056, GAP-057 |
-| O4  | **Superseded 2026-11-08** (the database is MariaDB since the cutover): install the backup command `backend/bin/backup.php` on the server (`docs/DEPLOYMENT.md`, "Database backups"), keep an encrypted off-site copy, and rehearse a restore with `--restore-check`                                                                                                                                                                                                                                                                                                                                                                                                               | GAP-001, CAP-095, CAP-107                                                       |
-| O5  | Put one Stripe test-mode charge through Checkout, then authorise one supervised live charge                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | CAP-036                                                                         |
+| O1  | **Superseded 2026-11-09:** no Supabase token is needed any more. Was: mint a new `SUPABASE_ACCESS_TOKEN` GitHub secret, re-run `auth-config.yml`, then repair `plan-drift-audit.yml` (red since 14 September). Replaced by: repoint or retire `.github/workflows/auth-config.yml` (it still reads the Supabase Auth configuration; its latest scheduled run, 12 October 2026, failed) and repair `.github/workflows/plan-drift-audit.yml` (latest scheduled run listed by `gh run list` on 2026-11-09: failure, 12 October 2026; its header says it needs the `OPENROUTER_API_KEY` repository secret, which is an owner action; whether the secret is set is `NOT VERIFIED`). The workflow edits are Phase 5 code work (`docs/DEPLOYMENT.md`, Alert owners) | GAP-036 |
+| O2  | Switch on GitHub email for failed scheduled runs, add Sentry alert rules that email, and add a free external uptime check on `/` and on `/api/health` (answered by `backend/public/api/index.php`; the release smoke check in `release.json` expects `"ok":true` from it). All three are third-party dashboards: `NOT VERIFIED` that any is on. Nothing in the repository alerts anyone when `backend/bin/cron.php` or `backend/bin/backup.php` fails | `docs/DEPLOYMENT.md#alert-owners`, GAP-036 |
+| O3  | **Superseded 2026-11-09 as a deploy list:** no Edge Function is deployed any more. The PHP API and the build ship with `pnpm release` (`scripts/release.mjs`, `release.json`), and a database migration is applied by `php backend/bin/migrate.php` on the host (the release uploads the `.sql` files and does not run them, `docs/DEPLOYMENT.md`). Was: merge #338 (it applied `0154` to `0156` to production on merge), the work-queue PRs (`0157` to `0162`), then deploy `public-enquiry`, `stripe-webhook`, `create-checkout-session`, `billing-account`, `calendar-feed`, `purge-storage`, `delete-account` and `send-invite` by name. The PHP equivalents are `Mod/Enquiries.php`, `Mod/StripeWebhook.php`, `Mod/Billing.php`, `Mod/CalendarFeed.php`, `Lifecycle::cron`, `Gdpr::cron` and `Mod/Invites.php` under `backend/src`. **Still an owner action:** in the Stripe dashboard, for both modes, point one endpoint at `POST /stripe/webhook` on the live origin (`backend/src/Mod/StripeWebhook.php`) and subscribe it to the events that handler processes: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.trial_will_end`, `invoice.finalized`, `invoice.paid` and `invoice.payment_failed`. The dashboard state is `NOT VERIFIED` | CAP-126, CAP-127, BUG-107, BUG-108, GAP-128, GAP-129, GAP-052, GAP-056, GAP-057 |
+| O4  | **Superseded 2026-11-08** (the database is MariaDB since the cutover): install the backup command `backend/bin/backup.php` on the server (`docs/DEPLOYMENT.md`, "Database backups"), keep an encrypted off-site copy, and rehearse a restore with `--restore-check`. **Installed and proven 2026-11-08, recorded in `docs/AUDIT.md`** (section "2026-11-08: Phase 1, live safety and ground truth") and `docs/DEPLOYMENT.md`: the cron line `17 */6 * * *` (the six-hour cadence is the suggested schedule in that section; `backend/bin/backup.php` states none), the first live backup, and a restore into the scratch database, which passed with every count inside the recorded range. The host state today was not re-checked. **Still open, and never to be read as done:** the encrypted off-site copy, an alert on a failed run and a scheduled monthly restore drill (O18) | GAP-001, CAP-095, CAP-107 |
+| O5  | Put one Stripe test-mode charge through Checkout (`POST /orgs/{o}/billing/checkout`, `backend/src/Mod/Billing.php`), then authorise one supervised live charge. Which mode the live server runs in is a private-config setting (`stripe.mode`): `NOT VERIFIED` | CAP-036 |
 | O6  | Decide sole trader or limited company (D7), have Terms, Privacy and a DPA reviewed, and pay the ICO fee                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | GAP-059                                                                         |
 | O7  | Run a UKIPO search in classes 9 and 42 (D1), then claim one suffixed handle everywhere (D11)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | §5a naming paragraph                                                            |
 | O8  | Run both loops on a real iPhone and a real Android phone: a push received, a clock-in queued offline and sent                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | CAP-023a, CAP-106                                                               |
-| O9  | Use a real authenticator once, then switch on `require_mfa`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | CAP-049                                                                         |
-| O10 | Turn on Turnstile and leaked-password protection in Supabase Auth (the second needs the paid plan in O4)                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | GAP-033, GAP-034                                                                |
+| O9  | **Superseded 2026-11-09:** the `require_mfa` switch has no backend (`git grep -n require_mfa -- backend` finds only `backend/src/DataMove/Map.php`, which records it as "two-step sign-in is set in Clerk"; the Platform settings switch is rejected in the front end, `src/services/platformSettingsService.ts`). Was: use a real authenticator once, then switch on `require_mfa`. Replaced by: require two-step verification in the Clerk dashboard for platform administrators and organisation owners, and sign in once with a real second factor. A Clerk dashboard setting: `NOT VERIFIED` | CAP-049 |
+| O10 | **Superseded 2026-11-09:** Supabase Auth is retired; sign-in is Clerk (`backend/src/Jwt.php`). Was: turn on Turnstile and leaked-password protection in Supabase Auth (the second needed the paid plan in O4). Replaced by the Clerk equivalents: bot protection on sign-up and a breached-password check where a password exists. Both are Clerk dashboard settings and `NOT VERIFIED`. The Turnstile check on the public enquiry form is separate and lives in `backend/src/Mod/Enquiries.php` (private config `turnstile_secret`; whether it is set is `NOT VERIFIED`) | GAP-033, GAP-034 |
 | O11 | ~~Export existing `medical_notes` values for the owner, so the column can be purged (D5)~~ Done 2026-10-22: a count-only read of production, approved by the owner, found 0 rows, so there was nothing to export                                                                                                                                                                                                                                                                                                                                                                     | GAP-058                                                                         |
-| O12 | Close or rebase the bot branch `plan-drift-audit/weekly` (do not merge it as written: it rewrites the maturity line), and decide Dependabot #342 (vitest 5 fails CI)                                                                                                                                                                                                                                                                                                                                                                                                                 | GAP-037                                                                         |
-| O13 | Send one invitation from Team, Invite to a real inbox you can read, and confirm it arrives with a working link                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | BUG-015, GAP-115                                                                |
-| O14 | GitHub Actions is disabled for the owner's account: on 2026-10-22 a manual `workflow_dispatch` of CI was refused with HTTP 422 "Actions has been disabled for this user". The repository's workflows are all `active`, so this is an account-level block (billing, a spending limit or a GitHub flag), not a repository setting. Check the account's billing and Actions settings, contact GitHub Support if neither explains it, then re-run CI on #355 and let `backup.yml` succeed again before merging. No PR run since 12 October, no scheduled run since 18 October            | gates 27 and 28 in `qa/LAUNCH-CHECKLIST.md`                                     |
+| O12 | **Superseded 2026-11-09:** the bot branch `plan-drift-audit/weekly` is gone (`git ls-remote --heads origin "plan-drift-audit/*"` prints nothing) and Dependabot #342 (vitest 5) is closed (`gh pr view 342`). Was: close or rebase the branch (do not merge it as written: it rewrites the maturity line) and decide #342. A successful weekly run of `.github/workflows/plan-drift-audit.yml` would open that branch again, so review its pull request when it does | GAP-037 |
+| O13 | Send one invitation from Team, Invite to a real inbox you can read, and confirm it arrives with a working link. It goes out over SMTP: the organisation's own account if one is saved, else the platform `smtp` private config (`backend/src/Mail.php`, `backend/src/SmtpMailer.php`, `backend/src/Mod/Invites.php`). Whether the platform account is configured is `NOT VERIFIED` | BUG-015, GAP-115 |
+| O14 | GitHub Actions is disabled for the owner's account: on 2026-10-22 a manual `workflow_dispatch` of CI was refused with HTTP 422 "Actions has been disabled for this user". The repository's workflows are all `active`, so this is an account-level block (billing, a spending limit or a GitHub flag), not a repository setting. Check the account's billing and Actions settings, contact GitHub Support if neither explains it, then re-run CI on #355 and let `backup.yml` succeed again before merging. No PR run since 12 October, no scheduled run since 18 October. **State on 2026-11-09: `NOT VERIFIED`.** `gh run list` (read only) shows scheduled `backup` runs starting daily up to 2026-11-09, all failures (that workflow dumps the retired Supabase database), and the newest `CI` run listed is from 12 October 2026; a manual dispatch was not retried | gates 27 and 28 in `qa/LAUNCH-CHECKLIST.md` |
+| O15 | Remove the `x-turbo-charged-by: LiteSpeed` response header. The composed root `.htaccess` was pushed on 2026-11-08 with `pnpm htaccess push --go --accept-extra` (six smoke checks passed, recorded in `docs/AUDIT.md`), but LiteSpeed adds that header after `.htaccess`, so `Header unset` cannot remove it; it needs a Cloudflare response-header rule or a LiteSpeed setting (`docs/DEPLOYMENT.md`, "Composing the live `.htaccess`"). The live header today is `NOT VERIFIED` | `docs/SECURITY.md`, open items |
+| O16 | Replace the `CF-RAY` origin lock with Cloudflare Authenticated Origin Pulls (or a Cloudflare IP-range lock). The lock block is `scripts/htaccess/origin-lock.conf`; the `CF-RAY` header can be sent by anyone who reaches the origin address directly. A Cloudflare setting: `NOT VERIFIED` | `docs/SECURITY.md`, open items |
+| O17 | In the Clerk dashboard, add `email_verified` to the session token, then require it in `Users::resolve` (`backend/src/Users.php` refuses a token only when the claim is present and not true). The second half is code work. A Clerk dashboard setting: `NOT VERIFIED` | `docs/SECURITY.md`, open items |
+| O18 | Copy the MariaDB dumps off the server, encrypted, with a key the owner holds; alert on a failed backup run; schedule the monthly `--restore-check` drill. Installed and proven on 2026-11-08 is recorded in `docs/AUDIT.md`; these three are the parts that are not done. `backend/bin/backup.php` dumps the database only: stored files and private configuration are not in it (`docs/SECURITY.md`, section 1) | GAP-001, CAP-095, CAP-107 |
 
 ### 2. Next up, for an agent
 
@@ -55,23 +71,38 @@ holds its status and evidence.
 1. ~~**Offline and shared-device proof.**~~ Done 2026-10-21:
    `e2e/offline-clock-in.spec.ts` and `e2e/pwa-offline.spec.ts`, both in CI, and the
    cache-teardown spec now runs in CI too. GAP-049, GAP-050, GAP-054 and GAP-086
-   closed; GAP-072 was already closed. Real phones remain O8.
-2. **Private document and photo storage** (D4): documents built in `0159`, photos in
-   `0162` (a private `staff-photos` bucket any colleague may see, erasure removes
-   it), both removed by `purge-storage`. What is left is deploying the function
-   (O3) and one upload, open and erasure on a real project. GAP-056, GAP-084.
+   closed; GAP-072 was already closed. Real phones remain O8. (Supabase era:
+   `e2e/offline-clock-in.spec.ts` needs a local Supabase stack (legacy), so it cannot prove
+   the queue against the PHP API; `NOT VERIFIED`, see `docs/ARCHITECTURE.md`, Offline and PWA.)
+2. **Private document and photo storage** (D4): built in the Supabase era as `0159`
+   (documents) and `0162` (photos), removed by the `purge-storage` function.
+   **Superseded 2026-11-09:** the live implementation is `backend/src/FileStore.php` (plain
+   files under the private root, outside every web root, two buckets `staff-documents` and
+   `staff-photos`), documents in `backend/src/Mod/Compliance.php`, photos in
+   `backend/src/Mod/Photos.php`, and removal by `Lifecycle::cron`
+   (`backend/src/Mod/Lifecycle.php`), which drains `storage_deletions`. Nothing is left to
+   deploy. What is left is one upload, open and erasure on the live host: `NOT VERIFIED`.
+   GAP-056, GAP-084.
 3. ~~**Purge `medical_notes`**~~ Done: `0164` drops the column (2026-10-22).
    GAP-058.
-4. **Trial reminder email**: built in `0157`, live once its migration merges. GAP-127.
-5. **Invoice follow-ups**: built in `billing-account` and, for unpaid invoices, in
-   `stripe-webhook` (`invoice.finalized`). Live once both are deployed and the
-   Stripe endpoint is subscribed to `invoice.finalized` (O3). GAP-128, GAP-129.
-6. **Calendar feed**: built in `0158` (idle expiry, a rate limit, Reset link on My rota). Remaining step: deploy `calendar-feed` by hand once the branch merges. GAP-052.
+4. **Trial reminder email**: built in the Supabase era as `0157`. Live implementation:
+   `Notifications::cron` (`backend/src/Mod/Notifications.php`, `trialEndingAlerts`) tells an
+   organisation's owners once when its own trial ends within three days and no plan is chosen.
+   It runs from `backend/bin/cron.php`, which the live host runs every five minutes
+   (`docs/AUDIT.md`, 2026-11-08). A real delivery to an inbox is `NOT VERIFIED`. GAP-127.
+5. **Invoice follow-ups**: built in the Supabase era in `billing-account` and
+   `stripe-webhook`. Live implementation: `backend/src/Mod/Billing.php` (invoice links,
+   `POST /orgs/{o}/billing/invoices/{i}/links`) and `backend/src/Mod/StripeWebhook.php`
+   (`invoice.finalized`, `invoice.paid`, `invoice.payment_failed`). Live once the Stripe
+   endpoint is subscribed to those events (O3). GAP-128, GAP-129.
+6. **Calendar feed**: built in the Supabase era as `0158` (idle expiry, a rate limit, Reset link on My rota). **Superseded 2026-11-09:** the live implementation is `backend/src/Mod/CalendarFeed.php` (public `GET /ics`, an unused feed switches itself off after 90 days, `IDLE_DAYS`; public routes are limited per address in `backend/src/Api.php`). No function is left to deploy. GAP-052.
 7. **Account deletion behind an erasure request.** Built: the "Your data" page files
-   requests (`0160`), and closing an erasure case as completed queues the login for
-   the new `delete-account` function (`0162`), which removes it through the Auth
-   Admin API. What is left is deploying `delete-account` (O3) and one erasure on a
-   real project. GAP-057.
+   requests, and closing an erasure case as completed queues the login for deletion.
+   **Superseded 2026-11-09:** in the Supabase era that was `0160`, `0162` and the
+   `delete-account` function; the live implementation is `backend/src/Mod/Gdpr.php`
+   (`Gdpr::cron` drains `account_deletions` and deletes the Clerk user with the
+   `clerk_secret_key` private config). Nothing is left to deploy. What is left is one erasure
+   on the live host: `NOT VERIFIED`. GAP-057.
 8. **Recovered defects: done on the agent side.** Each re-tested verdict now names
    its test; the real-inbox invitation is O13. BUG-012 and BUG-024 are fixed in page
    callbacks with no unit seam and are left to the authenticated e2e run. GAP-115.
@@ -79,12 +110,12 @@ holds its status and evidence.
    matched or matched by a recorded decision; the per-screen results are in
    `docs/UX-SPEC.md#design-match-loop`. Reopen a screen only for a regression.
 10. **Performance beyond what was measured**: the 20-site, 250-staff set was measured
-    on 21 October 2026 and its hotspot fixed (`0161`). Left: a 500-staff tenant, reads
+    on 21 October 2026 and its hotspot fixed (Supabase era, `0161`). Left: a 500-staff tenant, reads
     as a staff member, and concurrent load. HARDEN-007.
 11. **Dependency majors still held**: eslint 10, TypeScript 7 and Sentry 11, each
     waiting on the condition in GAP-037 (`@vitejs/plugin-react` 6 taken 2026-10-22). Sentry 11 is the one
     with work in it: verify scrubbing against a probe DSN.
-12. ~~**Re-run the release gate.**~~ Done 21 October 2026 on the integration branch
+12. ~~**Re-run the release gate.**~~ (Supabase era.) Done 21 October 2026 on the integration branch
     (all eleven work-queue PRs merged together): every local gate passes, and the
     decision is NOT READY FOR PRODUCTION on owner actions alone (O3, O4, O5, O8,
     O14). Re-run it against `main` after the merge and the deploys.
@@ -96,8 +127,10 @@ holds its status and evidence.
     neither a file nor a route with a real 404 and the prerendered not-found page.
     The deploy carries `.htaccess`, so it must be composed with the origin-lock block
     (`docs/DEPLOYMENT.md#composing-the-live-htaccess`) and then checked with the
-    table there. JSON-LD and the not-found screen were done earlier. No row; this
-    line is its home.
+    table there. JSON-LD and the not-found screen were done earlier. Since then the
+    release path changed: `pnpm release` rebuilds `dist` and smoke-checks `/no-such-page`
+    for a 404 (`release.json`). Whether the prerendered pages are live is `NOT VERIFIED`.
+    No row; this line is its home.
 14. **Locale-aware formatting**: `src/lib/format.ts` exists (2026-10-21) and the
     account screens use it; the remaining inline `toLocaleString('en-GB')` calls
     move to it as each screen is touched. No row; this line is its home.
@@ -115,9 +148,15 @@ card. Each is a ❓ row or a deploy step, not engineering:
 
 - A push seen arriving on a phone (CAP-023a) and offline use on a phone (CAP-106).
 - A completed charge (CAP-036).
-- A restore into a real Supabase project (CAP-107).
-- Merged Edge Function changes that nobody has deployed: merging never deploys them
-  (see §2, "What is actually deployed").
+- A restore of the live MariaDB database from a dump into a scratch database: the
+  restore check passed on 2026-11-08 (recorded in `docs/AUDIT.md`, CAP-107). What has not
+  been done is a restore that replaces the live database, and the stored files are not in the
+  dump.
+- A deploy of the PHP API: `pnpm release` uploads it (`release.json`), but a merged
+  migration is applied only by `php backend/bin/migrate.php` on the host, so whether one is
+  pending is `NOT VERIFIED` (`docs/DEPLOYMENT.md`). The former wording here, about Edge
+  Function changes nobody had deployed, described the Supabase era (`supabase/functions`,
+  retired).
 
 ### 4. Evidence archive
 
@@ -144,7 +183,8 @@ in the repository until now.
 - **CI tests the branch head, not the merge result.** Two green pull requests can turn
   `main` red together. Re-check `origin/main` itself before building to deploy.
 - **`npm install` passing proves nothing about `npm ci`**, because it rewrites the
-  lockfile. Verify a dependency bump with a clean `npm ci`.
+  lockfile. Verify a dependency bump with a clean install from the lockfile (the project now
+  uses `pnpm install --frozen-lockfile`).
 - **The checkout is shared by several agents.** Do multi-step work in its own
   worktree, and copy `.env` into a fresh worktree or the dev server serves a page that
   never mounts.
@@ -157,9 +197,10 @@ in the repository until now.
 - **Stacked pull requests are reviewed by CodeRabbit only once they target `main`.**
 - **A hosted runner can fail to start** and fail the job after 15 minutes without
   running a step. A rerun is refused while the old run is still active.
-- **Local Supabase needs the worktree under the home directory**, because the
-  container runtime shares only that; elsewhere `supabase test db` can report no tests
-  and still exit 0.
+- **Local Supabase needs the worktree under the home directory** (Supabase era; the
+  mechanism no longer exists on the live stack), because the container runtime shares only
+  that; elsewhere the legacy `supabase test db` can report no tests and still exit 0. The PHP
+  suites use a throwaway local MariaDB instead (`scripts/test-db.sh`).
 - **A 200 from the live site does not prove a file exists**: the SPA fallback answers
   every path. Verify by content or on the server.
 
@@ -210,7 +251,7 @@ phone Requests switcher and announcement read receipts (CAP-027).
 | "What changed" summary on publish      | Added, moved and removed shifts shown before Publish and in the staff notification              | P1       |
 | My next shifts available offline       | A read-only cache of the person's own next 14 days, with its "last updated" time                | P2       |
 | Missed clock-in follow-up list         | A "Didn't clock in" filter on Attendance, from the existing state machine                       | P1       |
-| Change my email                        | A verified change through Supabase Auth (GAP-085)                                               | P1       |
+| Change my email                        | A verified change through Clerk (identity is the Clerk user id, and the email claim links a row: `backend/src/Users.php`; GAP-085) | P1       |
 | Annual billing                         | Annual Stripe prices and a toggle (D3)                                                          | P2       |
 | What's new panel, in-app help articles | From the console content source once it exists (D9)                                             | P2       |
 | Status notice on the website           | One line from `site_settings` or a public incident flag                                         | P2       |
