@@ -731,69 +731,40 @@ itself: a restore, a real charge, and a phone.
 
 ### Security
 
-- [x] CAP-042 🟢 Tenant isolation — all 52 `public` tables have RLS enabled
-      `supabase/migrations/0002_rotaflow.sql`
-- [x] CAP-043 🟢 Security predicates — all six `SECURITY DEFINER` with `search_path` pinned
-      `supabase/migrations/0028_support_access_gate.sql`
-- [x] CAP-044 🟢 Support access — a time-boxed session is the actual RLS gate, not a log of intent.
+- [x] CAP-042 🟢 Tenant isolation — every organisation-scoped route starts with `Scope::membership` and every query carries the validated `org_id`; there is no row-level security in MariaDB (Supabase era: all 52 `public` tables had RLS enabled). Six single-column links between tenant tables are guarded by PHP alone (`docs/DATA-MODEL.md`, section 4)
+      `backend/src/Scope.php` · `backend/migrations/001-foundation.sql` (composite `org_id`, `id` keys) · suite `backend/tests/suites/099-access-sweep.php` · `docs/RLS-TO-PHP.md` · Supabase era: `0002`
+- [x] CAP-043 🟢 Security predicates — the access checks are PHP functions, not database functions: `Scope::membership`, `Scope::require`, `Scope::requireReal`, `Scope::requireWritable` and `Scope::platformRole` (Supabase era: six `SECURITY DEFINER` functions with `search_path` pinned)
+      `backend/src/Scope.php` · suites `backend/tests/suites/030-identity.php`, `backend/tests/suites/040-members.php` · Supabase era: `0028`
+- [x] CAP-044 🟢 Support access — a time-boxed session is the actual gate (`Scope::supportMembership`; Supabase era: the RLS gate), not a log of intent.
       **What it is not (recorded 2026-10-11):** customer approval per session. The tenant's consent is
       `organisations.support_access_allowed`, a standing flag, and the platform administrator opens the
       time-boxed session themselves. **Since `0153` (plan decision D8) a new organisation starts with it
-      off**; organisations created earlier kept their value (the old default was on, `0017`). Not built
+      off** (live: `organisations.support_access_allowed` defaults to 0 in `backend/migrations/002-identity.sql`); organisations created earlier kept their value (the old default was on, `0017`). Not built
       yet: the switch turning itself off when a session ends
-      `supabase/migrations/0028_support_access_gate.sql` · `supabase/migrations/0153_support_access_is_asked_for.sql` ·
-      `supabase/tests/database/support_access_is_asked_for.test.sql` (5 pgTAP assertions, NOT TESTED locally)
-- [x] CAP-045 🟢 Cross-tenant isolation — the org A/org B matrix runs in CI: 20 assertions across every
-      tenant table, both write directions, and the org-scoped RPCs, as `authenticated` with real JWT claims
-      `supabase/tests/database/cross_tenant_isolation.test.sql` · ❓-003 answered 2026-08-31 #232
+      `backend/src/Scope.php` (`supportMembership`: consent flag, unexpired and unrevoked session, a manager's reach and never an owner's; a `read` session refuses writes) · `backend/src/Mod/Console.php` (`requestSession`, `consent`, `orgRevoke`, `platformRevoke`) · `backend/migrations/009-platform-access.sql` (`support_access_sessions`, reason of at least 15 characters) · suites `backend/tests/suites/150-console.php`, `backend/tests/suites/160-support.php` · Supabase era: `0028`, `0153`, `support_access_is_asked_for.test.sql` (5 pgTAP assertions, NOT TESTED locally)
+- [x] CAP-045 🟢 Cross-tenant isolation — the access sweep reads the route table and calls every route as nobody, as a stranger (a member of another organisation), as a signed-in person with no organisation and with random ids; an organisation-scoped route must answer a stranger 404 with no data (Supabase era: the org A/org B pgTAP matrix of 20 assertions in CI). It runs with `pnpm run check` (`check:php`) on a throwaway local MariaDB and in the manual Deploy workflow; `.github/workflows/ci.yml` has no PHP job, so a merge is not gated by it (`NOT VERIFIED`: which checks branch protection requires)
+      `backend/tests/suites/099-access-sweep.php` · `backend/tests/run.php` · ❓-003 answered 2026-08-31 #232 · Supabase era: `supabase/tests/database/cross_tenant_isolation.test.sql`
 - [x] CAP-046 🟢 Rate limiting — org creation, invitations and the AI are capped, with a token
-      ceiling and a per-org cap, and the limiter that takes a subject is revoked from every
-      client role. The auth endpoints are GoTrue's, read and asserted by
-      `scripts/check-auth-config.mjs` — which ran green on 5 and 7 September 2026 and has
-      failed with `401` since 14 September (GAP-031, GAP-036). **That they are per-IP is GAP-033**, which is a CAPTCHA
+      ceiling and a per-org cap, and the limiter is a server-side table no client reaches (`RateLimiter`, the `rate_limits` table; Supabase era: revoked from every
+      client role). Every signed-in route is limited to 600 requests a minute per person and every public route to 300 a minute per address (`backend/src/Api.php`). The auth endpoints are Clerk's now (Supabase era: GoTrue's, read and asserted by
+      `scripts/check-auth-config.mjs` — which ran green on 5 and 7 September 2026 and failed with `401` from 14 September, GAP-031, GAP-036; the script targets the retired project, and Clerk's own limits are `NOT VERIFIED`, a dashboard matter). **That they are per-IP is GAP-033**, which is a CAPTCHA
       decision the owner has taken and tracked — carrying it here as well left this row partial
       for somebody else's open question
-      `supabase/migrations/0085_rate_limiting.sql` · GAP-009 #199, GAP-031 #209, GAP-033
-- [x] CAP-047 🟢 Grants wider than policies — `anon` holds nothing in `public` but schema usage;
-      the default ACL that would have handed it back is narrowed too. **Now asserted rather than
-      remembered (2026-08-31):** four pgTAP assertions check that every table in `public` has RLS
-      enabled, that every table `authenticated` can read has a policy, and that neither `anon` nor
-      `PUBLIC` holds a table privilege. `CLAUDE.md` has stated the first of those as a rule since
-      the merge and nothing enforced it — a table added without RLS is not an error, it is every
-      tenant reading every other tenant's rows in silence
-      `supabase/migrations/0075_narrow_anon_privileges.sql` · `supabase/tests/database/rls_invariants.test.sql` · HARDEN-001
-- [x] CAP-048 🟢 Predicate execute grants — `PUBLIC` and `anon` execute revoked on every callable
-      function except `preview_invite`; trigger functions left, with the reason recorded
-      `supabase/migrations/0075_narrow_anon_privileges.sql` · HARDEN-002 · P2
-- [ ] CAP-049 🟡 MFA: **enrolment and a sign-in challenge (challenge added 2026-10-11); not yet
-      exercised with a real authenticator, and `require_mfa` is still off.** After any first factor
-      (password, magic link, OAuth return, or a session restored from storage) `MfaGate`, inside
-      `ProtectedRoute`, reads the assurance level and, when it is `aal1` with `aal2` available, shows
-      "Enter the 6-digit code from your authenticator app" in place of every protected route,
-      `/admin/*` included. A wrong or expired code keeps the person on the step with the field cleared
-      and refocused; more than one verified authenticator offers a choice; Sign out is always there;
-      a level that cannot be read fails closed. It re-checks on every new access token, without
-      unmounting an admitted session on a routine refresh. Decision logic is pure
-      (`src/lib/mfaStep.ts`). TOTP enrolment on the account screen is unchanged, and
-      `platform_settings.require_mfa` decides something: `is_platform_admin()` requires an `aal2`
-      session when it is on, so every console policy enforces it in one place. Turning it **on** is
-      refused from a session that has not itself done MFA (the classic self-lockout) and turning it
-      off is not, on purpose; an owner with no verified factor can still lift it from the console's
-      refusal screen. Set to **off** in `0102`, because off is what was true: the flag had defaulted
-      to on since `0027` with zero enrolled factors anywhere. Still 🟡 until somebody has signed in
-      through the challenge with a real authenticator app and the owner has switched the requirement
-      on from that session. No recovery codes: a person who loses the phone needs support to remove
-      the factor
-      `supabase/migrations/0102_platform_mfa_is_real.sql` · `src/components/auth/MfaGate.tsx` ·
-      `src/lib/mfaStep.test.ts` · `src/components/auth/MfaGate.test.tsx` · GAP-017 · 11 pgTAP
-      assertions
-- [x] CAP-050 🟢 Sessions — `my_sessions()` lists every device on the account with its user agent,
-      IP and last use, and `revoke_my_other_sessions()` signs the rest out. The row's "no server-side
-      registry" was wrong: `auth.sessions` always had this and nothing read it
-      `supabase/migrations/0100_own_sessions.sql` · 10 pgTAP assertions
-- [x] CAP-051 🟢 URL scheme validation — both columns carry a database CHECK, so the browser is no longer
-      the only thing between a `javascript:` link and an `<a href>`
-      `supabase/migrations/0092_url_schemes_and_notification_retention.sql` · HARDEN-003 closed #213 · 7 pgTAP assertions
+      `backend/src/RateLimiter.php` · `backend/src/Api.php` · `backend/src/Mod/Orgs.php` (5 organisations an hour per person) · `backend/src/Mod/Invites.php` · `backend/src/Mod/AiAssistant.php` (30 an hour per person, 200 an hour per organisation) · suites `backend/tests/suites/020-api.php`, `backend/tests/suites/030-identity.php`, `backend/tests/suites/180-ai.php` · GAP-009 #199, GAP-031 #209, GAP-033 · Supabase era: `0085`
+- [x] CAP-047 🟢 Grants wider than policies — in the Supabase era `anon` held nothing in `public` but schema usage, asserted by four pgTAP assertions (every table had RLS, every readable table a policy, neither `anon` nor `PUBLIC` a table privilege; 2026-08-31). Live: no browser reaches the database; the only public surface is six route entries marked `'public'` (GET `/ics`, GET `/document-files`, POST `/enquiries`, POST `/invites/preview`, POST `/stripe/webhook`, GET `/files`), and the access sweep fails when a protected route answers nobody with anything but 401
+      `backend/src/Api.php` · `backend/tests/suites/099-access-sweep.php` · `docs/API-SPEC.md` (public routes) · HARDEN-001 · Supabase era: `0075`, `rls_invariants.test.sql`
+- [x] CAP-048 🟢 Predicate execute grants — no database function is callable from a browser (Supabase era: `PUBLIC` and `anon` execute revoked on every callable
+      function except `preview_invite`; its live counterpart is the public route `POST /invites/preview`, limited to 30 a minute per address). The API holds the only database connection; the four MariaDB triggers are the append-only guards on `audit_logs` and `clock_event_corrections`
+      `backend/src/Mod/Invites.php` (`preview`) · `backend/migrations/003-audit-immutable.sql` · suite `backend/tests/suites/050-invites.php` · HARDEN-002 · P2 · Supabase era: `0075`
+- [ ] CAP-049 🟡 MFA: **two-step sign-in is a Clerk setting; the application's own MFA code was removed at the cutover, and nobody has confirmed the setting is on.** Live: RotaFlow keeps no factors of its own. `backend/src/Jwt.php` verifies the Clerk session token (signature, issuer, expiry, authorised party) and reads no assurance level, so the API cannot tell a one-factor session from a two-factor one; `backend/src/DataMove/Map.php` records the old `require_mfa` setting as "two-step sign-in is set in Clerk"; the Platform settings switch is rejected in the front end (`src/services/platformSettingsService.ts`); and the account screen hosts Clerk's own (`src/pages/app/account/SecurityPage.tsx`). Whether Clerk requires a second factor for platform administrators and owners is a dashboard setting, `NOT VERIFIED` (owner action O9). Still 🟡.
+      Supabase era, history: enrolment and a sign-in challenge (challenge added 2026-10-11) with `MfaGate` inside `ProtectedRoute` reading the assurance level, pure decision logic in `mfaStep`, and `platform_settings.require_mfa`, which `is_platform_admin()` enforced for every console policy; turning it on was refused from a session that had not itself done MFA; `0102` set it off because off was what was true (the flag had defaulted to on since `0027` with zero enrolled factors). None of that code exists now: `src/components/auth/MfaGate.tsx` and `src/lib/mfaStep.ts` were removed. No recovery codes were built
+      `backend/src/Jwt.php` · `backend/src/DataMove/Map.php` · `src/pages/app/account/SecurityPage.tsx` · GAP-017 · Supabase era: `0102`, 11 pgTAP assertions
+- [x] CAP-050 🟢 Sessions — in the Supabase era `my_sessions()` listed every device on the account with its user agent,
+      IP and last use, and `revoke_my_other_sessions()` signed the rest out. Live: RotaFlow keeps no sessions of its own; the Security page hosts Clerk's account screen, and the old `/app/account/sessions` route redirects to it. That Clerk's screen lists devices and signs the others out is Clerk's behaviour and `NOT VERIFIED` in a browser here; the status is left at 🟢 because the code does not disprove it, and the evidence behind it is a third party's
+      `src/pages/app/account/SecurityPage.tsx` · `src/App.tsx` · Supabase era: `0100`, 10 pgTAP assertions
+- [x] CAP-051 🟢 URL scheme validation — the API refuses a staff `photo_url` that is not https and hands out a legacy pasted document link only if it is https, so the browser is no longer
+      the only thing between a `javascript:` link and an `<a href>`. MariaDB has no CHECK on either column (Supabase era: both columns carried a database CHECK), so the guard is in PHP alone
+      `backend/src/Mod/Staff.php` (`photo_url must be an https address`) · `backend/src/Mod/Compliance.php` (`link`) · suites `backend/tests/suites/080-staff.php`, `backend/tests/suites/230-compliance.php` · HARDEN-003 closed #213 · Supabase era: `0092`, 7 pgTAP assertions
 
 ### Compliance
 
