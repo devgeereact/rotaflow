@@ -64,8 +64,17 @@ GEE OS LOOP step 8 (Synchronise) and CHANGE-SAFETY step 9, applied here.
 - A change that alters behaviour updates the document that owns the fact, **in
   the same change**. The owners are listed in `docs/README.md` ("Fact | Owning
   document").
-- "Behaviour" means any change under `src/`, `supabase/`, `e2e/`, `public/` or
-  `.github/workflows/`, or to `package.json` or `index.html`.
+- "Behaviour" means any change under `backend/` (the PHP API and its migrations),
+  `src/`, `e2e/`, `public/`, `scripts/release.mjs`, `release.json` or
+  `.github/workflows/`, or to `package.json` or `index.html`, and under the tree
+  that is legacy now, `supabase/`. The CI checker does not yet match all of that:
+  `CODE_PATTERNS` in `scripts/check-docs-impact.mjs` lists `src/`, `e2e/`,
+  `.github/workflows/`, `package.json`, `index.html`, `public/` and the legacy `supabase/`
+  tree, but not `backend/`, `scripts/release.mjs` or `release.json`.
+  The Stop hook (`scripts/hooks/docs-sync.mjs`) imports the same list, so it has the
+  same gap. Adding `backend/` there is a follow-up code change that needs the
+  owner's approval; it is not made in the documentation phase. Until then the author
+  applies the wider rule by hand.
 - If nothing needed to change, say so in one line,
   `Docs: no impact (the reason, in words)`: in the pull request description,
   and in `.agent/CURRENT-TASK.md` during a session. A bare "no impact", or the
