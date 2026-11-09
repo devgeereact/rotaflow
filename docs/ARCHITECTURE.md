@@ -429,43 +429,46 @@ browser as of 21 October 2026:
 | Clock-in queued                        | "Waiting to send" on the button, with the time it was recorded           | `e2e/offline-clock-in.spec.ts`: "Offline, 1 waiting" and "Saved on this device, not sent yet"               |
 | Back online                            | Sends once. Shows "Sent" or the server's reason for refusing             | `e2e/offline-clock-in.spec.ts`: one row, "Synced", no second row on reload. A refusal: `FailedWritesNotice` |
 | Session expired while queued           | Asks the same person to sign in, then sends. Never sends as someone else | `e2e/offline-clock-in.spec.ts`: held through a colleague's session, sent when its owner signs back in       |
-| Two tabs or two phones                 | No duplicate clock events                                                | Not in a browser: the Web Lock and `0081`'s idempotency key, unit-tested only                               |
+| Two tabs or two phones                 | No duplicate clock events                                                | Not in a browser: the Web Lock and the `client_event_id` key (`backend/migrations/006-time-and-requests.sql`), unit-tested only |
 | App update while items are queued      | Queue survives the update                                                | Not asserted: the update path is (`e2e/pwa-offline.spec.ts`), a queue across it is not                      |
 | Membership revoked                     | Queued writes are refused by the server, and the person is told          | Not in a browser: server-side refusal plus `FailedWritesNotice`                                             |
 
+**Re-checked against the PHP API and Clerk, 9 November 2026.** The table above is the 21 October 2026 evidence and its cells are left as written. Two things changed under it. `e2e/offline-clock-in.spec.ts` still needs a local Supabase stack (`E2E_LIVE_SUPABASE`, a service-role key and REST inserts into `clock_events`), so it cannot run against the PHP API and is `NOT VERIFIED` as proof today; `e2e/pwa-offline.spec.ts` needs no backend. And sign-in is now Clerk: a signed-in start needs Clerk's script and `GET /me` (`src/context/AuthContext.tsx`, `src/components/ProtectedRoute.tsx`) before any `/app` screen renders, and neither has a cached copy, so the rows "App opened offline with nothing cached" and "Session expired while queued" are `NOT VERIFIED` for the Clerk and PHP stack until someone runs them in a browser.
+
 ### The honest one-paragraph version
 
-The **app shell** is genuinely offline: 166 precached entries, every lazy route
-chunk included, so the application loads and navigates with no network. **Three
-writes** are genuinely offline: clocking in or out, requesting leave, and
-offering a swap, all queued in IndexedDB with idempotency keys and replayed on
-reconnect. **Everything else needs the network.** There is no durable offline
-copy of any domain data. What looks like offline reading is a five-minute,
-fifty-entry service-worker cache that nothing guarantees will hold the thing you
-are looking at.
+The **app shell** is precached, every lazy route chunk included (166 entries
+when counted on 4 September 2026, not recounted since: `NOT VERIFIED`), so the
+static application can load with no network; whether a signed-in start gets past
+Clerk and `GET /me` offline is `NOT VERIFIED` (note above). **Three writes** are
+genuinely offline: clocking in or out, requesting leave, and offering a swap,
+all queued in IndexedDB with idempotency keys and replayed on reconnect.
+**Everything else needs the network.** There is no durable offline copy of any
+domain data, and since the cutover the service worker caches no API response at
+all (`vite.config.ts`), so nothing is readable offline except the static pages.
 
 ### Classification
 
 GEE OS classes are `offline read`, `offline write`, `offline queue`,
 `offline processing`, `network required` and `never cache`.
 
-| Feature area                              | Class             | Evidence                                                                               |
-| ----------------------------------------- | ----------------- | -------------------------------------------------------------------------------------- |
-| App shell, boot, install, update prompt   | offline read      | 166 precache entries, `vite.config.ts:111`; `src/App.tsx:84`                           |
-| Marketing pages, legal pages              | offline read      | static React, precached chunks, `navigateFallback: index.html` `vite.config.ts:113`    |
-| Clock in / clock out, including GPS       | **offline queue** | `src/pages/app/ClockInPage.tsx:339-368`, replay `src/services/syncQueue.ts:38`         |
-| Leave request (staff submitting)          | **offline queue** | `src/pages/app/LeavePage.tsx:339-344`                                                  |
-| Shift swap request or offer (staff)       | **offline queue** | `src/pages/app/SwapsPage.tsx:217-221`                                                  |
-| Rota view, my shifts, clock history       | network required  | no application cache; only the shared 5 minute SW cache, `vite.config.ts:128-138`      |
-| Rota builder and publish                  | network required  | `publish_rota` is an RPC and is not queued, `src/components/FailedWritesNotice.tsx:16` |
-| Leave, swap and overtime approvals        | network required  | no `enqueue` on any review path, `src/pages/app/LeavePage.tsx:379,408`                 |
-| Announcements                             | network required  | direct service reads, nothing cached or queued                                         |
-| Notifications list, web push subscription | network required  | `src/hooks/useWebPush.ts:76,108`                                                       |
-| Reports, timesheets, CSV export           | network required  | generated from live reads                                                              |
-| Admin and platform console                | network required  | every `platform*Service` read                                                          |
-| Sign in, magic link, password reset       | network required  | `/auth/v1/` matches no runtime cache rule, `vite.config.ts:130`                        |
-| An existing session                       | offline read      | supabase-js persists it in `localStorage`, so a signed-in user boots offline           |
-| Conflict resolution while offline         | **none**          | server-side rejection only, see below                                                  |
+| Feature area                              | Class             | Evidence                                                                                                                                                                                                                                                                                      |
+| ----------------------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App shell, boot, install, update prompt   | offline read      | the precache and `navigateFallback` in `vite.config.ts`; `src/App.tsx`. A signed-in start also needs Clerk and `GET /me`: `NOT VERIFIED` offline (note above)                                                                                                                                  |
+| Marketing pages, legal pages              | offline read      | static React, precached chunks, `navigateFallback: 'index.html'` in `vite.config.ts`                                                                                                                                                                                                           |
+| Clock in / clock out, including GPS       | **offline queue** | `src/pages/app/ClockInPage.tsx` (`enqueue('clock', ...)` and `sendOrQueue`), replay `src/services/syncQueue.ts` (`REPLAYERS.clock`)                                                                                                                                                            |
+| Leave request (staff submitting)          | **offline queue** | `src/pages/app/LeavePage.tsx` (`sendOrQueue`, `enqueue('leave', ...)`)                                                                                                                                                                                                                         |
+| Shift swap request or offer (staff)       | **offline queue** | `src/pages/app/SwapsPage.tsx` (`sendOrQueue`, `enqueue('swap', ...)`)                                                                                                                                                                                                                          |
+| Rota view, my shifts, clock history       | network required  | no application cache and no service-worker cache of API responses (`vite.config.ts`: the only runtime caching rule is for fonts)                                                                                                                                                               |
+| Rota builder and publish                  | network required  | publishing is `POST /orgs/{o}/rotas/{r}/publish` (`backend/src/Mod/Rotas.php`) and is not queued: the outbox kinds are `clock`, `leave`, `swap` and a retired `notify` (`src/lib/offlineOutbox.ts`)                                                                                            |
+| Leave, swap and overtime approvals        | network required  | `enqueue` is called only from the clock, leave-request and swap-request paths (`src/pages/app/ClockInPage.tsx`, `LeavePage.tsx`, `SwapsPage.tsx`); no review path queues                                                                                                                       |
+| Announcements                             | network required  | reads through the API client (`src/services/announcementService.ts`), nothing cached or queued                                                                                                                                                                                                |
+| Notifications list, web push subscription | network required  | `src/services/notificationService.ts` (`GET /orgs/{o}/notifications`), `src/hooks/useWebPush.ts` (`POST /me/push-subscriptions`)                                                                                                                                                               |
+| Reports, timesheets, CSV export           | network required  | generated from live reads                                                                                                                                                                                                                                                                      |
+| Admin and platform console                | network required  | every `platform*Service` read                                                                                                                                                                                                                                                                  |
+| Sign in (Clerk)                           | network required  | Clerk's script and API are served from Clerk's host, and no runtime cache rule covers it (`vite.config.ts`; the origins are in the CSP in `.htaccess`)                                                                                                                                         |
+| An existing session                       | offline read (`NOT VERIFIED`) | the old claim was that the legacy Supabase client kept the session in `localStorage`. Clerk keeps its own cookies and local storage (`src/lib/legalFacts.ts`), but `AuthProvider` reads `GET /me` on every start and `ProtectedRoute` shows a retry card when it fails (`src/components/ProtectedRoute.tsx`): by the code, a signed-in cold start offline does not reach an `/app` screen unless Clerk's script is in the browser's own HTTP cache. Not tested in a browser |
+| Conflict resolution while offline         | **none**          | server-side rejection only (`leave_overlap`, `backend/src/Mod/Leave.php`), see below                                                                                                                                                                                                           |
 
 ### The write queue, which is the strong part
 
@@ -474,21 +477,31 @@ version 2, with `queued_writes` and `dead_letters` stores and a v1 to v2
 migration. `src/services/syncQueue.ts` replays it.
 
 - **Idempotency is real.** Every queued write carries a `client_event_id`
-  minted before the first online attempt, and a same-key `23505` on replay is
-  treated as success rather than a duplicate insert
-  (`src/services/syncQueue.ts:143-160`). The database side is
-  `supabase/migrations/0081_outbox_idempotency.sql`, which adds the column and a
-  partial unique index per table. This is the design the PWA engine asks for.
+  minted before the first online attempt (`crypto.randomUUID()` in
+  `src/pages/app/ClockInPage.tsx`; `withIdempotencyKey` in
+  `src/services/syncQueue.ts` adds one at enqueue when a caller did not). The
+  API answers a replay of a stored key with `200` and `already_applied: true`
+  (`backend/src/Mod/Clock.php`, `Leave.php`, `Swaps.php`), so a replay is simply
+  a success (`isAlreadyApplied` in `src/services/syncQueue.ts`, which still
+  recognises the legacy database's `23505` collision for items queued by an
+  older build). The database side is a unique key on `client_event_id` in
+  `clock_events`, `leave_requests` and `shift_swaps`
+  (`backend/migrations/006-time-and-requests.sql`). This is the design the PWA
+  engine asks for.
 - **Failure is classified, not retried blindly.** Permanent failures dead-letter
   and let the queue continue; transient ones stop the flush and wait for the next
-  reconnect; five attempts exhausts a write. SQLSTATE classes `08/40/53/57/58`,
-  HTTP 408/425/429 and 5xx are transient.
-  Since `0152` a leave request booked offline over days the person already has
-  off comes back as `23P01`, which is class `23` and therefore permanent — so it
-  dead-letters into the notice below with the sentence
-  `src/services/leaveService.ts` gives it, rather than being replayed forever or
-  landing as a second booking. That is the one conflict this queue can now
-  detect: the write is refused by a constraint, not merged.
+  reconnect; five attempts (`MAX_ATTEMPTS`) exhausts a write. `classifyFailure`
+  (`src/services/syncQueue.ts`) treats a dropped connection, HTTP 401 (a Clerk
+  token that aged out; the next attempt carries a fresh one), 408, 425, 429 and
+  5xx as transient, and any other 4xx as the server refusing that payload. The
+  legacy database's SQLSTATE classes `08/40/53/57/58` stay classified for items
+  queued by an older build.
+  A leave request booked offline over days the person already has off comes
+  back from the API as `409 leave_overlap` (`backend/src/Mod/Leave.php`), which
+  is a 4xx and therefore permanent — so it dead-letters into the notice below
+  with the sentence `src/services/leaveService.ts` gives it, rather than being
+  replayed forever or landing as a second booking. That is the one conflict
+  this queue can detect: the write is refused, not merged.
 - **Nothing is silently discarded.** A dead-lettered write surfaces in
   `src/components/FailedWritesNotice.tsx` with Retry and Discard, on all three
   screens that can queue. This satisfies the engine's hardest rule, that user
@@ -525,38 +538,39 @@ migration. `src/services/syncQueue.ts` replays it.
   does not exist yet (see `KNOWN-ISSUES.md`). The plan's 7-day expiry of dead
   letters is not built.
 - **Sign-out releases this browser's push subscription (plan S4).**
-  `releasePushSubscription` in `src/lib/session.ts` runs before
-  `supabase.auth.signOut()` in both sign-out paths (`AuthContext.signOut` and
-  "Sign out everywhere" on `SessionsPage`): it deletes the `push_subscriptions`
-  row through `deletePushSubscription` while the session can still pass RLS,
-  then unsubscribes the browser either way. It never throws and gives up after
+  `releasePushSubscription` in `src/lib/session.ts` runs before Clerk's
+  `signOut` in the one sign-out path (`AuthContext.signOut`,
+  `src/context/AuthContext.tsx`): it deletes the push subscription row through
+  `deletePushSubscription` (`POST /me/push-subscriptions/delete`) while the
+  session can still authorise the call, then unsubscribes the browser either way. It never throws and gives up after
   3 seconds, so signing out offline or with no service worker still works. A
   session that ends any other way (an expired token, a revocation from another
   device) does not run it: the browser stays subscribed and the row stays until
-  the next subscribe on that device replaces it.
+  the next subscribe on that device replaces it (`backend/src/Mod/Notifications.php`
+  upserts by endpoint).
 
 ### What the reading story really is
 
-There is one runtime cache for domain data:
+There is **no runtime cache for domain data**. Before the cutover one rule cached
+the legacy REST API (`NetworkFirst`, a 5 second timeout, 50 entries, 5 minutes).
+`vite.config.ts` now has exactly one runtime caching rule, for fonts, and says why
+no rule covers `/api/*`: the responses are tenant data behind a bearer token, and a
+cached copy could be served to the next person on a shared device. Builds before
+S9 wrote two response caches; `src/lib/session.ts` deletes them on sign-out and
+nothing writes them any more.
 
-```text
-https://*.supabase.co/rest/v1/*   NetworkFirst
-  networkTimeoutSeconds: 5
-  maxEntries: 50
-  maxAgeSeconds: 300
-```
-
-That is opportunistic, shared across every screen, and evicted by an LRU. Whether
-a given rota is readable offline is genuinely **unknown** without measuring it on
-a real device, and nothing measures it. Note what the pattern does not cover:
-`/auth/v1/`, `/functions/v1/`, `/storage/v1/` and Realtime WebSockets are all
-uncached, which is correct for authentication and edge functions but is an
-exclusion by omission rather than by decision.
+So the app cannot show a rota, a shift list or clock history offline. Whether a
+screen opens offline at all depends on the static shell and on a signed-in start
+getting past Clerk and `GET /me` (note under the classification table), which is
+`NOT VERIFIED` in a browser. The banner copy (`src/components/OfflineBanner.tsx`)
+says "Some saved screens may still open"; the three strings quoted under "Known
+defects" below no longer exist in `src`, but which screens that sentence is true
+for is not measured anywhere.
 
 There is no react-query, SWR or TanStack cache; data loading is `useEffect` plus
 a service call. IndexedDB is write-only. `localStorage` holds preferences
-(active org, theme, sidebar, report options) and the Supabase session, and that
-list is audited by `src/lib/legalFacts.ts`.
+(active org, theme, sidebar, report options) and Clerk's own browser storage
+(`src/lib/legalFacts.ts` lists what the app and Clerk keep, with their sources).
 
 ### What a manager can and cannot see, which follows from all of the above
 
@@ -585,11 +599,13 @@ Three rules follow, and every one of them is implemented rather than intended:
    number the server cannot observe would be a fabrication dressed as
    reassurance.
 3. **Reconciliation is by re-read, not by patching.** When a queued event
-   drains, it arrives as an ordinary insert; Realtime wakes the board and the
-   whole window is re-derived from `clock_events`. A late-arriving clock-in
-   for a shift already marked `not_recorded` therefore corrects itself, and a
-   correction that lands inside an approved period flags that timesheet
-   (`0128`) rather than moving a signed total.
+   drains, it arrives as an ordinary API write; the board's next poll
+   (`useRealtimeRefresh`) re-reads the window and re-derives it from the clock
+   events. A late-arriving clock-in for a shift already marked `not_recorded`
+   therefore corrects itself on the next poll. A manager's correction that
+   lands inside an approved or exported period flags that timesheet
+   (`recalculation_required_at`, `backend/src/Mod/Clock.php`) rather than moving
+   a signed total; whether a late replayed clock-in flags one is `NOT VERIFIED`.
 
 **What is still NOT TESTED here** is the same thing GAP-050 has said since
 2026-09-04: no browser test drives the offline path. Nothing above has been
@@ -668,22 +684,24 @@ pretend it is.
 
 ### Service worker and manifest facts
 
-Generated by `vite-plugin-pwa` in `generateSW` mode (`vite.config.ts:135-267`).
-Registered from `src/components/UpdatePrompt.tsx:49`, not from `main.tsx`, with
-`injectRegister: null` so there is exactly one registration site. Updates use
-`registerType: 'prompt'` with `skipWaiting: false`, so a user is never thrown off
-a page mid-task; `cleanupOutdatedCaches` removes old caches. Push handlers are
-added through `workbox.importScripts: ['/push-sw.js']`, which is the documented
-way to get custom code into a `generateSW` worker.
+Generated by `vite-plugin-pwa` in `generateSW` mode (the `VitePWA` block of
+`vite.config.ts`). Registered from `src/components/UpdatePrompt.tsx` (it imports
+`registerSW`), not from `main.tsx`, with `injectRegister: null` so there is
+exactly one registration site. Updates use `registerType: 'prompt'` with
+`skipWaiting: false`, so a user is never thrown off a page mid-task;
+`cleanupOutdatedCaches` removes old caches. Push handlers are added through
+`workbox.importScripts: ['/push-sw.js']`, which is the documented way to get
+custom code into a `generateSW` worker.
 
-The manifest is inline in `vite.config.ts:151-170`: `standalone`, portrait,
-scope and start URL `/`, three icons (192, 512, and a 512 maskable), and `id: '/'`
-(added so browser identity is independent of start URL). It has no `screenshots`
-and no `shortcuts`, neither of which are required for installation.
+The manifest is inline in `vite.config.ts`: `display: 'standalone'` (with a
+`display_override` list), portrait, scope and start URL `/`, three icons (192, 512,
+and a 512 maskable), and `id: '/'` (added so browser identity is independent of
+start URL). It has no `screenshots` and no `shortcuts`, neither of which are
+required for installation.
 
-`.htaccess:78-80` serves `sw.js`, `workbox-*.js`, `manifest.webmanifest` and
-`index.html` with `no-cache, no-store, must-revalidate`, while hashed assets are
-immutable for a year. That is the correct pairing and worth not breaking.
+`.htaccess` serves `sw.js`, `push-sw.js`, `workbox-*.js`, `manifest.webmanifest` and every
+`.html` file with `no-cache, no-store, must-revalidate`, while hashed assets are
+`immutable` for a year. That is the correct pairing and worth not breaking.
 
 ## Hook contracts
 
@@ -693,13 +711,15 @@ Contracts for every reusable hook in `src/hooks`. Signatures here are the source
 of truth. Implementations must match.
 
 **Two sections describe hooks that no longer exist**, marked `— REMOVED` with the
-date and the reason: `useInngestDispatch` (§5, deleted by `0087`) and
+reason: `useInngestDispatch` (§5, removed before the cutover) and
 `useOptimizedImage` (§4, deleted 2026-08-31 because nothing imported it). They are
 kept deliberately. A hook that was documented as an approved contract and then
 vanished invites someone to reintroduce it, and the useful thing to record is not
 its signature but why it went. Do not read them as stale entries, and do not
-delete them to make this file line up with a directory listing — the check that
-matters is that every file in `src/hooks` has a section, which it does.
+delete them to make this file line up with a directory listing. Every other
+hook file in `src/hooks` has a section: numbered 1 to 19, or listed under "Hooks
+without a numbered section" at the end (checked against `git ls-files -- src/hooks`
+on 9 November 2026).
 
 ### 1. `usePWAInstall`
 
@@ -724,54 +744,58 @@ Reactive network connectivity based on `online`/`offline` window events.
 export function useOnlineStatus(): boolean; // true when online
 ```
 
-> **Offline queue and the PHP API (merge slice S5).** The queue's idempotency no longer depends on a Postgres error naming an index:
-> the API answers a replayed write `200 already_applied`, so a replay is simply a success. `classifyFailure` also understands
+> **Offline queue and the PHP API.** The queue's idempotency does not depend on a database error naming an index:
+> the API answers a replayed write `200 already_applied`, so a replay is simply a success. `classifyFailure` understands
 > `ApiError` (`src/lib/apiClient.ts`): a dropped connection (status 0) and an expired session (401) are kept and retried, any other
-> 4xx is the server rejecting that payload and is dead-lettered with its stable `code`. The Postgres branches stay until the services
-> are re-pointed in S9.
+> 4xx is the server rejecting that payload and is dead-lettered with its stable `code`. The legacy database's error branches stay in
+> `src/services/syncQueue.ts` for items queued by an older build.
 
-### 3. `useSupabaseAuth`
+### 3. `useAuth`
 
-`src/hooks/useSupabaseAuth.ts`
+`src/hooks/useAuth.ts`
 Thin consumer of `AuthContext`. The single source of session truth. The provider
-(`src/context/AuthContext.tsx`) owns the listener; this hook exposes it.
+(`src/context/AuthContext.tsx`) wraps Clerk's `ClerkProvider`, wires the Clerk
+token into the API client, and reads `GET /me` once per session; this hook exposes
+the result. It replaced the legacy Supabase session hook at the cutover and keeps
+its number.
 
 ```ts
-interface UseSupabaseAuth {
-  user: User | null;
-  session: Session | null;
-  loading: boolean; // initial session resolve in flight
+interface AuthContextValue {
+  user: AuthUser | null; // the API's user: { id, email, fullName, avatarUrl }; null signed out or while /me failed
+  loading: boolean; // Clerk loading, or the first GET /me of a session in flight
+  signedIn: boolean; // Clerk's verdict: there is a session in this browser
+  me: MePayload | null; // { user, memberships, platform_role } as GET /me returns it
+  meFailed: boolean; // signed in, but the API could not say who this is: a retry card, never "signed out"
+  refreshMe: () => Promise<MePayload | null>;
   signOut: () => Promise<void>;
 }
-export function useSupabaseAuth(): UseSupabaseAuth;
+export function useAuth(): AuthContextValue;
 ```
 
 ### 4. `useOptimizedImage` — REMOVED (2026-08-31)
 
-Deleted. It memoised `buildImageKitUrl` and **nothing ever called it**. The
-builder it wrapped, `src/lib/imagekit.ts`, turned out to have no caller either and
-was deleted on 11 October 2026 (`b123d1d`).
+Deleted (it wrapped the legacy ImageKit URL builder). It memoised that builder and **nothing ever called it**. The
+builder itself, a helper under `src/lib`, turned out to have no caller either and
+was deleted on 11 October 2026.
 A documented "approved hook contract" that no component consumes reads as a
 rule about how images must be loaded, when it was only an unused wrapper.
 
-Nothing in `src/` builds a transformed ImageKit URL today. `env.imagekitUrlEndpoint`
-stays, because the platform health check reads it.
+Nothing in `src/` builds a transformed image URL, and `src/lib/env.ts` reads no
+image-CDN variable. Images are served by the API (`backend/src/Mod/Photos.php`).
 
-### 5. `useInngestDispatch` — REMOVED (0087)
+### 5. `useInngestDispatch` — REMOVED (before the cutover)
 
-Deleted. Every notification the product owes is now enqueued by the database
-in the same transaction as the event that owes it — rota publication (0069),
-leave and swap decisions and announcements (0087) — and drained by pg_cron.
+Deleted in the Supabase era (legacy migration `0087`). Every notification the
+product owes is now queued in the same database transaction as the event that owes
+it (`Notify::enqueue`, `backend/src/Notify.php`) and delivered by cron
+(`backend/src/Dispatcher.php`; `docs/NOTIFICATIONS-SPEC.md`).
 
 Nothing in the app dispatches a notification any more, so there is no hook to
-call, and there is no longer a service behind it either:
-`src/services/notificationDispatchService.ts` is deleted. This section said it
-survived to carry `postInngestEvent` for old queued items; the replay path it
-described lives in `src/services/syncQueue.ts` instead, where the `notify`
-handler resolves without sending. An item queued by an older install therefore
-**drains away** on the next reconnect rather than retrying against a host that
-is gone and then sitting in the dead-letter list — the work is not lost, it is
-no longer owed, because whatever owed it now enqueues its own row.
+call, and there is no dispatch service behind it either. An item of kind `notify`
+queued by an older install **drains away** on the next reconnect: the replayer in
+`src/services/syncQueue.ts` resolves without sending, so it neither retries against
+a host that is gone nor sits in the dead-letter list. The work is not lost, it is
+no longer owed, because whatever owed it now queues its own row.
 
 See `docs/SAAS.md` GAP-026 for why browser-initiated dispatch was lossy.
 
@@ -783,16 +807,19 @@ See `docs/SAAS.md` GAP-026 for why browser-initiated dispatch was lossy.
 Consumer of `OrgContext`. The active tenant and the caller's role within it.
 
 ```ts
-type OrgRole = 'owner' | 'manager' | 'staff';
+type MembershipRole = 'owner' | 'manager' | 'staff'; // src/types/index.ts
 interface UseOrg {
   orgId: string | null;
   orgName: string | null;
-  role: OrgRole | null;
-  memberships: { orgId: string; orgName: string; role: OrgRole }[];
+  role: MembershipRole | null;
+  memberships: { orgId: string; orgName: string; role: MembershipRole }[];
   isPlatformAdmin: boolean;
+  // Which kind of platform administrator, or null for none. isPlatformAdmin says
+  // "may act at platform level"; this says "as what" and gates screens inside the console.
+  platformRole: PlatformRole | null;
   switchOrg: (orgId: string) => void;
   loading: boolean;
-  // Whether the memberships query failed. See the rule below.
+  // Whether reading the memberships (GET /me) failed. See the rule below.
   loadFailed: boolean;
   // Additive beyond the original spec. Used by OnboardingPage and anywhere
   // that needs to force a re-fetch (e.g. after an invite is accepted).
@@ -805,15 +832,15 @@ export function useOrg(): UseOrg;
 > **Rule: never treat `memberships: []` as "this user has no organisation"
 > without checking `loadFailed` first.** A failed query produces an empty list
 > too. Reading one as the other is what sent an existing owner to `/onboarding`
-> whenever the app was offline past the 5-minute API cache window, where they
+> whenever the read of `GET /me` failed on a dropped connection, where they
 > could create a duplicate organisation. `AppShell` and `OnboardingPage` both
 > check `loadFailed && memberships.length === 0` and offer a retry instead.
 
 #### 7. `usePermissions`
 
 `src/hooks/usePermissions.ts`
-Derives UI capabilities from the active role (client-side gating only; RLS is the
-real enforcement).
+Derives UI capabilities from the active role (client-side gating only; the API,
+`backend/src/Scope.php`, is the real enforcement).
 
 ```ts
 interface Permissions {
@@ -821,7 +848,13 @@ interface Permissions {
   canApprove: boolean; // leave/overtime/swaps
   canManageStaff: boolean; // owner | manager
   canManageOrg: boolean; // owner
-  canManagePlatform: boolean; // super admin
+  canManagePlatform: boolean; // any platform administrator
+  // The platform capabilities read platformRole, not isPlatformAdmin:
+  canManagePlatformBilling: boolean; // owner, admin, finance
+  canManagePlatformConfig: boolean; // feature flags, incidents, settings: owner, admin
+  canManagePlatformAdmins: boolean; // grant and revoke platform roles: owner
+  canManageSupportCases: boolean; // owner, admin, support
+  canReadTenantOperations: boolean; // memberships, audit, support, incidents: owner, admin, support
 }
 export function usePermissions(): Permissions;
 ```
@@ -832,17 +865,23 @@ export function usePermissions(): Permissions;
 Manages the IndexedDB offline outbox; replays queued writes when back online.
 
 ```ts
-interface QueuedItem {
+// src/lib/offlineOutbox.ts
+type OutboxKind = 'clock' | 'leave' | 'swap' | 'notify'; // 'notify' is retired and drains away
+interface OutboxRecord {
   id: string;
-  kind: 'clock' | 'leave' | 'swap';
+  kind: OutboxKind;
   payload: unknown;
   queuedAt: string;
+  attempts: number; // replay attempts so far
+  lastError?: string;
+  userId?: string; // who queued it; a record with none belongs to nobody
 }
+type QueuedItem = OutboxRecord;
 interface UseSyncQueue {
   pending: QueuedItem[];
   /** Writes that will never send themselves. These need a human. */
   deadLettered: DeadLetterRecord[];
-  enqueue: (kind: QueuedItem['kind'], payload: unknown) => Promise<void>;
+  enqueue: (kind: OutboxKind, payload: unknown) => Promise<void>;
   flush: () => Promise<{ synced: number; failed: number; deadLettered: number }>;
   discard: (id: string) => Promise<void>;
   retry: (id: string) => Promise<void>;
@@ -924,7 +963,7 @@ export function useToast(): UseToast;
 `src/hooks/useRealtimeRefresh.ts`
 Calls back on a timer while the screen is open, so a published rota or an approved
 request appears without a manual reload. **Changed 2026-10-30 (merge slice S4):**
-it polled nothing before; it listened to Supabase Realtime. The PHP host has no
+it polled nothing before; it listened to the legacy Supabase Realtime feed. The PHP host has no
 long-lived socket, so the hook now polls (15 s for clock events up to 120 s for
 locations, the fastest of the tables asked for), only while the tab is visible and
 the browser online, and once more when the tab returns or the network comes back.
@@ -937,6 +976,7 @@ type RealtimeTable =
   | 'shifts'
   | 'rotas'
   | 'leave_requests'
+  | 'overtime_requests'
   | 'shift_swaps'
   | 'notifications'
   | 'announcements'
@@ -949,7 +989,7 @@ type RealtimeTable =
   | 'shift_types';
 interface RealtimeScope {
   column: 'org_id' | 'user_id';
-  value: string | null; // null disables the subscription
+  value: string | null; // null disables the refresh
 }
 interface UseRealtimeRefreshOptions {
   tables: RealtimeTable[];
@@ -958,7 +998,7 @@ interface UseRealtimeRefreshOptions {
   enabled?: boolean;
 }
 interface UseRealtimeRefresh {
-  connected: boolean;
+  connected: boolean; // true while the screen is being refreshed on a timer
 }
 export function useRealtimeRefresh(o: UseRealtimeRefreshOptions): UseRealtimeRefresh;
 ```
@@ -968,12 +1008,12 @@ export function useRealtimeRefresh(o: UseRealtimeRefreshOptions): UseRealtimeRef
 > request). Nothing from the timer is ever rendered, so there is no route by which a
 > row the viewer could not otherwise read could reach the screen.
 
-> **Rule: live updates are an enhancement, never a dependency.** If the socket
-> never connects, every screen still loads and refetches exactly as before.
+> **Rule: live updates are an enhancement, never a dependency.** If a poll
+> fails, every screen still loads and refetches exactly as before.
 > `connected` is exposed for diagnostics; no screen gates its rendering on it.
 
-Tables must also be in the `supabase_realtime` publication, `0012_realtime.sql`. Adding a table to `RealtimeTable` without adding it there
-silently produces a subscription that never fires.
+Every table in `RealtimeTable` needs an interval in `POLL_MS` (the type is a
+`Record<RealtimeTable, number>`), so adding a table without one fails the type check.
 
 #### 12. `useNavBadgeCounts`
 
@@ -988,13 +1028,12 @@ interface NavBadgeCounts {
 export function useNavBadgeCounts(orgId: string | null): NavBadgeCounts;
 ```
 
-Both counts come back pre-scoped by RLS: a manager gets the org's pending
+Both counts come from `GET /orgs/{o}/attention` (`backend/src/Mod/Leave.php`,
+`attention()`), which the API scopes by role: a manager gets the org's pending
 queue, a staff member gets only their own still-pending requests. No role
-branching in the hook. Polls every 60s rather than subscribing to Realtime —
-this mounts on every `/app/*` page via `Sidebar`, and a live channel per tab
-for two numbers is more infrastructure than the badge is worth. It would also
-collide with `useRealtimeRefresh` channels already open on `LeavePage`/
-`SwapsPage` for the same tables.
+branching in the hook. It polls every 60s (`POLL_MS`) — this mounts on every
+`/app/*` page via `Sidebar`, and a separate timer per tab for two numbers is
+what the badge is worth.
 
 #### 13. `useConfirm`
 
@@ -1028,7 +1067,8 @@ export function useFocusTrap(
 
 `src/hooks/useFeatureAccess.ts`
 What the active organisation may use, and why — one call to
-`my_feature_access` per org load rather than a round trip per gate.
+`GET /orgs/{o}/features` (`backend/src/Mod/FeatureFlags.php`) per org load rather
+than a round trip per gate.
 
 ```ts
 interface FeatureAccess {
@@ -1040,7 +1080,7 @@ interface FeatureAccess {
 export function useFeatureAccess(): FeatureAccess;
 ```
 
-> **Rule: fails closed.** If the RPC errors, the granted set is empty and
+> **Rule: fails closed.** If the request errors, the granted set is empty and
 > every gate reads false — deliberately silent, not reported to Sentry (would
 > bury real errors on every page load). A gate that renders on a failed check
 > is worse than one that stays hidden.
@@ -1048,13 +1088,14 @@ export function useFeatureAccess(): FeatureAccess;
 #### 16. `useWebPush`
 
 `src/hooks/useWebPush.ts`
-Subscribes this device to Web Push, storing the subscription in
-`push_subscriptions` for the `send-notification` Edge Function to read.
-Requires `VITE_VAPID_PUBLIC_KEY`. The receiving side is `public/push-sw.js`,
-imported into the generated service worker (`workbox.importScripts`) — before
-2026-08-29 no handler existed and every push the sender signed was silently
-discarded by the browser. Delivery has still never been observed on a real
-device; see `docs/SAAS.md` ❓-007.
+Subscribes this device to Web Push, storing the subscription through
+`POST /me/push-subscriptions` (`src/services/pushSubscriptionService.ts`) for
+`Dispatcher` to send to (`backend/src/WebPushSender.php`). Requires
+`VITE_VAPID_PUBLIC_KEY`. The receiving side is `public/push-sw.js`, imported into
+the generated service worker (`workbox.importScripts`) — before 2026-08-29 no
+handler existed and every push the sender signed was silently discarded by the
+browser. As of that date delivery had never been observed on a real device (see
+`docs/SAAS.md` ❓-007); whether it has been since is `NOT VERIFIED`.
 
 ```ts
 type WebPushStatus = 'unsupported' | 'default' | 'granted' | 'denied';
@@ -1102,22 +1143,22 @@ repository, and the four auth routes and the 404 set no title at all.
 interface PageMetadata {
   title?: string; // overrides the route's own
   description?: string; // overrides the route's own
-  noindex?: boolean; // the 404 only — the SPA fallback answers it 200
+  noindex?: boolean; // ask crawlers not to index this page; used by the 404
 }
 export function usePageMetadata(overrides?: PageMetadata): void;
 ```
 
-Callers: `MarketingLayout`, `AuthSplitLayout`, `ForgotPasswordPage`,
-`ResetPasswordPage`. Only the title is restored on unmount; the tags are
+Callers: `MarketingLayout`, `AuthSplitLayout`. Only the title is restored on unmount; the tags are
 overwritten by whichever route mounts next.
 
 #### 19. `useOrgBillingState`
 
 `src/hooks/useOrgBillingState.ts`
 The active organisation's trial and read-only state, from
-`my_org_billing_state` (`0154`) through `getOrgBillingState` in
-`src/services/subscriptionService.ts`. Any member may read it, unlike
-`subscriptions`, because a manager is who the read-only banner is for. Re-read on
+`GET /orgs/{o}/billing/state` (`backend/src/Mod/Billing.php`) through
+`getOrgBillingState` in `src/services/subscriptionService.ts`. Any member may read
+it, unlike the billing account (owner only), because a manager is who the
+read-only banner is for. Re-read on
 an organisation switch and every ten minutes, so a trial that ends while the app
 is open shows the banner without a reload.
 
@@ -1129,12 +1170,26 @@ interface OrgBillingStateResult {
 export function useOrgBillingState(): OrgBillingStateResult;
 ```
 
-Fails open: a failed read renders nothing. That is safe because the database,
-not this hook, refuses a read-only organisation's writes
-(`enforce_org_not_read_only`). Callers: `ReadOnlyBanner` in `AppShell`.
+Fails open: a failed read renders nothing. That is safe because the API,
+not this hook, refuses a read-only organisation's writes (the API, with 402
+`billing_read_only`: `Billing::requireNotReadOnly`, `backend/src/Billing.php`). Callers: `ReadOnlyBanner` in `AppShell`.
+
+#### Hooks without a numbered section
+
+Six more files in `src/hooks` exist; their contracts are the signatures in the files
+(numbered sections are cited by number elsewhere, so these are not numbered):
+
+| Hook | File | What it is |
+| --- | --- | --- |
+| `useFilterState(options)` | `src/hooks/useFilterState.ts` | Filter, sort and page state held in the URL, one contract for every filterable table (`src/lib/filters.ts`). Sensitive dimensions such as the person search are kept out of the URL |
+| `useMediaQuery(query): boolean`, `useIsPhone()` | `src/hooks/useMediaQuery.ts` | A media query from JavaScript, for the one case a CSS class cannot express: rendering a different element at different widths |
+| `useOperationalDate(timezone): string` | `src/hooks/useOperationalDate.ts` | The current local date in a timezone, rolling over at the next local midnight on its own |
+| `usePersonalPreferences()` | `src/hooks/usePersonalPreferences.ts` | The signed-in person's own preferences, defaults first so a slow read changes nothing; `rememberPersonalPreferences` primes it after a save |
+| `useStoredPhoto(source): string \| null` | `src/hooks/useStoredPhoto.ts` | The address to show a photo at: a legacy link as is, a stored photo as a signed link from the API, null until it resolves |
+| `useWorkMode()` | `src/hooks/useWorkMode.ts` | Whether the person is looking at the organisation or at their own work, and whether they have a staff profile; the management default outside `WorkModeProvider` |
 
 ### Conventions
 
-- Every hook is fully typed with an explicit return interface.
-- Hooks never read `import.meta.env` directly. They import from `@/lib/env`.
+- Every hook is fully typed with an explicit return type: `tsconfig.json` is `strict` with `noUncheckedIndexedAccess`, and `eslint.config.js` warns on a missing return type (`@typescript-eslint/explicit-function-return-type`), which `--max-warnings 0` turns into a failure.
+- Hooks never read `import.meta.env` directly. They import from `@/lib/env` (checked on 9 November 2026: no file in `src/hooks` reads it).
 - Side-effectful hooks clean up their listeners in the `useEffect` return.
