@@ -138,7 +138,7 @@ Besides the two global buckets, these named buckets are hit by the module that o
   Typical meanings: 409 for a business-rule conflict (`rota_published`, `leave_overlap`, `cover_below_minimum`, `already_exported` ...), 422 for a field that fails validation, 502 and 503 when a provider (AI, Stripe) or a feature is unavailable (`ai_unavailable`, `billing_provider`, `billing_unavailable`, `not_configured`), 507 `storage_full` when the file store has no room (`backend/src/FileStore.php`).
 - **Exceptions to the shape.** The public enquiry route (`backend/src/Mod/Enquiries.php`) answers `{"error":"code"}` with a string for its own failures (`origin_not_allowed`, `unsupported_media_type`, `too_large`, `invalid` with a `fields` list, `verification_failed`, `rate_limited`), and `{"ok":true}` with 201 on success. The Stripe webhook uses the standard shape for its errors and `{"received":true}` on success.
 - **Idempotency of offline writes.** A device mints a `client_event_id` before the first attempt of a clock event, leave request or shift swap; a replay finds its earlier row and answers 200 with `already_applied: true` instead of creating a second one (read in `backend/src/Mod/Clock.php`; the `backend/migrations/006-time-and-requests.sql` header states the same for the others, and each of the three tables has a unique key on `client_event_id`). The browser queue that replays them is described in `docs/ARCHITECTURE.md`.
-- **Pagination.** There is no general convention. The console lists (`organisations` and `users` in `backend/src/Mod/Console.php`) take `limit` (1 to 100, default 50) and `offset` and echo both; the organisation audit trail (`GET /orgs/{o}/audit` in `backend/src/Mod/Account.php`) takes `limit` (1 to 100, default 50) and a keyset cursor `before_id`; other lists read so far return a fixed, capped set (for example the rota list is limited to 500 rows in `backend/src/Mod/Rotas.php`). Lists in modules not yet read in this pass are `NOT VERIFIED (not read in this pass)`.
+- **Pagination.** There is no general convention. The console lists (`organisations` and `users` in `backend/src/Mod/Console.php`) take `limit` (1 to 100, default 50) and `offset` and echo both; the organisation audit trail (`GET /orgs/{o}/audit` in `backend/src/Mod/Account.php`) takes `limit` (1 to 100, default 50) and a keyset cursor `before_id`; the notification inbox (`backend/src/Mod/Notifications.php`) takes `limit` (1 to 100, default 50); other lists read so far return a fixed, capped set (for example the rota list is limited to 500 rows in `backend/src/Mod/Rotas.php`). Lists in modules not yet read in this pass are `NOT VERIFIED (not read in this pass)`.
 - **Times.** Instants are ISO 8601 with an offset; dates are `YYYY-MM-DD`; the database stores UTC.
 
 ## 4. Route reference
@@ -170,11 +170,11 @@ Tables written: `users`, `organisations`, `app_settings`, and `audit_logs` (the 
 | POST | `/orgs/{o}/ai/rota` | `run('rota')` |  |
 | POST | `/orgs/{o}/ai/announcement` | `run('announcement')` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The AI rota assistant. Two tasks share one grounding query: turn a staffing request into shift suggestions, and draft an announcement about what is actually on the rota this period. Every suggestion is checked before it is returned (section 6).
 
-Access: NOT VERIFIED (not read in this pass)
+Access: The caller must be an owner or manager of the organisation (effective role, so lent authority counts), never a support session; the plan must include `ai_rota_assistant` (403 `plan_required`); the flag must be on (403 `feature_off`); the server must hold an OpenRouter key (503 `ai_unavailable`); and the limits are 30 an hour per person and 200 an hour per organisation (429). Each refusal is made before any outside call.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `audit_logs` only: one row per completed request, with counts and lengths and no text.
 
 ### Announcements (`backend/src/Mod/Announcements.php`)
 
@@ -189,11 +189,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | GET | `/orgs/{o}/announcements/{n}/reads` | `reads` |  |
 | POST | `/orgs/{o}/announcements/{n}/remind` | `remind` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Organisation notices. Publishing for the first time queues one notification to the audience (everyone, one department, or one location through its departments); editing a published notice notifies nobody a second time.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `GET /orgs/{o}/announcements` is any member: a manager also sees drafts and the read counts, everyone else only published notices (at most 200). `read` is any member with a staff record (403 `no_staff_record` otherwise). Save, publish, delete, `reads` and `remind` are owner or manager (writes also need a writable organisation); `remind` is limited to 6 an hour per announcement and needs the notice to be published.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `announcements`, `announcement_reads`; publishing and reminders queue rows in `notification_outbox` through `Notify`.
 
 ### Billing (`backend/src/Mod/Billing.php`)
 
@@ -207,11 +207,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/orgs/{o}/billing/sync-contact` | `syncContact` |  |
 | POST | `/orgs/{o}/billing/invoices/{i}/links` | `invoiceLinks` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: What an organisation sees and does about billing. Any member may read the state (the app shows a banner and greys out writes); only the real owner sees the account or acts on it. Stripe is reached only here and in the webhook, in the mode set by the private configuration; checkout and the portal return to the configured app URL, not the `Origin` header.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `GET /plans` needs only sign-in (the price list, with whether a price id exists for the current mode). `GET /orgs/{o}/billing/state` is any member. `GET /orgs/{o}/billing`, `checkout`, `portal`, `sync-contact` and `invoices/{i}/links` are the owner (effective role). `POST /orgs/{o}/billing/checkout` takes one field, `plan` (`starter`, `professional` or `business`; enterprise is by arrangement); it is limited to 20 an hour per organisation, and 503 `billing_unavailable` or 502 `billing_provider` answer when Stripe is not set up or fails.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: none by its own SQL (found by a search of the module); Stripe references and subscription state are written by `backend/src/Billing.php` and, on payment events, by `StripeWebhook`.
 
 ### CalendarFeed (`backend/src/Mod/CalendarFeed.php`)
 
@@ -222,11 +222,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/orgs/{o}/calendar-feed/revoke` | `revoke` |  |
 | GET | `/ics` | `feed` | public |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: A private iCalendar feed of a person's published shifts, to subscribe to from a phone calendar. The URL carries a secret token (only its SHA-256 is stored); a person can issue a new one (which revokes the old) or revoke it, and an unused feed switches off after 90 days.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `GET /orgs/{o}/calendar-feed` is any member (own status). `issue` and `revoke` need a staff record and a writable organisation (403 `no_staff_record` otherwise); `issue` is limited to 10 an hour per person. `GET /ics` is public, authorised by the token in the query; the feed also stops when the person is suspended or removed, and a bad token is a bare 404 (limits in section 2).
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `calendar_feed_tokens`.
 
 ### Clock (`backend/src/Mod/Clock.php`)
 
@@ -333,11 +333,11 @@ Tables written: `cover_absences`, `cover_requests`, `cover_applications`, `shift
 | GET | `/platform/enquiries` | `inbox` |  |
 | POST | `/platform/enquiries/{e}/status` | `setStatus` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Website enquiries (the contact form) and the platform's inbox for them. The raw address is never stored, only a keyed hash; the notice to the team is sent by cron and carries no visitor text.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `POST /enquiries` is public and raw and defends itself (section 5; fields `name`, `organisation`, `workEmail`, `message`, optional `teamSize`, `sector`, `wantsDemo`, `marketingConsent`, `turnstileToken` and the honeypot `website`). `GET /platform/enquiries` and `POST /platform/enquiries/{e}/status` are platform owner, admin or support.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `enquiries`.
 
 ### FeatureFlags (`backend/src/Mod/FeatureFlags.php`)
 
@@ -349,11 +349,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/platform/flags` | `set` |  |
 | POST | `/platform/flags/targets` | `target` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Platform feature switches: what is on for an organisation, and the platform console's control of flags (`enabled`, `rollout`, target plans), pilot organisations and the change log. Flags exist by migration only; there is no create endpoint.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `GET /orgs/{o}/features` is any member (the effective features for the organisation). `GET /platform/flags` and `GET /platform/flags/changes` are any platform role; `POST /platform/flags` and `POST /platform/flags/targets` are platform owner or admin (404 for others).
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `feature_flags`, `feature_flag_targets`, `feature_flag_changes`.
 
 ### Gdpr (`backend/src/Mod/Gdpr.php`)
 
@@ -467,11 +467,11 @@ Tables written: `organisations` (and, by cascade or the `CLEAR_FIRST` clearing, 
 | POST | `/me/push-subscriptions` | `subscribe` |  |
 | POST | `/me/push-subscriptions/delete` | `unsubscribe` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The caller's in-app inbox for one organisation and their web push subscriptions. The cron job of this module queues scheduled alerts and runs `Dispatcher::drain`, which delivers the notification outbox (in-app rows, email, web push).
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `GET /orgs/{o}/notifications` (takes `limit`, 1 to 100, default 50, and `unread=1`) and `POST /orgs/{o}/notifications/read` are any member and touch only the caller's own rows. `POST /me/push-subscriptions` and `.../delete` need only sign-in and act on the caller's own subscriptions; a subscription needs an `https` `endpoint` and `keys.p256dh` and `keys.auth`, 30 an hour per person.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `notifications`, `push_subscriptions` from the routes; `Dispatcher` (run by the cron job) also writes `notification_outbox`, `notification_deliveries` and `notifications`.
 
 ### Orgs (`backend/src/Mod/Orgs.php`)
 
@@ -705,11 +705,11 @@ Tables written: `staff_profiles`, `job_titles`, `staff_locations`, `staff_pay_ra
 | --- | --- | --- | --- |
 | POST | `/stripe/webhook` | `receive` | public raw |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The Stripe webhook: the only way a payment changes an organisation. Public by necessity, so it authorises itself (section 5 sets out the steps).
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Public and raw: no sign-in; authorised by the `Stripe-Signature` header for the configured mode. 300 a minute per address like every public route.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `billing_events`, `invoices`, and the subscription state and `organisations` plan through `backend/src/Billing.php`.
 
 ### Support (`backend/src/Mod/Support.php`)
 
@@ -726,11 +726,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | GET | `/platform/support/sla` | `sla` |  |
 | POST | `/platform/support/sla` | `saveSla` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The support desk. A customer opens a case and replies; platform staff (owner, admin, support; finance is not operational) answer, assign, set status and keep internal notes. A case is visible to the person who raised it, to an owner of its organisation, and to operational staff; a case you may not see is a plain 404.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `POST /support/cases`, `GET /support/cases`, `GET /support/cases/{c}`, `reply` and `rate` need only sign-in and then the visibility rule above; `rate` is only the person who raised the case; an internal note is staff only (403). `GET /platform/support/cases`, `status`, `assign` and `GET /platform/support/sla` are platform owner, admin or support; `POST /platform/support/sla` is platform owner or admin (404 for others). Fields of `POST /support/cases/{c}/reply`: `body` (required, at most 10000 characters) and `internal` (boolean, staff only); 60 an hour per person. Opening a case takes `subject` (at most 200), `body` (at most 10000), `category`, `priority`, optional `org_id`, and, for staff only, `requester_email`; 10 an hour per person.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `support_cases`, `support_case_messages`, `support_counter` (reference numbers), `support_sla_targets`.
 
 ### Swaps (`backend/src/Mod/Swaps.php`)
 
