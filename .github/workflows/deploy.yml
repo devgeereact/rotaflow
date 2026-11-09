@@ -7,7 +7,7 @@
 #     branches: [main]
 #     paths-ignore: ["docs/**", "**/*.md", ".agent/**"]
 # under `on:`, create the repository variables named in the Release step's env (all public values) and the two secrets
-# (~/Backups/scripts/setup-github-deploy.zsh), and enable Actions for this repository (owner decision; minutes are limited).
+# (~/Developer/build-kit/scripts/setup-github-deploy.zsh), and enable Actions for this repository (owner decision; minutes are limited).
 #
 # Checks and build run first; any failure stops before upload. A failed smoke test restores the previous files
 # automatically (snapshot in ~/backups/<project>/releases on the server). A commit message with [skip ci] does not deploy.
