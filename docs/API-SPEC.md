@@ -62,7 +62,7 @@ ls backend/src/Mod/*.php | wc -l                                                
   (an active membership of an organisation that is not archived). A malformed id, an unknown organisation and a non-member all get **404** `not_found`, so ids cannot be probed.
 - **Wrong role.** `Scope::require` compares the effective role and answers **403** `forbidden`; `Scope::requireReal` compares the real role (a delegate cannot do these acts). Owner and manager are `Scope::MANAGERS`.
 - **Not allowed to write.** A suspended organisation answers **403** `org_not_active`; a read-only support session answers **403** `support_read_only` (`Scope::requireWritable`). An unpaid or over-limit organisation can answer **402** (`billing_read_only` and the limit codes in `backend/src/Billing.php`).
-- **Feature flags.** A module that ships dark answers **403** `feature_off` while its flag is off for the organisation (`staff_documents`, `scheduling_tools`, `cover_tools`, `timesheet_tools`, `two_way_swaps`, `ai_rota_assistant`; see `backend/src/Flags.php`), Cover checks after the membership check so a stranger still gets 404; the order in the other modules is `NOT VERIFIED (not read in this pass)`.
+- **Feature flags.** A module that ships dark answers **403** `feature_off` while its flag is off for the organisation (`staff_documents`, `scheduling_tools`, `cover_tools`, `timesheet_tools`, `two_way_swaps`, `ai_rota_assistant`; see `backend/src/Flags.php`), In each module that has one (Cover, Compliance, Scheduling, Timesheets, Swaps' two-way options, AiAssistant) the flag is checked after the membership check, so a stranger still gets 404.
 - **Support sessions and delegation.** A platform administrator with a live support session enters as a `support` member with a manager's reach; a staff member with a live delegation has the effective role manager. Both are resolved inside `Scope::membership` (see `docs/DATA-MODEL.md` section 2).
 - **Platform routes** (`/platform/...`, and the console) are not org-scoped. The guard is a platform role read with `Scope::platformRole`; the per-module rule (which roles, and whether a caller without the role gets 404 or 403) is in the module's entry in section 4.
   In `backend/src/Mod/Lifecycle.php` a caller without the required platform role gets 404.
@@ -138,7 +138,7 @@ Besides the two global buckets, these named buckets are hit by the module that o
   Typical meanings: 409 for a business-rule conflict (`rota_published`, `leave_overlap`, `cover_below_minimum`, `already_exported` ...), 422 for a field that fails validation, 502 and 503 when a provider (AI, Stripe) or a feature is unavailable (`ai_unavailable`, `billing_provider`, `billing_unavailable`, `not_configured`), 507 `storage_full` when the file store has no room (`backend/src/FileStore.php`).
 - **Exceptions to the shape.** The public enquiry route (`backend/src/Mod/Enquiries.php`) answers `{"error":"code"}` with a string for its own failures (`origin_not_allowed`, `unsupported_media_type`, `too_large`, `invalid` with a `fields` list, `verification_failed`, `rate_limited`), and `{"ok":true}` with 201 on success. The Stripe webhook uses the standard shape for its errors and `{"received":true}` on success.
 - **Idempotency of offline writes.** A device mints a `client_event_id` before the first attempt of a clock event, leave request or shift swap; a replay finds its earlier row and answers 200 with `already_applied: true` instead of creating a second one (read in `backend/src/Mod/Clock.php`; the `backend/migrations/006-time-and-requests.sql` header states the same for the others, and each of the three tables has a unique key on `client_event_id`). The browser queue that replays them is described in `docs/ARCHITECTURE.md`.
-- **Pagination.** There is no general convention. The console lists (`organisations` and `users` in `backend/src/Mod/Console.php`) take `limit` (1 to 100, default 50) and `offset` and echo both; the organisation audit trail (`GET /orgs/{o}/audit` in `backend/src/Mod/Account.php`) takes `limit` (1 to 100, default 50) and a keyset cursor `before_id`; the notification inbox (`backend/src/Mod/Notifications.php`) takes `limit` (1 to 100, default 50); other lists read so far return a fixed, capped set (for example the rota list is limited to 500 rows in `backend/src/Mod/Rotas.php`). Lists in modules not yet read in this pass are `NOT VERIFIED (not read in this pass)`.
+- **Pagination.** There is no general convention; each list that takes one names its own parameters. `limit` alone: `GET /orgs/{o}/notifications` (1 to 100, default 50), `GET /orgs/{o}/clock-events` (1 to 1000, default 200; `latest=1` returns one), `GET /platform/support/cases` (1 to 200, default 100), `GET /platform/notifications/activity` (1 to 1000, default 1000). `limit` and `offset` (echoed back): the console organisation and user lists (`backend/src/Mod/Console.php`, 1 to 100, default 50), `GET /platform/audit` (`backend/src/Mod/PlatformAudit.php`, 1 to 200, default 50, with a `total`) and the platform invoice list (`backend/src/Mod/PlatformBilling.php`, 1 to 200, default 25). A keyset cursor: `GET /orgs/{o}/audit` (`backend/src/Mod/Account.php`) takes `limit` (1 to 100, default 50) and `before_id`. Every other list returns a fixed, capped set (for example the rota list is limited to 500 rows in `backend/src/Mod/Rotas.php`).
 - **Times.** Instants are ISO 8601 with an offset; dates are `YYYY-MM-DD`; the database stores UTC.
 
 ## 4. Route reference
@@ -294,11 +294,11 @@ Tables written: `document_types`, `documents`, `document_reminders`.
 | GET | `/orgs/{o}/support-sessions` | `orgSessions` |  |
 | POST | `/orgs/{o}/support-sessions/{s}/revoke` | `orgRevoke` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The Super Admin console's core: who the platform staff are, platform settings, the directories and totals, suspending an organisation, and support access (platform staff entering a customer's data, only with the customer's consent, for a stated reason, for a limited time). Roles: `platform_owner` (everything, and the only one who changes who is staff), `platform_admin`, `platform_support` (support access, cases), `platform_finance` (billing).
 
-Access: NOT VERIFIED (not read in this pass)
+Access: A caller without the needed platform role gets 404 from `/platform/*`. `GET /platform/settings` is any signed-in person (the app reads the maintenance notice and support address from it); `POST /platform/settings` is platform owner or admin. `GET /platform/admins`, `summary`, `GET /platform/orgs` and `GET /platform/orgs/{o}` are any of the four platform roles; granting or revoking a platform role is platform owner only (30 an hour). `notifications/activity`, `orgs/{o}/structure`, the user directory and detail, `support-sessions` and `orgs/{o}/support-sessions` (request) are platform owner, admin or support; `orgs/{o}/status` (suspend or reinstate) is owner, admin or finance. `POST /orgs/{o}/support-access` (the customer's consent) is the real owner of the organisation; `GET /orgs/{o}/support-sessions` is any member (staff see only live sessions, with less detail) and `POST /orgs/{o}/support-sessions/{s}/revoke` is the real owner. Requesting a support session is limited to 30 an hour per person.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `organisations` (status, `support_access_allowed`), `platform_admins`, `platform_settings`, `support_access_sessions`.
 
 ### Cover (`backend/src/Mod/Cover.php`)
 
@@ -573,11 +573,11 @@ Tables written: `shift_types`, `availability`, `minimum_cover_rules`.
 | POST | `/platform/orgs` | `createOrg` |  |
 | POST | `/platform/orgs/{o}/owner-invites` | `inviteOwner` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Creating an organisation with no members and an owner invitation, and replacing the pending owner invitation while the organisation has no members.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Both routes are platform owner or admin (404 for others); creating an organisation is limited to 20 an hour per person.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `organisations`, `invites`.
 
 ### PlatformAnnouncements (`backend/src/Mod/PlatformAnnouncements.php`)
 
@@ -591,11 +591,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/orgs/{o}/platform-announcements/{a}/read` | `read` |  |
 | POST | `/orgs/{o}/platform-announcements/opt-out` | `optOut` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The platform telling organisations something: drafts, scheduled and sent announcements, delivered as one row per organisation and addressed to people through the ordinary notification outbox. Maintenance and incident notices ignore an organisation's opt-out; product, billing and policy notices respect it.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `GET /platform/announcements` is any of the four platform roles; create, `publish` and `cancel` are platform owner or admin (404 for others; publishing is limited to 20 an hour per person). `GET /orgs/{o}/platform-announcements` and `.../{a}/read` are owner or manager of the organisation; `opt-out` is the real owner.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `platform_announcements`, `platform_announcement_deliveries`, `platform_announcement_optouts`; delivery queues rows in `notification_outbox`.
 
 ### PlatformAudit (`backend/src/Mod/PlatformAudit.php`)
 
@@ -603,11 +603,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | --- | --- | --- | --- |
 | GET | `/platform/audit` | `search` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The platform's read of the audit trail: every entry, across organisations. A tenant owner reads their own organisation's trail through `GET /orgs/{o}/audit` and never platform-only entries.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Platform owner, admin or support; finance reads none (404 for everyone else).
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: none (read only).
 
 ### PlatformBilling (`backend/src/Mod/PlatformBilling.php`)
 
@@ -619,11 +619,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/platform/invoices/{i}/credits` | `credit` |  |
 | GET | `/orgs/{o}/invoices/{i}/credits` | `orgCredits` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: The platform's view of revenue and invoices (monthly recurring revenue per currency, what was collected and what is owed) and invoice credits: a record against an invoice, in the invoice's currency, that changes nothing else.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: The four `/platform` routes are platform owner, admin or finance (404 for others; support is excluded). `GET /orgs/{o}/invoices/{i}/credits` is the real owner of the organisation.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `invoice_credits`.
 
 ### Rotas (`backend/src/Mod/Rotas.php`)
 
@@ -840,4 +840,4 @@ The 12 legacy Edge Functions and what replaced each:
 | `stripe-webhook` | `backend/src/Mod/StripeWebhook.php`: public raw `POST /stripe/webhook` |
 | `test-smtp` | `backend/src/Mod/OrgSettings.php`: `POST /orgs/{o}/smtp/test` |
 
-The retired RPC contracts (Postgres functions called from the browser) are not documented here. Their PHP equivalents are the routes in section 4, guarded by the checks in `docs/DATA-MODEL.md` section 5; that the equivalence holds RPC by RPC is `NOT VERIFIED (not read in this pass)`.
+The retired RPC contracts (Postgres functions called from the browser) are not documented here. Their PHP equivalents are the routes in section 4, guarded by the checks in `docs/DATA-MODEL.md` section 5; that the equivalence holds RPC by RPC is `NOT VERIFIED` (no RPC-by-RPC comparison was made).
