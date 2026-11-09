@@ -113,7 +113,7 @@ The legacy Supabase client module and the ImageKit helper under `src/lib` no lon
 grep -ln "from '@/pages\|from '@/components" src/lib/*.ts
 ```
 
-`src/lib/moduleBoundaries.test.ts` separately fails when a module under `src/lib` takes a runtime import from `src/services` (the allowlist and GAP id are in `CLAUDE.md`).
+`src/lib/moduleBoundaries.test.ts` separately fails when a module under `src/lib` takes a runtime import from `src/services`, from `@/lib/api` (the API client) or from `@clerk/*`, with one allowlisted file (tracked as GAP-114 in `CLAUDE.md`).
 
 **Formatting lives in `src/lib/format.ts`** (2026-10-21): `formatDate` for a `YYYY-MM-DD` value (read as components and printed in UTC, so the stored day is the day shown in every zone), `formatDateTime`, `formatTime` and `formatCount`, all in the product locale `APP_LOCALE` (`en-GB`, because every string is still an English literal). New screens use it; an inline `toLocaleString('en-GB')` moves to it when its screen is touched.
 
