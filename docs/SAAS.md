@@ -369,14 +369,14 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 105   |
-| 🟡 Partial            | 15    |
+| 🟢 Complete           | 102   |
+| 🟡 Partial            | 19    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
 | 🔴 Missing            | 1     |
 | ⚫ Deferred           | 11    |
-| ❓ Not audited        | 4     |
+| ❓ Not audited        | 3     |
 
 **Seven rows moved 🟡 → 🟢 on 2026-08-31 without new code, and that needs the same
 scepticism.** Each was partial for a residual that is not the capability: a verification with
@@ -1032,33 +1032,26 @@ itself: a restore, a real charge, and a phone.
 
 ### Reliability and operations
 
-- [ ] CAP-095 🟡 Production backups — **running nightly since 5 September 2026, and the
-      restore now brings the grants back too.** This entry said the secrets were missing and
-      cited a failure of 2026-08-31; both secrets were set on 5 September and `backup.yml` has
-      succeeded on its schedule since. The 7 September restore rehearsal then found the part
-      that mattered: the dump was taken `--no-privileges`, so it restored 64 tables and 99
-      policies with **zero grants**, and RLS admits nobody on its own — a database restored
-      from any earlier artifact refuses every request. Fixed the same day; run `34166278425`
-      measured 173 table grants and 135 function EXECUTE grants to `authenticated`, and 0 to
-      `anon`. Amber rather than green because two things remain and neither is code:
-      `pitr_enabled: false` is a paid Supabase feature and the owner's billing decision, and no
-      restore into a real Supabase project has been done, so auth and storage are still
-      unproven (❓-005)
-      `.github/workflows/backup.yml` · GAP-001 · **P0, owner only**
-- [x] CAP-096 🟢 Migration safety gate — nine destructive statement classes must carry `-- SAFETY(<rule>)`
-      in the migration; verified to fire on all nine and stay silent on all ten written today
-      `scripts/check-migration-safety.mjs` · GAP-002 closed #194
-- [x] CAP-097 🟢 Branch protection — `verify`, `e2e`, `db-tests` and `e2e-authenticated` are all
-      required on `main`. `enforce_admins` stays **off by the repository owner's decision**, so
+- [ ] CAP-095 🟡 Production backups — **the MariaDB database is dumped every six hours and a restore check into a scratch database passed on 2026-11-08; amber because the copy never leaves the server.**
+      Live: `backend/bin/backup.php` writes a gzipped, checksummed dump (mode 0600) with a row-count file, prunes to the newest 28, and `--restore-check` loads the newest dump into an empty scratch database and compares the counts. The six-hour cadence is the suggested schedule in `docs/DEPLOYMENT.md` ("Database backups"); the script states none. **Installed on the live host and proven on 2026-11-08, recorded in `docs/AUDIT.md`** (cron line `17 */6 * * *`, first live backup, restore proof). Open, and never to be read as done: an encrypted off-site copy (the dumps sit on the same hosting account as the database), an alert on a failed run, a scheduled monthly restore drill, and point-in-time recovery; the stored files and private configuration are not in the dump. The host state today was not re-checked (`NOT VERIFIED`)
+      Supabase era, history: the nightly `backup.yml` dump ran from 5 September 2026 once its secrets were set; the 7 September rehearsal found the dump taken `--no-privileges` restored 64 tables and 99 policies with zero grants, fixed the same day (run `34166278425`: 173 table grants and 135 function EXECUTE grants to `authenticated`, 0 to `anon`); `pitr_enabled: false` was a paid Supabase feature. `.github/workflows/backup.yml` still targets that retired project, and its scheduled runs fail daily (`gh run list`, 2026-11-09)
+      `backend/bin/backup.php` · `backend/src/Backup.php` · suite `backend/tests/suites/300-backup.php` · `docs/DEPLOYMENT.md` · GAP-001 · **P0, owner only** (O18)
+- [ ] CAP-096 🟡 Migration safety gate — nine destructive statement classes must carry `-- SAFETY(<rule>)`
+      in the migration; verified to fire on all nine and stay silent on all ten written today (Supabase era).
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `scripts/check-migration-safety.mjs` scans `supabase/migrations` (its constant `DIR`), the retired Postgres folder, not `backend/migrations`, so no gate checks a MariaDB migration; the applier `backend/bin/migrate.php` refuses an edited migration (checksum, exit 2) and the migrations are written to be additive and re-runnable (`docs/DATA-MODEL.md`, section 8). Becomes 🟢 when the script reads the live folder (a code change outside this phase)
+      `scripts/check-migration-safety.mjs` · `backend/bin/migrate.php` · GAP-002 closed #194
+- [x] CAP-097 🟢 Branch protection — `verify`, `e2e`, `db-tests` and `e2e-authenticated` were all
+      required on `main` (a GitHub setting: `NOT VERIFIED` on 2026-11-09; `qa/README.md` holds the table of what a merge requires, and `db-tests` and `e2e-authenticated` boot the retired local Supabase stack). `enforce_admins` stays **off by the repository owner's decision**, so
       the row is complete: a setting somebody has chosen is not an outstanding defect, and
       recording it as one made every reader look for work that nobody intends to do
       `.github/workflows/ci.yml` · GAP-003
 - [x] CAP-098 🟢 CI gates — typecheck, lint, format, the unit suite, build, SW assertion, bundle budget,
       migration safety, dependency audit. The test count is not quoted here: it was "636" and then "684",
-      and a number nothing verifies is a number that drifts
+      and a number nothing verifies is a number that drifts. The PHP suites (`pnpm run check:php`) run with `pnpm run check` and in the manual Deploy workflow, and are not a job of `ci.yml`
       `.github/workflows/ci.yml`
-- [x] CAP-099 🟢 E2E coverage — 26 authenticated screens rendered and scanned in BOTH themes, plus a test
-      that genuinely signs up and creates an organisation against a local Supabase stack
+- [ ] CAP-099 🟡 E2E coverage — 26 authenticated screens rendered and scanned in BOTH themes (through the `-preview` routes, which need no back end), plus a test
+      that genuinely signed up and created an organisation against a local Supabase stack (retired).
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `e2e/authenticated-loop.spec.ts` skips itself unless `E2E_LIVE_SUPABASE` is set, which only the `e2e-authenticated` job does after starting a local Supabase stack, now retired (lines 43 to 46), so no end-to-end test signs in through Clerk and calls the PHP API; `e2e/offline-clock-in.spec.ts` has the same dependency. Becomes 🟢 when an authenticated loop runs against the PHP API and a throwaway MariaDB (a test change outside this phase)
       `e2e/app-surface.spec.ts` · `e2e/authenticated-loop.spec.ts` · GAP-010 closed #222
 - [x] CAP-100 🟢 Component tests — three suites now, chosen by the same rule rather than by
       coverage: the components whose WORDING is load-bearing. `FailedWritesNotice` (which
@@ -1081,28 +1074,25 @@ itself: a restore, a real charge, and a phone.
       need capture are already named in OBSERVABILITY — rota-session starts, schedule views,
       an explicit AI-suggestion outcome, and Web Vitals
       `docs/PRODUCT-SPEC.md#metrics-and-events` · P3
-- [x] CAP-103 🟢 Error tracking — Sentry in the client, and in all twelve Edge Functions via
-      `_shared/sentry.ts`; the Stripe webhook no longer fails into a log nobody reads
-      `supabase/functions/_shared/sentry.ts` · HARDEN-005 closed #216 · deployed 2026-08-31
-- [x] CAP-104 🟢 Query shape — 16 composite indexes cover the predicates the app issues; the
+- [ ] CAP-103 🟡 Error tracking — Sentry in the client (only with the visitor's consent, `src/lib/sentry.ts`), and in the Supabase era in all twelve Edge Functions via
+      `_shared/sentry.ts`; the Stripe webhook no longer failed into a log nobody reads.
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `git grep -li sentry -- backend/src` prints nothing, so the PHP API reports no error to Sentry; a failure in `backend/src/Mod/StripeWebhook.php` or a cron job goes to the private log file (`Bootstrap::log`, `cron.log`), which nobody is alerted about (owner action O2). Becomes 🟢 when the server reports errors somewhere a person is told
+      `src/lib/sentry.ts` · `backend/src/Bootstrap.php` · HARDEN-005 closed #216 · Supabase era: `supabase/functions/_shared/sentry.ts` deployed 2026-08-31
+- [x] CAP-104 🟢 Query shape — composite indexes cover the predicates the app issues (Supabase era: 16, `0072`; the MariaDB indexes are the `KEY` lines of `backend/migrations`, not recounted here); the
       builder loads every location's week in two queries, not two per location
-      `supabase/migrations/0072_hot_path_indexes.sql` · HARDEN-006 · P2
+      `backend/migrations/005-rota.sql` · `backend/migrations/006-time-and-requests.sql` · HARDEN-006 · P2
 - [x] CAP-105 🟢 Concurrency on approvals — the UPDATE carries a state predicate, so the losing
       writer changes zero rows and is told so
       `src/services/reviewConcurrency.test.ts` · BUG-061 · P2
 - [ ] CAP-106 ❓-004 Real-device offline UAT has never been performed
       **Test:** sign up → publish → no-signal clock-in → reconnect → correction, on real hardware · P1
-- [ ] CAP-107 ❓-005 No restore has ever been performed from a backup by a person — **but the
-      nightly job now rehearses one.** `verify-restore` decrypts the dump it just took, restores
-      it into a throwaway PostgreSQL and asserts a database came back rather than a file: 40+
-      tables, and `organisations`, `shifts`, `clock_events` and `audit_logs` all present with
-      their row counts printed. That closes the failure where the job writes an encrypted file
-      for months and the first person to open it finds it never contained anything. It does NOT
-      close this row: a logical dump into stock Postgres proves the DATA survives, and auth,
-      storage and RLS are Supabase's and are not in the dump
-      **Test:** restore a snapshot into a scratch project and diff the row counts · **P0**
-- [x] CAP-108 🟢 `pg_cron` retention job — verified scheduled on production as `rotaflow-retention @ 15 2 * * *`
-      `supabase/migrations/0029_retention_enforcement.sql` · ❓-006 answered 2026-08-29
+- [ ] CAP-107 🟡 (was ❓-005) A restore from a backup by a person: **the named test passed on 2026-11-08 for the database, and a restore that replaces the live database has never been done.**
+      Supabase era: no restore had ever been performed by a person, and the nightly `verify-restore` step only rehearsed one (a throwaway PostgreSQL, 40+ tables, row counts printed); auth, storage and RLS were Supabase's and not in the dump.
+      Live: the test this row named (restore the newest dump into a scratch database and diff the row counts) is `backend/bin/backup.php --restore-check`, and its run on the live host on 2026-11-08 passed with every count inside the recorded range, the scratch database left empty (recorded in `docs/AUDIT.md`; the host state today was not re-checked, `NOT VERIFIED`). **Status changed ❓ to 🟡 on 2026-11-09** because the tracked record shows the test was performed; it stays amber because the stored files and private configuration are not in the dump, the restore replaced nothing, and the monthly drill is not scheduled. Owner action O18
+      **Test:** replace a scratch copy of the database from the newest dump, then diff the row counts and open the app against it · **P0**
+      `backend/bin/backup.php` · `backend/src/Backup.php` · suite `backend/tests/suites/300-backup.php`
+- [x] CAP-108 🟢 Retention job — verified scheduled on the Supabase production database as `rotaflow-retention @ 15 2 * * *` (Supabase era, `pg_cron`). Live: `Lifecycle::cron` runs `Retention::run` once a day after 02:15 UTC, and `backend/bin/cron.php` runs every five minutes on the live host (`docs/AUDIT.md`, 2026-11-08); a live row in `retention_runs` is `NOT VERIFIED`
+      `backend/src/Mod/Lifecycle.php` · `backend/src/Retention.php` · suite `backend/tests/suites/190-lifecycle.php` · ❓-006 answered 2026-08-29 · Supabase era: `0029`
 
 ### The workforce pass, 2026-09-06
 
