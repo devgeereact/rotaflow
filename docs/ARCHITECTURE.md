@@ -4,114 +4,132 @@
 
 ```text
 ┌──────────────────────────────────────────────────────────────────┐
-│                     Client Browser / Installed PWA                 │
-│      React 19 + Vite + Tailwind  ·  Service Worker (Workbox)        │
-│      Served as static files from cPanel (public_html)              │
-└──────┬───────────────┬───────────────┬───────────────┬────────────┘
-       │               │               │               │
-       ▼               ▼               ▼               ▼
-┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────────────┐
-│  Supabase  │  │  ImageKit  │  │   Sentry   │  │      Stripe        │
-│ Auth + DB  │  │  media CDN │  │ monitoring │  │ Checkout · Portal  │
-│  + RLS     │  │ transforms │  │            │  │ signed webhook     │
-└─────┬──────┘  └────────────┘  └────────────┘  └─────────┬──────────┘
-      │                                                    │
-      ▼                                                    ▼
- PostgreSQL  ·  Edge Functions                  A signature-verified
- (row-level security)  ·  pg_cron               Edge Function (NOT cPanel)
+│                  Client browser / installed PWA                  │
+│   React 19 + Vite + Tailwind  ·  service worker (vite-plugin-pwa) │
+│   static files from dist/  ·  Clerk sign-in  ·  IndexedDB outbox  │
+└───────────────┬───────────────────────────────┬──────────────────┘
+                │ HTTPS                         │ HTTPS (Clerk, Sentry)
+                ▼                               ▼
+        ┌───────────────┐              ┌────────────────────┐
+        │  Cloudflare   │              │  Clerk · Sentry    │
+        │ DNS · TLS     │              │  (third parties)   │
+        └───────┬───────┘              └────────────────────┘
+                ▼
+┌──────────────────────────────────────────────────────────────────┐
+│ cPanel host (Apache)                                             │
+│   web root:  dist/ (static)  +  api/index.php (PHP front door)   │
+│   /api/*  →  api/index.php  (rewrite in .htaccess)               │
+│   private root, outside every web root:                          │
+│     app/ (backend/src, bin, migrations) · config · cache · logs │
+│     uploads/  ·  cron entry: app/bin/cron.php                    │
+└───────┬──────────────────────────────────────────┬───────────────┘
+        ▼                                          ▼
+   MariaDB (backend/migrations)        Outbound from PHP: Stripe, OpenRouter,
+                                       SMTP, web push services
 ```
 
-**Inngest is no longer in this picture.** It was the notification dispatch path
-until `0087`: the browser posted an event, Inngest called an Edge Function, and
-anything that failed after the write had already committed was simply lost. Every
-notification is now enqueued by the database in the same transaction as the event
-that owes it and drained by `pg_cron` (`0069`, `0083`, `0087`). Nothing of it is
-left: the `inngest` Edge Function is gone from this repository **and** from the
-project — the eight functions deployed on 2026-08-31 are `ai-rota-assistant`,
-`send-notification`, `test-smtp`, `create-checkout-session`,
-`create-portal-session`, `stripe-webhook`, `send-invite` and `calendar-feed` —
-and the event key was removed from `.env`/`.env.example` the same day. This
-paragraph said "still exists and is deployed" until it was read against the
-project; a function list is one API call away and was worth not guessing at.
-See `docs/SAAS.md` GAP-026.
+The path of a request:
 
-The static bundle talks to each managed service directly over HTTPS. cPanel only
-serves files. It never runs application logic.
+1. The browser loads the static bundle from `dist/` (the host serves it, `.htaccess` rewrites an unknown path to `index.html`, the service worker does the same offline).
+2. Every data call is a same-origin request to `/api/...` (`API_BASE_URL = '/api'` in `src/lib/api.ts`), carrying the Clerk session token as a Bearer token (`src/lib/apiClient.ts`).
+3. `.htaccess` sends every `/api` path to the one PHP front controller, `backend/public/api/index.php`, and passes the `Authorization` header through. Only GET and POST are accepted; `GET /api/health` answers before any config is read.
+4. The front controller reads the private config (`backend/src/Bootstrap.php`), opens MariaDB (`backend/src/Db.php`), builds the Clerk token verifier (`backend/src/Jwt.php`) and hands the request to `Api::handle` (`backend/src/Api.php`).
+5. `Api` checks the token, applies the rate limit (`backend/src/RateLimiter.php`), matches the path against the route table that every module contributes (`backend/src/Modules.php`, one `routes()` method per file in `backend/src/Mod/`) and calls the handler. A handler returns `[status, payload]`; every error is `{"error":{"code","message"}}` (`backend/src/HttpError.php`).
+6. Background work is not a server process: one cPanel cron entry runs `backend/bin/cron.php`, which calls each module's `cron()` job (section 6).
+
+Counts of routes, modules, tables and migrations belong to `docs/API-SPEC.md` and `docs/DATA-MODEL.md`; they are not repeated here.
+
+**Outbound services**, each reached from PHP and never from the browser, except Clerk and Sentry:
+
+| Service | Used for | Where |
+| --- | --- | --- |
+| Clerk | Sign-in (email code and the other methods enabled in Clerk). The browser holds the session; the API verifies its token | `backend/src/Jwt.php`, `src/context/AuthContext.tsx` |
+| Stripe | Checkout, the billing portal and a signature-verified webhook | `backend/src/StripeClient.php`, `backend/src/Mod/Billing.php`, `backend/src/Mod/StripeWebhook.php` |
+| OpenRouter | The language-model half of the rota assistant | `backend/src/Mod/AiAssistant.php` |
+| SMTP | Email (an organisation's own account, else the platform's) | `backend/src/Mail.php`, `backend/src/SmtpMailer.php` |
+| Web push | Notifications to installed devices | `backend/src/WebPushSender.php` |
+| Sentry | Browser error monitoring, only after the visitor agrees to diagnostics. There is no Sentry call in `backend/src` | `src/lib/sentry.ts` |
+
+Cloudflare sits in front of the host for DNS, TLS and proxying (`src/lib/subprocessors.ts` lists it). The live Cloudflare settings, headers and DNS are `NOT VERIFIED` from the repository. The live `.htaccess` is this repository's file with a Cloudflare origin-lock block prepended, which is why it is shipped by `pnpm htaccess push` and never by `pnpm release` (`scripts/htaccess.mjs`, header).
+
+**Retired services.** Supabase (database, sign-in, row-level security, realtime, storage), the Supabase Edge Functions, ImageKit and Inngest are not part of the live system. Supabase ended on 1 November 2026 (the cutover, `docs/CUTOVER.md`). Files now live in the private root (`backend/src/FileStore.php`), images are served by the API (`backend/src/Mod/Photos.php`), and notifications are an outbox drained by cron. **Legacy:** the previous version of this document, which describes that stack, is available with `git show live-supabase-2026-11-01:docs/ARCHITECTURE.md`.
 
 ## 2. Directory layout
 
+The tracked tree, one level deep (from `git ls-files`):
+
+```text
+.agent/            # project contract for agents: PROJECT.yml, MCP-PROFILE.yml, CURRENT-TASK.template.md
+.claude/           # agents/ and settings.json
+.githooks/         # pre-commit: gitleaks (blocks a commit that holds a secret)
+.github/           # workflows/, dependabot.yml, pull_request_template.md
+backend/           # the PHP API (section 9d)
+  bin/             # backup, cron, datamove, doctor, grant-platform-owner, migrate, seed-demo
+  migrations/      # numbered NNN-name.sql files for MariaDB
+  private/         # config.example.php (names of the private settings; no values)
+  public/api/      # index.php, the only web-reachable PHP file
+  src/             # one class per file; Mod/ holds the route modules
+  tests/           # run.php, suite.php, lib.php, suites/, datamove/
+docs/              # the documents indexed in docs/README.md; design/ holds screenshots
+e2e/               # Playwright specs (walk/ and support/ hold the local-live walk)
+public/            # copied into dist/ as is: fonts/, icons/, push-sw.js, .well-known/, robots.txt
+qa/                # dated audits and the release gates (qa/README.md)
+scripts/           # release.mjs, htaccess.mjs, check-*.mjs, prerender.mjs, test-db.sh, walk.sh, cutover/
+src/               # the React app (below)
+supabase/          # LEGACY source tree, kept until a later phase (functions/, migrations/, tests/, config.toml)
+deno.lock          # LEGACY, belongs to supabase/functions
+.htaccess          # Apache rules for the web root (composed with the origin lock by pnpm htaccess)
+release.json       # what pnpm release uploads, builds and smoke-tests
+vite.config.ts  vitest.config.ts  playwright.config.ts  eslint.config.js  biome.json  tsconfig.json
+package.json  pnpm-lock.yaml  pnpm-workspace.yaml  .node-version  bundle-budget.json
+CLAUDE.md  AGENTS.md  CODEX.md  README.md  CHANGELOG.md  KNOWN-ISSUES.md  LICENSE
+```
+
 ```text
 src/
-├── assets/        # images/svgs imported by code — EMPTY today (`.gitkeep` only)
-├── components/    # presentational + wiring components
-│   └── ui/        # design-system primitives (Button, Card…)
-├── context/       # AuthProvider, ThemeProvider (React Context)
+├── components/    # presentational + wiring components, grouped by area (layout/, rota/, staff/, ui/ ...)
+├── context/       # AuthContext, OrgContext, ThemeContext, ToastContext, ConfirmContext, ConsentContext, WorkModeContext
 ├── hooks/         # reusable logic (see docs/ARCHITECTURE.md#hook-contracts)
-├── lib/           # third-party SDK clients + env access
-│   ├── env.ts       # validated, typed import.meta.env
-│   ├── supabase.ts  # typed Supabase client
-│   ├── sentry.ts    # Sentry init
-│   └── utils.ts     # cn() and small helpers
-├── pages/         # route-level views
-├── services/      # typed data access over Supabase
-├── types/         # shared + generated DB types
+├── lib/           # pure logic plus the API client
+│   ├── api.ts, apiClient.ts, apiDates.ts   # the only network client (same-origin /api)
+│   ├── env.ts       # the six VITE_* names the bundle may carry
+│   ├── sentry.ts    # Sentry init (consent-gated)
+│   └── offlineOutbox.ts   # raw IndexedDB wrapper for the write outbox
+├── pages/         # route-level views (app/ and admin/ hold the signed-in screens)
+├── services/      # typed data access over the API client
+├── types/         # shared types; database.types.ts is a frozen legacy row-shape file
+├── test/          # test stubs
 ├── App.tsx        # providers + router
 ├── main.tsx       # bootstrap: Sentry, SW registration, render
+├── entry-prerender.tsx  # Node entry used by scripts/prerender.mjs
 └── index.css      # Tailwind 4 entry: the @theme tokens and base styles
 ```
 
-**Dependency direction:** `pages → services → lib`. Components consume `hooks`
-and `context`. `lib` should import nothing from `pages`/`components`. Four files
-currently break that with type-only imports — `clockinDemo`, `reportsDemo`,
-`settingsTabs`, `swapRows` (a fifth, `workspaceTabs`, was deleted on 11 October 2026) — a convention that is not lint-enforced and not tracked in the register:
+The legacy Supabase client module and the ImageKit helper under `src/lib` no longer exist. Phase 4 of the documentation-truth work owns the leftover Supabase wording in `src` comments and in `src/types/database.types.ts`; this document does not describe it as live behaviour.
+
+**Dependency direction:** `pages → services → lib`. Components consume `hooks` and `context`. `lib` should import nothing from `pages` or `components`. Six files currently break that with type-only imports: `clockinDemo`, `reportsDemo`, `requestSections`, `settingsTabs`, `staffForm` and `swapRows`. A convention that is not lint-enforced and not tracked in the register:
 
 ```bash
 grep -ln "from '@/pages\|from '@/components" src/lib/*.ts
 ```
 
-**Formatting lives in `src/lib/format.ts`** (2026-10-21): `formatDate` for a
-`YYYY-MM-DD` value (read as components and printed in UTC, so the stored day is
-the day shown in every zone), `formatDateTime`, `formatTime` and `formatCount`,
-all in the product locale `APP_LOCALE` (`en-GB`, because every string is still
-an English literal). New screens use it; an inline `toLocaleString('en-GB')`
-moves to it when its screen is touched.
+`src/lib/moduleBoundaries.test.ts` separately fails when a module under `src/lib` takes a runtime import from `src/services` (the allowlist and GAP id are in `CLAUDE.md`).
 
-**RotaFlow services** (typed Supabase data access, all `org_id`-scoped):
-`orgService`, `staffService`, `locationService`, `rotaService`, `shiftService`,
-`availabilityService`, `leaveService`, `swapService`, `clockService`,
-`timesheetService`, `announcementService`, `notificationService`,
-`reportsService`, `orgLifecycleService`, `syncQueue` (offline outbox).
-Membership access lives in `orgService` and `platformUserService`; there is no
-`membershipService`, and the reports service is `reportsService.ts`, not
-`reportService.ts`. Contexts:
-`AuthProvider`, `OrgProvider` (active tenant + role), `ThemeProvider`.
+**Formatting lives in `src/lib/format.ts`** (2026-10-21): `formatDate` for a `YYYY-MM-DD` value (read as components and printed in UTC, so the stored day is the day shown in every zone), `formatDateTime`, `formatTime` and `formatCount`, all in the product locale `APP_LOCALE` (`en-GB`, because every string is still an English literal). New screens use it; an inline `toLocaleString('en-GB')` moves to it when its screen is touched.
+
+**Services** (`src/services`, every call goes through `api` from `src/lib/api.ts`; the list is the tracked folder, not repeated here: `git ls-files src/services`). Membership access lives in `orgService` and `platformUserService`; there is no `membershipService`, and the reports service is `reportsService.ts`. The offline outbox replayer is `syncQueue.ts`. **Contexts:** `AuthProvider` (Clerk session and `GET /me`), `OrgProvider` (active tenant and role), `ThemeProvider`.
 
 ## 3. Rendering & routing
 
-- Single-page app; routing via **React Router** (`createBrowserRouter`).
-- Client-side navigation only. Deep links work because `.htaccess` rewrites any
-  unknown path to `index.html`, and Workbox's `navigateFallback` does the same
-  offline.
-- `ProtectedRoute` gates authenticated views on Supabase session state, then
-  hands them to `MfaGate` (`src/components/auth/MfaGate.tsx`). A session at
-  `aal1` that has a verified authenticator is shown the 6-digit code step
-  (`MfaChallenge`) instead of any protected route, `/app/*`, `/onboarding` and
-  `/admin/*` alike, and nothing protected renders until the check has answered.
-  The decision is `src/lib/mfaStep.ts`. Order for the console:
-  `ProtectedRoute` → `MfaGate` → `RequirePlatformAdmin` → `AdminShell`, so the
-  console gate's owner recovery button is reached only by an owner with no
-  verified factor, which is the case it exists for (CAP-049).
+- Single-page app; routing via **React Router** (`BrowserRouter` with `<Routes>`, `src/App.tsx`).
+- Client-side navigation only. Deep links work because `.htaccess` rewrites a path that is not a file to the app, and the service worker's `navigateFallback` does the same offline (section 5).
+- `ProtectedRoute` (`src/components/ProtectedRoute.tsx`) gates authenticated views on the Clerk session and on `GET /me` answering: signed out goes to `/login`; signed in but `GET /me` failing shows a retry card, never "signed out". A second factor, when the account has one, is asked for by Clerk during sign-in; nothing in the app holds it. The console gate is `ProtectedRoute` → `RequirePlatformAdmin` → the admin shell (`src/App.tsx`).
 
 ### Information architecture / routes (RotaFlow)
 
-Routes are organisation-scoped once a tenant is selected. Everything below is
-**built and routed**. There are no disabled "Soon" nav items left.
+Routes are organisation-scoped once a tenant is selected. The route table is `src/App.tsx`, and the list below was checked against it on 9 November 2026. The number of screens belongs to `docs/UX-SPEC.md`.
 
-`src/lib/navigationTargets.test.ts` parses this route table out of `App.tsx` and
-asserts that every Settings tab, Profile tab, marketing nav link, footer link and
-global-search entry resolves to a real `<Route>`. That test exists because the
-Settings tab bar once shipped with fourteen routes, none of which had been added
-to `App.tsx`; every one rendered the 404 page while all five gates stayed green.
+`src/lib/navigationTargets.test.ts` parses this route table out of `App.tsx` and asserts that every Settings tab, Profile tab, marketing nav link, footer link and global-search entry resolves to a real `<Route>`. That test exists because the Settings tab bar once shipped with fourteen routes, none of which had been added to `App.tsx`; every one rendered the 404 page while all five gates stayed green.
 
 ```text
 PUBLIC. Marketing
@@ -121,63 +139,61 @@ PUBLIC. Marketing
                           the no-invented-traction rule)
 
 PUBLIC. Auth
-/login /signup /forgot-password /reset-password /splash
+/login /signup            Clerk's own forms, mounted at /login/* and /signup/*
+/forgot-password /reset-password   → redirect to /login
+/splash
 /invite/:token            public on purpose, an invitee has no account yet
 /onboarding               create an organisation (auth required)
+/auth/callback            return from a Clerk redirect
 
 TENANT SHELL, /app (requires membership, else redirects to /onboarding)
   /app/dashboard          today's coverage, queues, activity
-  /app/rota               rota builder. Drag-drop, AI auto-fill, publish   [manager]
+  /app/rota               rota builder. Drag-drop, AI assistant, publish    [manager]
+  /app/setup              organisation setup checklist                      [manager]
   /app/schedule           published schedule. Day/week/month/agenda, an ICS
-                          download and a subscription feed (calendar-feed, §10)
+                          download and a subscription feed (Mod/CalendarFeed.php)
+  /app/attendance         the team attendance record                        [manager]
   /app/clock              GPS clock in/out with an offline queue
+  /app/clock-in           → redirects to /app/clock
   /app/team               staff directory                                   [manager]
   /app/team/:staffId      staff profile                                     [manager]
   /app/locations          locations & departments                           [manager]
   /app/availability       my availability / team availability
   /app/leave              leave requests + approvals
   /app/swaps              shift swaps + approvals
+  /app/overtime           overtime requests + approvals
   /app/open-shifts        uncovered shifts anybody can take
+  /app/compliance         staff documents (every member; managers also review)
+  /app/cover              absence reports, cover requests and the cover board
+                          (behind the cover_tools flag)
   /app/approvals          leave, swaps and overtime in one queue           [manager]
   /app/timesheets         hours from clock events, approvals, payroll export
   /app/announcements      communication centre
   /app/notifications      inbox (reached via the bell, not the sidebar)
   /app/reports            coverage/hours/absence/overtime + CSV             [manager]
   /app/settings           layout route + tab bar                            [manager]
-    organisation · permissions · roles · policies
+    organisation · permissions · roles · policies · document-types
     notifications · integrations · billing · audit
-  /app/overtime           overtime requests + approvals
   /app/help               help & support; opens a support case, reads its thread
                           and replies into it
   /app/account            layout route + tab bar (every role)
-    profile · preferences · security · accounts · sessions · tokens · activity
+    profile · preferences · security · tokens · activity · data
+    (accounts and sessions redirect to security)
   /app/staff              → redirects to /app/team
   /app/integrations       → redirects to /app/settings/integrations
 
   /legal/privacy · /legal/terms · /legal/cookies · /legal/accessibility
   /legal/trust            sub-processors, AI notice, security disclosure
-  /auth/callback          OAuth return
-  /admin/*                platform console, 19 screens (RequirePlatformAdmin)
-                          `is_platform_admin()` requires an aal2 session when
-                          `platform_settings.require_mfa` is on (0102)
-  *-preview               ~30 DEV-only design-loop routes, dropped from the build
+  /admin/*                platform console (RequirePlatformAdmin); some screens
+                          add RequirePlatformRole
+  *-preview               DEV-only design-loop routes, dropped from the build
 ```
 
-**A `[manager]` route is also reachable by a delegate.** Since `0106`,
-`has_org_role` returns true for somebody holding live cover — which means a
-temporary deputy sees the managerial routes without anybody editing their
-membership, and stops seeing them when the cover expires. Nothing in this
-table changes; the predicate underneath it does.
+**A `[manager]` route is also reachable by a delegate.** Somebody holding a live delegation has the effective role of manager (`backend/src/Scope.php`, `membership()`), so a temporary deputy sees the managerial routes without anybody editing their membership, and stops seeing them when the delegation expires. Nothing in this table changes; the check underneath it does.
 
-`[manager]` = gated by `RequireRole` on the `<Route>`, rendering
-`PermissionDenied` (area, role held, role required, way back) rather than
-silently redirecting. **This is presentation only. RLS is the real boundary**,
-and it holds whether or not the gate renders. The gate exists so an honest wrong
-turn produces an explanation instead of a screen of controls that fail silently.
+`[manager]` = gated by `RequireRole` on the `<Route>`, rendering `PermissionDenied` (area, role held, role required, way back) rather than silently redirecting. **This is presentation only. The API is the real boundary** (`backend/src/Scope.php`), and it holds whether or not the gate renders. The gate exists so an honest wrong turn produces an explanation instead of a screen of controls that fail silently.
 
-Role determines which nav items and routes render; the server enforces access via
-RLS. Shift-type management has no dedicated route. It is a modal opened from the
-rota builder's toolbar, since it is tightly coupled to rota-building.
+Role determines which nav items and routes render; the server enforces access in PHP. Shift-type management has no dedicated route. It is a modal opened from the rota builder's toolbar, since it is tightly coupled to rota-building.
 
 ### App shell
 
@@ -186,116 +202,103 @@ rota builder's toolbar, since it is tightly coupled to rota-building.
 | Sidebar                   | `layout/Sidebar`                          | Role-resolved items; collapse persisted in `localStorage`, read during initial `useState` so the page does not jump on load                                                    |
 | Org identity + switcher   | `layout/SidebarOrgSwitcher`               | Always shows the org name; interactive only with >1 membership                                                                                                                 |
 | Profile / help / collapse | `layout/SidebarFooter`                    |                                                                                                                                                                                |
-| Global search             | `layout/GlobalSearch`, `lib/globalSearch` | `⌘K`. Searches **screens and actions, not records**, a per-keystroke `ilike` fan-out across a dozen tables is a query storm at real tenant size. Role-filtered before matching |
+| Global search             | `layout/GlobalSearch`, `lib/globalSearch` | `⌘K`. Searches **screens and actions, not records**: a per-keystroke search fan-out across a dozen tables is a query storm at real tenant size. Role-filtered before matching |
 | Mobile tab bar            | `layout/MobileTabBar`                     | Home · Schedule · Clock in · Leave · More; `More` opens the sidebar drawer, whose open state is owned by `AppShell` so both controls share it                                  |
 
 ## 4. State management
 
-- **Server/auth state:** Supabase session lives in `AuthProvider` (Context).
-  Data is fetched per-view through `services/*`; cache/retry handled by the SW
-  and Supabase client. (Swap in TanStack Query later if you need richer caching.)
-- **Tenant state:** an `OrgProvider` (Context) holds the active organisation + the
-  caller's role/membership, resolved after auth. Every service call passes `org_id`;
-  the org switcher (`switchOrg`, persisted to `localStorage`) updates this context.
-  `usePermissions()` derives UI capability flags from the active role. Cosmetic
-  gating only, RLS is the real enforcement (see `docs/ARCHITECTURE.md#hook-contracts` §6-7).
-- **UI/theme state:** `ThemeProvider` (Context), **light by default** (see
-  `docs/DESIGN-SYSTEM.md` §1; a deliberate brand choice, not `prefers-color-scheme`),
-  with a user override persisted to `localStorage`.
-- **Offline write queue:** clock-ins, leave requests and swap _requests_ made offline are
-  written to an IndexedDB outbox (`services/syncQueue`), replayed on reconnect via
-  `useOnlineStatus`. Swap and leave _responses_ are review actions and are not queued —
-  this line said "swap responses" until 4 September 2026, which no code supported.
-  Reads use the SW's `NetworkFirst` Supabase cache, which is 50 entries for 5 minutes
-  and guarantees nothing in particular; `docs/ARCHITECTURE.md#offline-and-pwa` classifies every feature.
-- **Local component state:** `useState`/`useReducer`. The rota builder's drag-drop
-  working copy is local until published (no global store needed for V1).
+- **Server and auth state:** the Clerk session lives in `ClerkProvider`, mounted by `AuthProvider` (`src/context/AuthContext.tsx`), which reads `GET /me` once per session: the user id the app uses is the API's, and the memberships and the platform role come with it. Once Clerk has loaded, `AuthProvider` wires the token source into the API client (`setApiAuth`); any 401 signs the user out (`src/lib/api.ts`). Data is fetched per view through `services/*`; there is no data cache library (swap in TanStack Query later if you need richer caching).
+- **Tenant state:** an `OrgProvider` (Context) holds the active organisation + the caller's role/membership, resolved after auth. Every service call passes the organisation id in the URL (`/orgs/{o}/...`); the org switcher (`switchOrg`, persisted to `localStorage`) updates this context. `usePermissions()` derives UI capability flags from the active role. Cosmetic gating only: the API enforces access (`backend/src/Scope.php`; see `docs/ARCHITECTURE.md#hook-contracts` §6-7).
+- **UI/theme state:** `ThemeProvider` (Context), **light by default** (see `docs/DESIGN-SYSTEM.md` §1; a deliberate brand choice, not `prefers-color-scheme`), with a user override persisted to `localStorage`.
+- **Offline write queue:** clock-ins, leave requests and swap _requests_ made offline are written to an IndexedDB outbox (`src/lib/offlineOutbox.ts`, `src/services/syncQueue.ts`: the replayers are `clock`, `leave` and `swap`) and replayed against the API on reconnect via `useSyncQueue`. Swap and leave _responses_ are review actions and are not queued. A permanently rejected write moves to a dead-letter store.
+- **Reads while offline:** the service worker caches no API response (`vite.config.ts`: the one runtime caching rule is for fonts), so there is no cached read story; `docs/ARCHITECTURE.md#offline-and-pwa` classifies every feature.
+- **Live refresh:** there is no WebSocket or server-sent event channel in `src` (a search for them finds only comments). Screens that used the legacy realtime feed poll instead, through `useRealtimeRefresh` (`src/hooks/useRealtimeRefresh.ts`, hook 11 in `docs/ARCHITECTURE.md#hook-contracts`), and the notification bell and navigation badges poll (`src/hooks/useNavBadgeCounts.ts`).
+- **Local component state:** `useState`/`useReducer`. The rota builder's drag-drop working copy is local until published (no global store needed for V1).
 
 ## 5. PWA & offline strategy
 
-- `vite-plugin-pwa` (Workbox, `generateSW`) precaches the hashed app shell
-  (`js/css/html/icons/fonts`).
-- **Navigation:** `navigateFallback: index.html` → the SPA boots offline and its
-  own UI (e.g. `OfflineBanner`) communicates connectivity.
-- **Runtime caching:**
-  - ImageKit → `CacheFirst` (30-day, 200 entries).
-  - Supabase REST → `NetworkFirst` (5s timeout, 5-min fallback).
-  - Self-hosted webfonts (`/fonts/`) → `CacheFirst`, excluded from the precache. They were Google Fonts on `StaleWhileRevalidate` until 2026-09-03; see `public/fonts/README.md`.
-- **Updates:** `registerType: 'prompt'` + `skipWaiting: false`. A new SW waits;
-  the app shows a "Reload to update" prompt so users are never interrupted.
-- There is no `public/offline.html`. One was removed on 5 September 2026 (GAP-051): it
-  had been precached but was never served, since `navigateFallback` is `index.html` and
-  no route or handler referenced it, so every visitor downloaded a page no route served.
+All of this is `vite.config.ts` (vite-plugin-pwa, Workbox `generateSW`).
+
+- **Precache:** the hashed app shell (js, css, html, icons), minus the marketing-only chunks and `prerendered/**` that the config excludes.
+- **Navigation:** `navigateFallback: 'index.html'` → the SPA boots offline and its own UI (e.g. `OfflineBanner`) communicates connectivity. A denylist keeps `/sitemap.xml`, `/robots.txt`, `/.well-known/`, `/assets/`, `/icons/` and `/fonts/` out of the fallback, because those are real files.
+- **Runtime caching:** exactly one rule: same-origin `/fonts/` → `CacheFirst` (cache `rotaflow-fonts`, 8 entries, one year). There is deliberately **no rule for `/api/*`**: API responses are tenant data behind a bearer token, so the service worker never caches them and nothing one person read can be served to the next person on a shared device. The old REST and image-CDN caches are legacy and gone.
+- **Updates:** `registerType: 'prompt'` + `skipWaiting: false`. A new SW waits; the app shows a "Reload to update" prompt so users are never interrupted.
+- **Push:** `importScripts: ['/push-sw.js']` pulls `public/push-sw.js` into the generated worker; it displays the notification.
+- There is no `public/offline.html`. One was removed on 5 September 2026 (GAP-051): it had been precached but was never served, since `navigateFallback` is `index.html` and no route or handler referenced it.
 
 ## 6. Data flow example (publish a rota → notify staff)
 
 ```
 RotaBuilderPage (manager, org-scoped)
-  → rotaService.publishRota(rotaId)
-    → supabase.rpc('publish_rota', { p_rota_id })                // SECURITY DEFINER, owner/manager only
-        • archives the rota this one supersedes, then publishes, in one transaction
-        • a raw PATCH of rotas.status is REFUSED by rotas_guard_status_change (0061)
-        • a raw write to a published rota's shifts is REFUSED by shifts_guard_immutable_rota
-        • enqueue_rota_published_notification writes the notification into
-          notification_outbox IN THE SAME TRANSACTION (0069), so a closed tab
-          cannot lose it — GAP-026. For an amendment it writes ONE ROW PER
-          AFFECTED PERSON, listing what changed for them (0083), rather than
-          paging the whole roster.
+  → rotaService.publishRota(id)                          // src/services/rotaService.ts
+    → api.post('/orgs/{o}/rotas/{r}/publish')            // same-origin /api, Bearer token
+      → Api::handle → Mod\Rotas::publish                 // backend/src/Mod/Rotas.php
+          • Scope: the caller must be an owner or manager of {o}; a non-member gets 404
+          • one transaction: lock the draft rota, refuse if it is not a draft,
+            refuse a double-booked person (scheduling module on) or a day below
+            the minimum cover, archive the rota it supersedes (amendments),
+            set status 'published', write the audit row, queue the notice, commit
+          • Mod\Rotas::notifyPublished calls Notify::enqueue INSIDE that transaction
+            (backend/src/Notify.php), so the outbox row commits with the publish
+            or not at all: a closed tab cannot lose it. A first publish queues one
+            row for everyone with a shift; an amendment queues ONE ROW PER AFFECTED
+            PERSON, listing what changed for them (backend/src/RotaDiff.php)
+          • the row is written to notification_outbox (backend/migrations/007-communication.sql)
   → on error: Sentry.captureException + toast; local draft preserved
 
-dispatch_notification_outbox(), on a pg_cron schedule (0069)
-  → posts each pending row to the send-notification Edge Function, which:
-      • reads the org's notification matrix and each recipient's own
-        switch, and drops anyone who has opted out           // BUG-048
-      • inserts notifications rows (unless the org has muted in-app)
-      • sends Web Push (VAPID) + email via SMTP        // secrets stay server-side
-      • the push is displayed by public/push-sw.js, imported into the
-        generated service worker via workbox.importScripts   // BUG-050
-      • (sms channel reserved, not delivered in V1)
+cron: backend/bin/cron.php runs Mod\Notifications::cron, which calls
+Dispatcher::drain (backend/src/Dispatcher.php) on the pending rows:
+      • drops recipients who are no longer active members
+      • the organisation's notification matrix decides which channels an event
+        may use, including in-app; a person's own switch mutes email and push only
+      • inserts the in-app inbox rows into `notifications`
+      • sends email (Mail::forOrg, backend/src/SmtpMailer.php) and web push
+        (backend/src/WebPushSender.php), and records every attempt per channel
+        in notification_deliveries
+      • a failing row backs off and is abandoned after five attempts
+  → the app reads the inbox with GET /orgs/{o}/notifications
+    (src/services/notificationService.ts, the notifications screen and bell)
+  → a device shows a push through public/push-sw.js
+  (the sms channel is a reserved seam: backend/src has no SMS code)
 
 Offline example (staff clock-in with no signal)
-  → clockService.clockIn(orgId, staffProfileId, geo)
-    → offline? enqueue to IndexedDB outbox (services/syncQueue)
-    → online?  insert clock_events row directly
-  → on reconnect (useOnlineStatus): outbox replays inserts, marks synced=true
+  → the clock-in page sends the write through sendOrQueue (src/lib/queuedWrite.ts)
+    → offline, or a transient failure? append to the IndexedDB outbox (enqueueWrite in
+      src/services/syncQueue.ts)
+    → online?  clockService.recordClockEvent posts it to the API
+      (a replayed client_event_id is answered with the stored event, so a replay is safe)
+  → on reconnect (useSyncQueue): the outbox replays in order against the API;
+    an item that lands is removed, a permanently rejected one moves to dead letters
 ```
+
+How cron, the outbox and the channels work in full is `docs/NOTIFICATIONS-SPEC.md`.
 
 ## 7. Build & deploy pipeline
 
-The server has **no Node/npm**. The build runs locally (or in CI) and only the static
-artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
+The server has **no Node/npm**. The build runs on the developer's machine and only the artifacts are shipped. Full playbook + safety rules: **`docs/DEPLOYMENT.md`**.
 
-1. `pnpm run build` → `tsc --noEmit` (gate) → Vite build → `dist/` (+ `sw.js`, manifest, source maps)
-   → `scripts/prerender.mjs`, which renders the sitemap pages and a not-found page with
-   the real component tree (`src/entry-prerender.tsx`, built for Node and discarded) into
-   `dist/prerendered/`. `src/main.tsx` hydrates a prerendered page when its
-   `data-prerendered` marker matches the path, and renders from empty otherwise.
-2. Deploy `dist/*` and root `.htaccess` into **this app's own docroot** (e.g.
-   `~/<domain>/` or `public_html/<app>/`) via rsync-over-SSH, cPanel Git, or FTP.
-   **Never** target a shared docroot, and dry-run any mirror-with-delete first.
-3. Upload source maps to Sentry (but don't serve `*.map` publicly); exclude runtime/
-   secret paths (`uploads/`, `.env`, `config.php`, backups) from any delete.
+1. `pnpm run build` → `tsc --noEmit` (gate) → Vite build → `dist/` (+ `sw.js`, manifest, source maps) → `scripts/prerender.mjs`, which renders the sitemap pages and a not-found page with the real component tree (`src/entry-prerender.tsx`, built for Node and discarded) into `dist/prerendered/`. `src/main.tsx` hydrates a prerendered page when its `data-prerendered` marker matches the path, and renders from empty otherwise. `pnpm run check:bundle` (`scripts/check-bundle-size.mjs`) enforces `bundle-budget.json`.
+2. `pnpm release` (`scripts/release.mjs`, settings in `release.json`) is a dry run; `pnpm release --go` ships over SSH with rsync. Preflight needs the branch to be `main`, clean and equal to origin; then the `checks` (`pnpm run check`) and the `build` command in `release.json`, which rebuilds `dist/` with the public Clerk key set inline and fails if the bundle holds a retired service host or a secret-key shape or if `dist/.htaccess` exists. `pnpm verify` runs those checks and the upload guard only, never contacts the host.
+3. Three parts are uploaded, in order (`release.json`): `backend` to the private app folder (excluding `tests/`, `public/`, `private/` and markdown; `.sql` allowed), `backend/public/api` to the web root's `api/`, and `dist` to the web root (no `*.map`). The entry files `index.html`, `sw.js` and `manifest.webmanifest` go last. Nothing is deleted on the server and protected names (`config.php`, `.htaccess`, `.env*`, dumps) are never sent.
+4. Before uploading, every server file about to change is copied to a dated folder under `~/backups/rotaflow/releases/` (the newest three are kept). Six smoke checks must pass (`/`, `/api/health`, `/api/me` is 401, `/app/dashboard`, a 404 page, `/assets/` is 403) or the snapshot is restored automatically. `pnpm release --rollback` restores the newest snapshot.
+5. The release does **not** apply database migrations: `php bin/migrate.php` is a separate step on the host (`backend/bin/migrate.php`, header).
+6. The web-root `.htaccess` is never part of a release. `pnpm htaccess` (`scripts/htaccess.mjs`) composes it with the Cloudflare origin lock and pushes it with a backup and a smoke check.
+7. Source maps: `vite.config.ts` loads the Sentry plugin only when `SENTRY_AUTH_TOKEN` is set in the build environment, and `*.map` is never uploaded to the host. Whether the live build uploads maps is `NOT VERIFIED`.
 
 ## 8. Security posture
 
-- Only browser-safe keys ship: Supabase **anon** (RLS-guarded) and ImageKit
-  **public**. The Inngest write-only event key shipped alongside them, unused,
-  from `0087` until 2026-08-31, when it was deleted from `.env`. Deleting its
-  last reader in code was not enough — Vite emits `import.meta.env` as a whole
-  object, so every `VITE_*` variable is inlined whether anything reads it or
-  not. **A key is out of the bundle when `grep` says so, not when the code that
-  used it is gone.**
-- `service_role`, Stripe's secret and webhook secrets, the VAPID private key, SMTP
-  credentials, `OPENROUTER_API_KEY` and DB credentials never touch the client. They
-  are Supabase Edge Function secrets, and the notification shared secret is not even
-  that: it is generated inside Postgres and lives only in `vault` (`0091`).
-- `.htaccess` adds HTTPS redirect + `X-Content-Type-Options`, `X-Frame-Options`,
-  `Referrer-Policy`.
+- Only browser-safe values ship. The bundle may carry exactly the six names in `src/lib/env.ts` (`VITE_APP_NAME`, `VITE_APP_URL`, `VITE_SENTRY_DSN`, `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_VAPID_PUBLIC_KEY`, `VITE_TURNSTILE_SITE_KEY`), all public by design, and `scripts/check-bundle-size.mjs` fails the build if any other `VITE_*` name appears in `dist/`. Vite inlines every `VITE_*` variable whether or not code reads it, so a key is out of the bundle when a search of `dist/` says so, not when the code that used it is gone.
+- Stripe's secret and webhook secrets, the VAPID private key, SMTP credentials, the OpenRouter key, the Clerk secret key and the database credentials never touch the client. They live in the private config outside every web root (`backend/private/config.example.php` names them without values; `backend/src/Bootstrap.php` reads them).
+- **Tenancy is enforced in PHP.** Every organisation-scoped handler starts with `Scope::membership()` (`backend/src/Scope.php`): the organisation id comes from the URL and is checked as a UUID but never trusted, the role is read from the database, and a non-member gets 404. `backend/src/Ctx.php` hands each module its database handle, rate limiter and config.
+- **Sign-in:** `backend/src/Jwt.php` verifies the Clerk session token (RS256 against the issuer's published keys, issuer, expiry and authorised party), and `backend/src/Users.php` maps it to a user.
+- **Rate limits:** 600 requests a minute per signed-in user and 300 a minute per address on public routes (`backend/src/Api.php`), counted in the database (`backend/src/RateLimiter.php`). JSON bodies are capped at 256 KB, with larger caps for picture and document uploads.
+- `.htaccess` redirects to HTTPS and sets `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, HSTS, a `Permissions-Policy` and a Content-Security-Policy that names only the app's own origin, Clerk, Cloudflare's challenge and Sentry. It drops `X-Powered-By`, and `backend/public/api/index.php` removes it too. These are repository settings; what the live site sends is `NOT VERIFIED` here.
+
+The full model, the data-protection table and the incident record are `docs/SECURITY.md`.
 
 ## 9. Rota assistant
 
-Surfaced as the rota builder's "AI assistant" action (`RotaAssistantPanel`), not a
-standalone page. Three tabs, in the order a manager works:
+Surfaced as the rota builder's "AI assistant" action (`RotaAssistantPanel`), not a standalone page. Three tabs, in the order a manager works:
 
 | Tab           | What it does                                                  | Needs a network? |
 | ------------- | ------------------------------------------------------------- | ---------------- |
@@ -305,109 +308,94 @@ standalone page. Three tabs, in the order a manager works:
 
 ### 9a. The deterministic half, `src/lib/rotaInsights.ts`
 
-Review and Fill gaps are **pure functions over rows the org already has**, so they
-work offline, with no API key, and cannot invent a name or a date. They are the
-assistant's judgement; the model is only ever allowed to phrase things.
+Review and Fill gaps are **pure functions over rows the org already has**, so they work offline, with no API key, and cannot invent a name or a date. They are the assistant's judgement; the model is only ever allowed to phrase things.
 
-`computeRotaInsights` flags: unfilled shifts (escalating inside a week), staff
-rostered inside approved leave, staff rostered against declared unavailability,
-overlapping shifts, rest gaps under the WTR's 11 hours, weeks scheduled over
-contracted hours, and documents expiring while their holder is still on the rota.
+`computeRotaInsights` flags: unfilled shifts (escalating inside a week), staff rostered inside approved leave, staff rostered against declared unavailability, overlapping shifts, rest gaps under the WTR's 11 hours, weeks scheduled over contracted hours, and documents expiring while their holder is still on the rota.
 
-`suggestCoverForShift` ranks who could work an open shift. Approved leave, an
-overlapping shift and a declared unavailability are **hard blockers**. They remove
-a candidate rather than costing points, because no amount of good fit makes it
-legal to roster someone who is on holiday. Contract overrun and a tight rest gap
-stay visible instead, so a manager can take the decision knowingly.
+`suggestCoverForShift` ranks who could work an open shift. Approved leave, an overlapping shift and a declared unavailability are **hard blockers**. They remove a candidate rather than costing points, because no amount of good fit makes it legal to roster someone who is on holiday. Contract overrun and a tight rest gap stay visible instead, so a manager can take the decision knowingly.
 
-There is no required-skills column on `shifts`, so "right skills" means overlapping
-with the people who already work that pattern at that site, an observation, not an
-invented rule. Both functions take `now` as a parameter so every rule agrees on one
-instant and the tests can pin it (`src/lib/rotaInsights.test.ts`).
+There is no required-skills column on `shifts`, so "right skills" means overlapping with the people who already work that pattern at that site, an observation, not an invented rule. Both functions take `now` as a parameter so every rule agrees on one instant and the tests can pin it (`src/lib/rotaInsights.test.ts`).
 
 ### 9b. The language-model half (OpenRouter)
 
-A first slice of NL scheduling (PRD §5, pulled forward from V2). One Edge Function
-serves two tasks, because both need the same grounding query and the same
-RLS-scoped client: `task: 'rota'` returns shift suggestions, `task: 'announcement'`
-returns a draft announcement for the composer. Without `OPENROUTER_API_KEY` set as
-a project secret it returns a 503 naming the missing secret, and the two
-deterministic tabs carry on working.
+A first slice of NL scheduling (PRD §5, pulled forward from V2). One PHP module serves two tasks, because both need the same grounding query: `POST /orgs/{o}/ai/rota` returns shift suggestions and `POST /orgs/{o}/ai/announcement` returns a draft announcement for the composer (`backend/src/Mod/AiAssistant.php`, header). Without an OpenRouter key in the private config it refuses with 503 `ai_unavailable`, and the two deterministic tabs carry on working.
 
 ```
 RotaBuilderPage → RotaAssistantPanel (owner/manager, org-scoped)
   → aiRotaService.generateRotaSuggestions(orgId, prompt, periodStart, periodEnd)
-    → supabase.functions.invoke('ai-rota-assistant', { body })
-        // Authorization header = the calling user's JWT, forwarded automatically.
-      → Edge Function `supabase/functions/ai-rota-assistant`:
-          • creates its Supabase client with that JWT (anon key). RLS scopes every
-            query to the caller's org; no service-role key is used or needed
-          • checks has_org_role(org, ['owner','manager'])-403s otherwise
-          • reads staff_profiles, shift_types, locations, existing and open
-            shifts, approved leave and declared unavailability for the period,
-            plus hours already scheduled per person
-          • calls OpenRouter (POST /chat/completions, JSON mode) with that
-            context + the manager's prompt; OPENROUTER_API_KEY is a Supabase
-            project secret, never in the client bundle
-          • validates every suggestion's staffProfileId/shiftTypeId against the
-            org's real rows before returning (never trusts the model's ids)
+    → api.post('/orgs/{o}/ai/rota', ...)               // src/services/aiRotaService.ts
+      → Mod\AiAssistant (backend/src/Mod/AiAssistant.php). Refusals are made in this
+        order, each before any outside call, and each fails closed:
+          1. the caller is an owner or manager (never a support session)
+          2. the plan includes `ai_rota_assistant`
+          3. the `ai_rota_assistant` feature flag is on (the platform's kill switch)
+          4. the server holds an OpenRouter key
+          5. 30 requests an hour for the person, 200 an hour for the organisation
+        then it reads the period's staff, shift types, locations, shifts, approved
+        leave and declared unavailability, sends them to OpenRouter as aliases
+        (S1, S2...) without names and leave as dates only (AiStaffAliases), and
+        checks the reply before returning it: ids matched to real rows, times snapped
+        to the shift type's hours, overlaps and leave days dropped, and an
+        announcement refused if it states a date in neither the period nor the
+        manager's own words (backend/src/AiGrounding.php)
   → nothing is written yet. Suggestions preview as dashed chips on the live grid
-  → manager clicks "Apply": shiftService.createShifts writes into the rota
-    *already open in the builder* (via rotaService.getOrCreateDraftRota), not a
-    disconnected new draft. RLS: has_org_role(org,['owner','manager']), same as
-    any other rota-builder write
+  → manager clicks "Apply": shiftService.createShifts (src/components/rota/RotaAssistantPanel.tsx)
+    writes into the rota already open in the builder, through the same shift
+    routes as any other rota-builder write
 ```
 
-Model defaults to `openai/gpt-4o-mini`, overridable via the `OPENROUTER_MODEL`
-project secret. Deploy/redeploy with the Supabase MCP `deploy_edge_function` tool
-(or `supabase functions deploy ai-rota-assistant`); set the key with
-`supabase secrets set OPENROUTER_API_KEY=...` or via the dashboard.
+Model defaults to `openai/gpt-4o-mini`, overridable by the `openrouter_model` private setting; a second model can be configured as a fallback. The key is set in the private config on the host, never in the client bundle. The contract is `docs/API-SPEC.md`.
 
 ### 9c. Billing (Stripe)
 
-Three Edge Functions, `create-checkout-session`, `create-portal-session` and
-`stripe-webhook`, added with migration `0050`. Their contracts, secrets and deploy
-steps moved to `docs/API-SPEC.md` ("Billing functions") on 11 October 2026.
+Billing is `backend/src/Mod/Billing.php` (organisation-facing routes: state, account, checkout, portal), `backend/src/StripeClient.php` (a cURL client with an explicit test or live mode; a key of the other mode is refused), `backend/src/Mod/StripeWebhook.php` (the public, raw `POST /stripe/webhook`, whose signature is checked by `BillingRules::verifySignature` and whose events are recorded once per mode) and `backend/src/BillingRules.php` (the pure decisions). Plan limits and the read-only rule are `backend/src/Billing.php`. Stripe runs in test mode until the owner switches it; the live mode is `NOT VERIFIED` (server config). The contract is `docs/API-SPEC.md`.
 
 ---
 
-## 9d. The PHP API (`backend/`, in progress)
+## 9d. The PHP API (`backend/`)
 
-Status: **PARTIAL.** The skeleton exists and is tested; the product still runs on
-Supabase until the cutover in `docs/MERGE-TARGET.md` and `docs/RESTRUCTURE-PLAN.md`
-is approved and done. Until then this section describes the target, not the live
-system. `backend/` is the one top-level folder added by the merge.
+The product runs on this API since the 1 November 2026 cutover (`docs/CUTOVER.md`, `docs/MERGE-TARGET.md`). `backend/` is the one top-level folder the merge added.
 
 | Part                          | What it is                                                                                                                                              |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `backend/public/api/index.php` | The only web-reachable file. Health first, then config, Clerk token check, router. GET and POST only; every error is `{"error":{"code","message"}}`      |
-| `backend/src/`                | `Jwt` (Clerk RS256 against the issuer's cached JWKS), `Api` (router, sign-in gate, rate limits), `Db`, `RateLimiter`, `Sql` (statement splitter), `Bootstrap` |
+| `backend/src/Api.php`         | The router: the sign-in gate, the rate limits, the body caps and the one error shape. Routes come from every module in `backend/src/Mod/`            |
+| `backend/src/Mod/*.php`       | One module per area. A module implements `Module` (`routes()`), may add a static `cron()` job, and begins every organisation-scoped handler with `Scope::membership()` |
+| `backend/src/` (shared)       | `Ctx` (database handle, limiter, config), `Scope` (tenancy), `Jwt` and `Users` (Clerk), `Db`, `RateLimiter`, `HttpError`, `Input` (strict request-field reading), `Notify` and `Dispatcher` (outbox), `Mail`, `SmtpMailer`, `WebPushSender`, `FileStore`, `Flags`, the pure rule files (`SchedulingRules`, `TimesheetRules`, `CoverRules`, `ComplianceRules`, `MinimumCover`, `BillingRules`, `SupportRules`), `Audit`, `Retention`, `Backup` |
 | `backend/bin/migrate.php`     | Numbered `NNN-name.sql` files, a checksum per applied file (a changed file aborts the run), run as the migration identity                                |
-| `backend/bin/cron.php`        | One cPanel cron entry; runs each module's `cron()` job under a lock. No long-running worker exists on the host                                           |
+| `backend/bin/cron.php`        | One cPanel cron entry; runs each module's `cron()` job under a lock. Live runs it every five minutes. No long-running worker exists on the host        |
+| `backend/bin/backup.php`      | Writes a gzipped, checksummed database dump and can load it into a scratch database to prove it restores (`docs/DEPLOYMENT.md`, "Database backups")     |
 | `backend/bin/grant-platform-owner.php` | Creates the first Super Admin from an email address. Run once on the server; there is deliberately no endpoint for it |
-| Private root                  | `rotaflow-private/` outside every web root on the server: `config/`, `cache/` (JWKS), `logs/`. Located by `ROTAFLOW_PRIVATE_ROOT`, never by the request      |
-| `backend/bin/doctor.php`      | Run before every release and after any hosting change: checks the PHP version and the extensions the API needs (`pdo_mysql`, `openssl`, `curl`, `json`, `ctype`, `iconv`, `pcre`). The API deliberately calls no `mb_*`, `sodium_*`, `gmp_*` or `bc*` function (a test enforces it), because the host's PHP has shipped without them |
+| Private root                  | A folder beside the web root on the host, outside every web root: `config/`, `cache/` (Clerk keys, the cron lock), `logs/`, `uploads/` and the uploaded `app/`. Located by `ROTAFLOW_PRIVATE_ROOT`, never by the request |
+| `backend/bin/doctor.php`      | Run before every release and after any hosting change: checks the PHP version (8.4 or newer) and the extensions the API needs (`pdo_mysql`, `openssl`, `curl`, `json`, `ctype`, `iconv`, `pcre`). The API deliberately calls no `mb_*`, `sodium_*`, `gmp_*` or `bc*` function (a test enforces it), because the host's PHP has shipped without them |
 | Tests                         | `backend/tests/`, run with `pnpm run test:php` against a throwaway MariaDB on `127.0.0.1:3308` (`scripts/test-db.sh up`), never against live data         |
 
-Tenancy, roles and the policy-to-check table arrive with slice S2.
+The mapping from the retired database policies to PHP checks is `docs/RLS-TO-PHP.md` (a finished plan); the access checks as built are `backend/src/Scope.php`, with the access sweep in `backend/tests/suites/099-access-sweep.php`.
 
-### The browser on the API (S9, on branch `move/cpanel-clerk`)
+### The browser on the API
 
-On the branch the React app no longer contains supabase-js. `AuthProvider` (`src/context/AuthContext.tsx`) wraps
-Clerk's `ClerkProvider` (key `VITE_CLERK_PUBLISHABLE_KEY`) and reads `GET /me` once per session: the user id the
-app uses is the API's, and memberships and the platform role come with it. `src/lib/api.ts` is the only network
-client: same-origin `/api`, the Clerk session token as Bearer, SQL timestamps read as UTC, and `activeOrgPath()` for
-the services whose callers pass only a row id. Services keep their exported signatures; the screens did not change.
-Sign-in, sign-up, two-step verification, connected accounts and sessions are Clerk's own screens. Realtime is
-polling (`useRealtimeRefresh`). The service worker caches no API response. `main` and the live site still run on
-Supabase until the R1 cutover.
+`AuthProvider` (`src/context/AuthContext.tsx`) wraps Clerk's `ClerkProvider` (key `VITE_CLERK_PUBLISHABLE_KEY`) and reads `GET /me` once per session: the user id the app uses is the API's, and memberships and the platform role come with it. `src/lib/api.ts` is the only network client: same-origin `/api`, the Clerk session token as Bearer, SQL timestamps read as UTC, and `activeOrgPath()` for the services whose callers pass only a row id. Sign-in, sign-up, two-step verification, connected accounts and sessions are Clerk's own screens. Live refresh is polling (`useRealtimeRefresh`). The service worker caches no API response.
 
-## 10. Edge Functions
+## 10. Edge Functions (legacy)
 
-The inventory of every Edge Function, with its auth model, inputs and outputs, and
-the rule about which key each one uses, moved to `docs/API-SPEC.md` on 11 October 2026. The facts that shape the architecture stay here: `supabase/functions/**` is
-the only server compute in the product; it is Deno; and functions do not deploy on
-merge, so the deployed version of each is recorded in `docs/SAAS.md` §2.
+The Supabase Edge Functions were the only server compute before the 1 November 2026 cutover; the product no longer runs any of them. The folder `supabase/functions` is kept in the repository as a legacy source tree until a later phase removes it (it holds 12 Edge Functions plus `_shared`). Each was replaced by a PHP module in `backend/src/Mod/`; all 12 were confirmed by reading the module:
+
+| Legacy function | Replaced by |
+| --- | --- |
+| `ai-rota-assistant` | `Mod/AiAssistant.php`: `POST /orgs/{o}/ai/rota` and `POST /orgs/{o}/ai/announcement` |
+| `billing-account` | `Mod/Billing.php`: `GET /orgs/{o}/billing` |
+| `calendar-feed` | `Mod/CalendarFeed.php`: public `GET /ics`, plus the issue and revoke routes |
+| `create-checkout-session` | `Mod/Billing.php`: `POST /orgs/{o}/billing/checkout` |
+| `create-portal-session` | `Mod/Billing.php`: `POST /orgs/{o}/billing/portal` |
+| `delete-account` | `Mod/Gdpr.php`: a request enters through `POST /me/data-requests` and a closed erasure case; `Gdpr::cron` drains `account_deletions` and deletes the Clerk user |
+| `public-enquiry` | `Mod/Enquiries.php`: public `POST /enquiries` |
+| `purge-storage` | `Mod/Lifecycle.php`: `Lifecycle::cron` drains `storage_deletions` |
+| `send-invite` | `Mod/Invites.php`: `POST /orgs/{o}/invites` and `/invites/{i}/resend`, sending through `Mail::forOrg` |
+| `send-notification` | `Dispatcher::drain`, run by `Notifications::cron` (`backend/src/Dispatcher.php`, header) |
+| `stripe-webhook` | `Mod/StripeWebhook.php`: public raw `POST /stripe/webhook` |
+| `test-smtp` | `Mod/OrgSettings.php`: `POST /orgs/{o}/smtp/test` |
+
+**Legacy:** the previous text of this section, and the rule about which key each function used, are available with `git show live-supabase-2026-11-01:docs/ARCHITECTURE.md`. The routes and their contracts are `docs/API-SPEC.md`.
 
 ## Offline and PWA
 
