@@ -509,9 +509,13 @@ The release snapshots in `~/backups/rotaflow/releases/` hold **code only**. The 
   live host holds another project's account and silently overrode ours. When loading a dump for the restore check, `DEFINER=` clauses are
   removed from the schema statements (never from row data): the triggers belong to the migration account, and creating them as another
   account needs SUPER.
-- Suggested schedule (NOT installed; a server change that needs approval): every six hours,
+- **Installed on the live host on 2026-11-08** (owner-approved): every six hours at minute 17,
   `17 */6 * * * ROTAFLOW_PRIVATE_ROOT=$HOME/rotaflow-private ROTAFLOW_CONFIG_FILE=backup.php /usr/local/bin/php $HOME/rotaflow-private/app/bin/backup.php >> $HOME/rotaflow-private/logs/backup.log 2>&1`,
-  plus a monthly `--restore-check` drill.
+  plus a monthly `--restore-check` drill (not scheduled yet). The first live backup and the restore proof into
+  `devgeereact_rotaflow_restorecheck` both passed (70 tables, counts inside the recorded ranges, scratch left empty).
+- **Install a cron line from a FILE, never by piping.** On this host `(crontab -l; echo LINE) | crontab -` replaced the whole crontab and
+  dropped the `cron.php` job and another project's nightly job for about two minutes (restored from the saved copy, no run missed).
+  Save `crontab -l` first, append to a copy, load it with `crontab FILE`, and check every original line is still there.
 - Do not point `~/bin/prune-backups` at the `db` folder: it keeps five per file pattern, which at six-hourly dumps is thirty hours.
 - Still missing: an encrypted off-site copy (key custody is an owner decision), alerting on a failed run, and a run on the live
   database. Until then the command is tested against the throwaway test database only.
