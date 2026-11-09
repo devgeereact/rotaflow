@@ -22,9 +22,14 @@ project:
   # maintenance, not build: the product ships, the register tracks gaps, and
   # the expensive mistakes here are regressions rather than missing features.
   lifecycle: 'maintenance'
-  # production, not medium. One live Supabase project, migrations that apply on
-  # merge, and no backup to fall back on. Risk is a property of the blast
-  # radius, not of how careful the current task feels.
+  # production, not medium. One live MariaDB database on the cPanel host behind
+  # the PHP API. Migrations are applied by backend/bin/migrate.php, a separate
+  # step run on the host: scripts/release.mjs only uploads the .sql files. A
+  # backup command with a restore check exists (backend/bin/backup.php); it is
+  # recorded as installed on the live host and proven on 2026-11-08 (docs/AUDIT.md),
+  # while the encrypted off-site copy and an alert on a failed run are still open
+  # (docs/DEPLOYMENT.md). Risk is a property of the blast radius, not of how
+  # careful the current task feels.
   risk: 'production'
 
 defaults:
@@ -67,6 +72,7 @@ sources_of_truth:
   agent_directives: 'CLAUDE.md' # AGENTS.md is a pointer to it, deliberately
   coding_standards: 'docs/RULES.md'
   architecture: 'docs/ARCHITECTURE.md'
+  # tables, migrations and access checks (the key keeps its old name for other tooling)
   data_and_rls: 'docs/DATA-MODEL.md'
   offline_behaviour: 'docs/ARCHITECTURE.md#offline-and-pwa'
   hook_contracts: 'docs/ARCHITECTURE.md#hook-contracts'
