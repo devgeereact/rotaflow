@@ -272,7 +272,7 @@ links to them:
 | ------------------------------ | ----------------------------------------- |
 | Coding standards               | `docs/RULES.md`                           |
 | Folder layout, data flow       | `docs/ARCHITECTURE.md`                    |
-| Tables, columns, RLS           | `docs/DATA-MODEL.md`                      |
+| Tables, columns, access checks (RLS retired) | `docs/DATA-MODEL.md`                      |
 | Hook contracts                 | `docs/ARCHITECTURE.md#hook-contracts`     |
 | Design tokens                  | `docs/DESIGN-SYSTEM.md` + `src/index.css` |
 | Screen-by-screen build status  | `docs/UX-SPEC.md`                         |
@@ -284,7 +284,7 @@ links to them:
 | Release evidence               | `qa/LAUNCH-CHECKLIST.md`                  |
 | How agent work is routed       | `docs/README.md#how-gee-os-is-applied`    |
 
-**Automated freshness.** `.github/workflows/plan-drift-audit.yml` reads this file weekly via
+**Automated freshness.** `.github/workflows/plan-drift-audit.yml` (its latest scheduled run listed by `gh run list` on 2026-11-09 was a failure on 12 October 2026, owner action O1) reads this file weekly via
 `PLAN_DOC`, resolves every repo path cited below to an `EXISTS`/`MISSING` verdict _before_ any
 model runs, and appends to the Drift Audit Log at the bottom. A row whose evidence path
 disappears is flagged automatically. Keep citations to one path per row so the audit stays
@@ -298,7 +298,7 @@ would move it are not code.
 
 | Mark | Meaning                                                                       |
 | ---- | ----------------------------------------------------------------------------- |
-| 🟢   | Works end to end: UI → service → RPC/function → DB → RLS → audit → error path |
+| 🟢   | Works end to end: UI → service → API route (Supabase era: RPC/function) → database → access check in PHP (Supabase era: RLS) → audit → error path |
 | 🟡   | Real implementation, important pieces missing                                 |
 | 🔴   | No meaningful implementation                                                  |
 | 🟠   | Exists, does not reliably do what it claims                                   |
@@ -311,8 +311,9 @@ would move it are not code.
 mark a row 🟢 because a button exists.
 
 ❓ rows name the exact test that would settle them. They exist because the repository cannot
-answer everything — a real Stripe charge, an RLS fixture matrix against the deployed project,
-real-device offline UAT and a restore-from-backup all need a live environment.
+answer everything — a real Stripe charge, a cross-organisation access matrix against the live host (the PHP
+suite `backend/tests/suites/099-access-sweep.php` runs against a throwaway database only; the Supabase era's
+RLS fixture matrix is retired), real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
@@ -321,7 +322,7 @@ Recounted 2026-08-31, after eighty-three pull requests landed (#178-#265); the f
 The platform console repolish of 2026-09-07, and `0150` (a colleague is not a payroll record) the same day, then took the tree to 151 migrations as it stood that day, counting `0151` (the staff view does not hoist, correcting a claim `0150` made about its own plan): `0140` (a finance role reads billing, not people — the functions `0122` missed), `0141` (the first owner can be invited again, restoring the bootstrap branch `0126` dropped), `0142` (the last platform owner survives a race), `0143` (the queue depth reads the queue that exists), `0144` (a reopened case keeps its rating), `0145` (consent is the customer's, and withdrawing it ends a live session), `0146` (revoking a platform role ends the support sessions it was holding), `0147` (the second-factor switch has one writer), `0148` (only the decision function approves a swap), `0149` (a support reply is audited), `0148` (a reply reaches the person who asked) and `0149` (a credit is recorded against an invoice).
 
 The verification pass of 2026-09-10 added no migration and changed no schema. It drove the built
-application against a local Supabase stack seeded with two tenants, sixteen staff, a published week,
+application against a local Supabase stack (Supabase era) seeded with two tenants, sixteen staff, a published week,
 an amendment, leave, a swap and clock events, as an owner, a manager, two staff members, an owner
 with no staff record and a platform owner. Five defects were found and fixed — GAP-118 to GAP-122 in
 §7 — of which two were P1: **every staff member reached an error boundary instead of a dashboard**,
@@ -333,6 +334,10 @@ A sixth defect, GAP-123, was a missing rule rather than a broken one — nothing
 booking the same days off twice, and the entitlement was then spent twice on days they were absent
 for once. It was recorded as a decision first and closed on the owner's instruction the same day by
 `0152`, the only migration this pass adds, which took the tree to 152. On 2026-10-11 `0153` (a new organisation starts with support access off, plan decision D8) made it 153. On 2026-10-12 `0154` (a 30-day trial, then a plan or read-only, decision D2) and `0155` (a website enquiry is stored and triaged in the console, CAP-126) took the tree to 155. `0156` (an invoice keeps its Stripe hosted page and PDF links, CAP-127) took the tree to 156. On 2026-10-21 `0157` (a no-card trial's owners are reminded before it ends, GAP-127), `0158` (a calendar feed nobody reads stops working, and one read too often is refused, GAP-052), `0159` (staff documents are kept in a private bucket, and every delete above a file queues it for removal, GAP-056), `0160` (a person can ask for their own data, GAP-057) and `0161` (the shift and rota reads stop paying for the write rule, GAP-071) took `main` to 161. On 2026-10-22 `0162` (a staff photo is a private upload that erasure removes, and a completed erasure case removes the person's login, GAP-056 and GAP-057) took `main` to 162. On 2026-10-22 `0163` (a person keeps their own clock format, week start and email summary choice, GAP-088) and `0164` (medical notes are purged: the `emergency_contacts.medical_notes` column is dropped, GAP-058) took `main` to 164 migrations.
+
+Those figures count the legacy Postgres folder `supabase/migrations` (Supabase era). The live MariaDB schema has 19 migrations in `backend/migrations` (001 to 020, no 012) and 69 tables (`docs/DATA-MODEL.md`); the PHP API has 242 route entries in 36 modules (`docs/API-SPEC.md`).
+
+Dated 2026-08-31, Supabase era. The table below measured the Supabase production database on that day; no current production count is recorded here, and the live data is in MariaDB (`docs/DATA-MODEL.md`).
 
 ### What production actually holds, 2026-08-31
 
@@ -493,9 +498,9 @@ Each gate is phrased so two people could argue about whether it has been met.
 
 | Stage           | Gate                                                                                                                                                      | Blocking                         |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| 1. Safe         | A restore has been performed from a backup into a scratch project, and no screen tells a user something happened that did not                             | GAP-001 (043/044/045 closed)     |
+| 1. Safe         | A restore has been performed from a backup into a scratch database (Supabase era: project), and no screen tells a user something happened that did not | GAP-001 (043/044/045 closed)     |
 | 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | ❓-007 (GAP-026 closed)          |
-| 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org fails at the database | ❓-002 (GAP-008, BUG-052 closed) |
+| 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org is refused by the server (Supabase era: at the database; now `Billing::requireSeat` in `backend/src/Billing.php`, 402 `seat_limit`) | ❓-002 (GAP-008, BUG-052 closed) |
 | 4. Professional | An organisation's staff receive mail from that organisation's own address, and the org can be branded                                                     | CAP-031, GAP-016                 |
 | 5. Enterprise   | MFA can be required org-wide and enforced below the UI; a Trust Centre answers a security questionnaire without a human                                   | GAP-017, GAP-018                 |
 | 6. Connected    | A third-party system can read a rota and receive a webhook when it changes                                                                                | GAP-019, GAP-020                 |
@@ -504,6 +509,8 @@ Each gate is phrased so two people could argue about whether it has been met.
 | 9. Scaled       | A 500-staff, 20-site tenant loads the rota grid inside the performance budget                                                                             | HARDEN-007                       |
 
 Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
+
+Stage 1 and the live database: a restore of the MariaDB dump into a scratch database was performed on 2026-11-08 (recorded in `docs/AUDIT.md`; the tool is `backend/bin/backup.php --restore-check`). The stage stays blocked by GAP-001 because the off-site copy and the failed-run alert are not done (owner action O18). The columns above are otherwise unchanged from the Supabase era.
 
 **Every stage above 3 is blocked by a decision, not by outstanding work**, and the difference
 matters when reading the column: GAP-016 (stage 4), GAP-018 (stage 5), GAP-019 and GAP-020
