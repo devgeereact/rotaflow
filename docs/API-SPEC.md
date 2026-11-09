@@ -238,11 +238,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/orgs/{o}/clock-events/{e}/correct` | `correct` |  |
 | GET | `/orgs/{o}/clock-events/{e}/corrections` | `corrections` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Clock events (in, out, break start, break end) and managers' corrections of them. The server, not the device, decides the time: a person's `event_at` is trusted only within 5 minutes ahead of the server clock and at most 72 hours behind it (an offline queue can replay late); otherwise the server time is used and the device's claim is kept in `event_at_reported`. The geofence is recorded, not enforced.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `GET /orgs/{o}/clock-events` is any member (a manager reads everyone's, anyone else their own). `POST /orgs/{o}/clock-events` is any member with a staff record, on a writable organisation, for themselves; an owner or manager may record any time for anyone (a person with no staff record gets 403 `no_staff_record`, recording for someone else without the role 403 `forbidden`). `delete`, `correct` and `corrections` are owner or manager (delete and correct also writable). Fields of `POST /orgs/{o}/clock-events`: `type` (`in`, `out`, `break_start`, `break_end`), `staff_profile_id` (default: the caller's own), `method` (`gps`, `qr`, `manual`; default `manual`), `shift_id`, `latitude` (-90 to 90), `longitude` (-180 to 180), `accuracy` (0 to 100000), `event_at` (an instant), `location_name` (at most 200 characters) and `client_event_id`. A new event is 201 with `already_applied: false`; a replay of the same `client_event_id` is 200 with `already_applied: true`; clocking in twice within five minutes is refused (header of `backend/src/Mod/Clock.php`).
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `clock_events`, `clock_event_corrections`, and `timesheets` (a correction inside an approved period sets `recalculation_required_at`).
 
 ### Compliance (`backend/src/Mod/Compliance.php`)
 
@@ -319,11 +319,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | POST | `/orgs/{o}/cover/absences/{a}/withdraw` | `withdrawAbsence` |  |
 | POST | `/orgs/{o}/cover/absences/{a}/dismiss` | `dismissAbsence` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Cover: absence reports, cover requests, applications, the manager's cover board and ranked candidates with their eligibility reasons. An absence report is a person saying they cannot work one of their own future published shifts; a cover request takes the person off the shift and offers it to eligible people.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Every route first refuses a platform support session (403) and answers 403 `feature_off` while the `cover_tools` flag is off (both after membership, so a stranger still gets 404). `overview` and `candidates` are owner or manager. `open`, `mine`, `apply`, `absences`, `absences/{a}/withdraw` and `applications/{a}/withdraw` are any member with a staff record (writes also need a writable organisation); an unpublished draft does not exist for staff (404). Creating or cancelling a cover request, `assign`, approving or rejecting an application and dismissing an absence are owner or manager, on a writable organisation and a plan that is not read-only; approval re-checks eligibility under the organisation lock and a second approval for the same shift is 409.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `cover_absences`, `cover_requests`, `cover_applications`, `shifts`.
 
 ### Enquiries (`backend/src/Mod/Enquiries.php`)
 
@@ -414,11 +414,11 @@ Tables written: `invites`, `memberships` (accepting). Mail goes out through `Mai
 | GET | `/orgs/{o}/labour-cost` | `labourCost` |  |
 | GET | `/orgs/{o}/pay-rates/current` | `currentRates` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Labour cost without exposing anybody's rate: the cost of shifts on published or archived rotas that are not cancelled, using the rate in force on the day of each shift, and the current rates.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Both routes are owner or manager (effective role).
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: none (read only).
 
 ### Leave (`backend/src/Mod/Leave.php`)
 
@@ -435,11 +435,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | GET | `/orgs/{o}/overtime/evidence` | `evidence` |  |
 | GET | `/orgs/{o}/attention` | `attention` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Leave and overtime requests, their review and cancellation, overtime evidence, and the `attention` counts of pending leave, overtime and swaps (organisation-wide for a manager, the person's own for anyone else).
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Reads and creates are any member: a manager may act for any person, anyone else only for their own staff record (403 `forbidden` otherwise, 403 `no_staff_record` when the caller has none); creates also need a writable organisation. `leave/{l}/review` and `overtime/{v}/review` are owner or manager and writable and take `status` of `approved` or `rejected`; with the `scheduling_tools` flag on an approval also lists the person's shifts that now clash. Cancel is the person or a manager. `overtime/evidence` is the person or a manager. Fields of `POST /orgs/{o}/leave`: `start_date`, `end_date`, `type` (default `holiday`, at most 40 characters), `starts_half` and `ends_half` (true for a half day), `reason` (at most 1000 characters), `staff_profile_id` (default: the caller's own) and `client_event_id`. A second live booking on the same day is 409 `leave_overlap`, checked under a row lock on the person's staff record.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `leave_requests`, `overtime_requests`.
 
 ### Lifecycle (`backend/src/Mod/Lifecycle.php`)
 
@@ -747,11 +747,11 @@ Tables written: NOT VERIFIED (not read in this pass)
 | GET | `/orgs/{o}/open-shifts` | `openShifts` |  |
 | POST | `/orgs/{o}/open-shifts/{h}/claim` | `claimOpenShift` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Shift swaps and the open-shift board. A swap offers one of your shifts to a named colleague or to the open board; the colleague (or whoever claims it) accepts, then the requester or a manager finalises, and approving moves the shift in one transaction. Both write into a published rota on purpose. With the cover module on, a swap whose shift changed or started is cancelled automatically.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: Every route is any member with a writable organisation for writes; the acts differ. Creating a swap needs a staff record (403 `no_staff_record`), and a manager may create one for another person. `respond` is the colleague it was offered to, while pending. `claim` and `open-shifts/{h}/claim` need a staff record. `cancel` is the requester or a manager. `decide` is a manager, or the requester once the colleague has accepted (403 otherwise). `reassign` is a manager or the requester. `GET /orgs/{o}/swaps/options` and a swap that asks for a shift in return need the `two_way_swaps` flag (403 `feature_off`). The instant open-shift claim takes the organisation lock first and checks cover eligibility whatever the flag. Fields of `POST /orgs/{o}/swaps`: `shift_id` (required), `requested_by` (default: the caller's own staff record), `target_staff_profile_id` (none means the open board), `take_shift_id` (two-way), `note` (at most 1000 characters) and `client_event_id`.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `shift_swaps`, `shifts` (approving or claiming moves a shift).
 
 ### Templates (`backend/src/Mod/Templates.php`)
 
@@ -778,11 +778,11 @@ Tables written: `notification_templates`.
 | POST | `/orgs/{o}/timesheets/approve` | `approve` |  |
 | POST | `/orgs/{o}/timesheets/{t}/reopen` | `reopen` |  |
 
-What it does: NOT VERIFIED (not read in this pass)
+What it does: Timesheets: one decision per person per period, a submit and approve flow, and, behind the `timesheet_tools` flag, flag lines beside each shift, the payroll CSV export (GET reads, POST marks the included approved periods `exported`) and the owner's reopening of an exported period.
 
-Access: NOT VERIFIED (not read in this pass)
+Access: `GET /orgs/{o}/timesheets` is any member (a manager reads everyone's, anyone else their own). `submit` is any member with a staff record, on a writable organisation. `approve` and `reopen` are owner or manager and writable; a manager or delegate cannot approve their own hours (403 `own_timesheet`; an owner may). Reopening an exported period needs the flag on and the owner role and a reason. Both export routes are owner or manager, never a platform support session (403), and 403 `feature_off` while the flag is off; the POST also needs a writable organisation and is not refused for a read-only plan. Fields of `POST /orgs/{o}/timesheets/approve`: `period_start`, `period_end` and `approvals`, a list of at most 500 objects each with `staff_profile_id` and `total_minutes`; the batch is all or nothing and a re-approval replaces the figure and bumps `version`. Fields of the export: `period_start` and `period_end`.
 
-Tables written: NOT VERIFIED (not read in this pass)
+Tables written: `timesheets`, `timesheet_reopenings`.
 
 ## 5. Webhooks and inbound
 
