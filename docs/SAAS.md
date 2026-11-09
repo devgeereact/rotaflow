@@ -369,13 +369,13 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 108   |
+| 🟢 Complete           | 107   |
 | 🟡 Partial            | 14    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
 | 🔴 Missing            | 0     |
-| ⚫ Deferred           | 10    |
+| ⚫ Deferred           | 11    |
 | ❓ Not audited        | 4     |
 
 **Seven rows moved 🟡 → 🟢 on 2026-08-31 without new code, and that needs the same
@@ -874,10 +874,11 @@ itself: a restore, a real charge, and a phone.
       `src/lib/csv.ts`
 - [x] CAP-063 🟢 Calendar — a real subscription feed, not just a file: a per-person tokenised ICS URL a
       calendar re-reads, so an amended rota reaches the phone. The download stays for "send me this week"
-      `supabase/functions/calendar-feed/index.ts` · `supabase/migrations/0099_calendar_feed_tokens.sql` · 8 pgTAP assertions
-- [x] CAP-064 🟢 Connector catalogue — every connector is `planned` and `available = false`, so the
-      console states it and `connect_integration` refuses one
-      `supabase/migrations/0073_connectors_are_planned.sql` · BUG-057 · P2
+      `backend/src/Mod/CalendarFeed.php` (public `GET /ics`, authorised by the token in the query; only the token's SHA-256 is stored; an unused feed switches off after 90 days) · `backend/migrations/007-communication.sql` (`calendar_feed_tokens`) · suite `backend/tests/suites/125-communication.php` · Supabase era: `calendar-feed` function, `0099`, 8 pgTAP assertions
+- [ ] CAP-064 ⚫ Connector catalogue — **deferred with a reason, 2026-11-09.** In the Supabase era every connector was `planned` and `available = false`, so the
+      console stated it and `connect_integration` refused one. The catalogue tables were not carried to MariaDB: the connector, organisation-integration and sync-run tables are on the cut list (`docs/MERGE-TARGET.md`, "Every connector `planned`; no writer for sync runs; Phase 2 in CLAUDE.md").
+      **Status changed 🟢 to ⚫ on 2026-11-09, proved by the code:** `src/services/integrationService.ts` answers every read with an empty list and refuses every write with 405 `not_available` ("Integrations are not available in this release."); `git grep -n integration -- backend/migrations` finds no integration table. The console shows its empty state. Reopens with the integrations work of Phase 2 (CAP-066, CAP-067)
+      `src/services/integrationService.ts` · `src/pages/admin/AdminIntegrationsPage.tsx` · BUG-057 · P2 · Supabase era: `0073`
 - [ ] CAP-065 ⚫ Public API — **Phase 2 per `CLAUDE.md`, and the product already says so to users**:
       the account tab explains there are no tokens rather than showing an empty list. A public API is
       a versioning commitment, not an endpoint — once one customer scripts against it, the schema
@@ -897,9 +898,9 @@ itself: a restore, a real charge, and a phone.
 - [ ] CAP-068 ⚫ SSO / SCIM — **Phase 2 per `CLAUDE.md`, and no longer advertised.** This row said
       "marketing copy only" for two days while the copy stayed up: a £790/month plan whose summary
       read "Unlimited sites and staff, with SSO" and whose feature list promised "SSO with Microsoft
-      365 or Google". Removed 2026-08-31 in `0101` and `src/lib/marketing.ts`. It is also gated
-      outside this repository — Supabase SAML is a paid add-on above the free plan this project runs
-      on — so it could not have been built to match the copy even in principle
+      365 or Google". Removed 2026-08-31 in `0101` and `src/lib/marketing.ts`. It was also gated
+      outside this repository (Supabase era: Supabase SAML was a paid add-on above the free plan this project ran
+      on), so it could not have been built to match the copy even in principle; whether Clerk offers it on the plan in use is `NOT VERIFIED` (dashboard)
       `src/lib/marketing.ts` · GAP-018 · P3
 
 ### Intelligence
