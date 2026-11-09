@@ -369,12 +369,12 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 107   |
-| 🟡 Partial            | 14    |
+| 🟢 Complete           | 105   |
+| 🟡 Partial            | 15    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 0     |
+| 🔴 Missing            | 1     |
 | ⚫ Deferred           | 11    |
 | ❓ Not audited        | 4     |
 
@@ -930,27 +930,25 @@ itself: a restore, a real charge, and a phone.
 
 ### Platform administration
 
-- [x] CAP-074 🟢 Platform console — 18 page components under `/admin` and 14 routes narrowed by
-      `RequirePlatformRole`, counted in `src/App.tsx` on 2026-10-11 (this row said 19 and four, then 13;
-      `/admin/gdpr` became the fourteenth, for the operational roles, matching `0138`), all behind
-      `RequirePlatformAdmin`. `/admin/organisations/:id` is deliberately ungated: finance needs its
+- [x] CAP-074 🟢 Platform console — page components under `/admin` and routes narrowed by
+      `RequirePlatformRole`, all behind `RequirePlatformAdmin`. The counts are owned by `docs/UX-SPEC.md` section 11 (recounted from `src/App.tsx` on 2026-11-09); the figures this row used to quote (18 and 14 on 2026-10-11, before that 19 and four, then 13; `/admin/gdpr` the fourteenth, matching `0138`, Supabase era) drifted, so none is repeated here. The server side is `backend/src/Mod/Console.php`, `backend/src/Mod/Platform.php` and the other `Platform*` modules, which answer 404 to anyone without a platform role. `/admin/organisations/:id` is deliberately ungated: finance needs its
       Subscription and Usage tabs, and the operational tabs are gated per role in
       `src/lib/organisationTabs.ts`
-      `src/lib/adminNav.ts`
+      `src/lib/adminNav.ts` · `backend/src/Mod/Console.php` · `backend/src/Scope.php` (`platformRole`) · suite `backend/tests/suites/150-console.php`
 - [x] CAP-075 🟢 Incident register
-      `supabase/migrations/0021_platform_incidents.sql`
-- [x] CAP-076 🟢 Feature flags — `my_feature_access` returns them and the AI gate honours a flag as well
+      `backend/src/Mod/Incidents.php` · `backend/migrations/011-platform-ops.sql` (a resolved incident needs a resolution) · suite `backend/tests/suites/170-ops.php` · Supabase era: `0021`
+- [x] CAP-076 🟢 Feature flags — `GET /orgs/{o}/features` returns them (Supabase era: `my_feature_access`) and the AI gate honours a flag as well
       as a plan; `beta_integrations` is retired rather than left describing connectors that do not exist
-      `supabase/migrations/0090_entitlements_say_what_they_gate.sql` · BUG-064 closed #208
+      `backend/src/Flags.php` · `backend/src/Mod/FeatureFlags.php` · `backend/migrations/011-platform-ops.sql` (`feature_flags`, `feature_flag_targets`) · suite `backend/tests/suites/170-ops.php` · BUG-064 closed #208 · Supabase era: `0090`. The live flag values are `NOT VERIFIED` (database state)
 - [x] CAP-077 🟢 Demo constants in the console — the file is deleted; every console figure is measured
       or reads "Not sampled"
       `src/pages/admin/AdminPlatformHealthPage.tsx` · BUG-059 · P2
-- [x] CAP-078 🟢 Platform health — `pg_cron` probes every five minutes, unattended; the summary view
-      answers uptime and latency from separate sources rather than averaging them
-      `supabase/migrations/0076_scheduled_health_probe.sql` · GAP-011 · P2
-- [x] CAP-079 🟢 Support CSAT — the requester rates a resolved case from `/app/help`; the RPC now
-      refuses an out-of-range score in its own words rather than through the column CHECK
-      `src/pages/app/HelpPage.tsx` · BUG-060 · P2
+- [ ] CAP-078 🔴 Platform health — **in the Supabase era `pg_cron` probed every five minutes, unattended, and the summary view
+      answered uptime and latency from separate sources rather than averaging them.** Nothing probes now.
+      **Status changed 🟢 to 🔴 on 2026-11-09, proved by the code:** `backend/src/DataMove/Map.php` lists `platform_health_probes` and `platform_health_samples` as "Supabase health probe; replaced by an external uptime check" and no table, job or route in `backend/` replaces them; the console health page reads "Not sampled" (`src/pages/admin/AdminPlatformHealthPage.tsx`). The replacement is an external uptime check on `/api/health` (`backend/src/Api.php`), which is owner action O2 and `NOT VERIFIED`. Becomes 🟡 when that monitor exists and the page reads it
+      `backend/src/Api.php` (`/health`) · `src/pages/admin/AdminPlatformHealthPage.tsx` · GAP-011 · P2 · Supabase era: `0076`
+- [x] CAP-079 🟢 Support CSAT — the requester rates a resolved case from `/app/help`; the API (Supabase era: the RPC) refuses an out-of-range score in its own words ("A satisfaction score is 1 to 5") rather than through a column CHECK
+      `src/pages/app/HelpPage.tsx` · `backend/src/Mod/Support.php` (`rate`) · suite `backend/tests/suites/160-support.php` · BUG-060 · P2
 - [x] CAP-080 🟢 Support cases — the requester sees their own cases and the non-internal thread
       (BUG-060), **replies into it** (GAP-012, on an open or a resolved case but not a closed one,
       because a closed case is the one state nobody is watching), and there is now a promise with a
@@ -960,13 +958,13 @@ itself: a restore, a real charge, and a phone.
       on the customer (the standard alternative lets a case sit three weeks and still report as
       within target), and escalating a late case recomputes from arrival, so a breach cannot be
       escalated away. **Email ingress is a separate capability, not part of this row**
-      `supabase/migrations/0110_support_sla.sql` · GAP-012 closed, GAP-035 (email ingress) opened · 9 pgTAP assertions
+      `backend/src/Mod/Support.php` (`reply`, `rate`, `queue`) · `backend/src/SupportRules.php` (`deadlines` hang off `created_at`, so escalating a late case cannot restart its clock) · `backend/migrations/010-support-desk.sql` · suite `backend/tests/suites/160-support.php` · GAP-012 closed, GAP-035 (email ingress) opened · Supabase era: `0110`, 9 pgTAP assertions
 - [x] CAP-081 🟢 Staff records — contract type, hours, skills, payroll id, documents, emergency contact
       `src/components/staff/StaffFormModal.tsx`
 - [x] CAP-082 🟢 Leave, overtime and swap request/approval flows
       `src/pages/app/LeavePage.tsx`
-- [x] CAP-083 🟢 Open swap board — claim an untargeted swap, RLS-enforced
-      `supabase/migrations/0044_swap_open_board.sql`
+- [x] CAP-083 🟢 Open swap board — claim an untargeted swap (`POST /orgs/{o}/swaps/{w}/claim`), checked in PHP by the organisation scope (Supabase era: RLS-enforced); a second claim loses (`swap_unavailable`)
+      `backend/src/Mod/Swaps.php` (`claim`) · suite `backend/tests/suites/110-swaps-open-shifts.php` · Supabase era: `0044`
 - [x] CAP-084 🟢 CSV import — Team → Import reads a spreadsheet, shows every row back with its
       own problems, and creates the ones that are clean. Hand-written parser (quoted commas,
       quoted newlines, CRLF, Excel's BOM) rather than a dependency; refuses an ambiguous date
@@ -981,47 +979,47 @@ itself: a restore, a real charge, and a phone.
       late start and an early finish is still half a day, and a request worth nothing would
       pass every entitlement check ever written. A range clipped at the year boundary keeps
       only the half day that falls inside it, so the two years still sum to what was taken
-      `src/lib/leaveYear.ts` · `supabase/migrations/0109_half_day_leave.sql` · 7 pgTAP + 26 unit
-- [x] CAP-086 🟢 Pay rates and labour cost — `staff_pay_rates` with its own policies, because a
+      `src/lib/leaveYear.ts` · `backend/src/Mod/Leave.php` (`starts_half`, `ends_half`) · `backend/migrations/006-time-and-requests.sql` (`leave_requests`) · suite `backend/tests/suites/105-leave-overtime.php` · Supabase era: `0109`, 7 pgTAP + 26 unit
+- [x] CAP-086 🟢 Pay rates and labour cost — `staff_pay_rates` is read only through owner and manager routes (Supabase era: its own policies), because a
       rate on `staff_profiles` would publish everybody's pay to every colleague (that table is
       readable by any member). A history, not a value: a raise in April must not rewrite what
-      March cost. `labour_cost()` returns money without handing out the rates it used, and
-      COUNTS the people it could not price rather than treating them as free
-      `supabase/migrations/0104_pay_rates.sql` · 11 pgTAP assertions
+      March cost. `GET /orgs/{o}/labour-cost` (Supabase era: `labour_cost()`) returns money without handing out the rates it used, and
+      names how many rostered people have no rate rather than pricing them at zero
+      `backend/src/Mod/LabourCost.php` · `backend/src/Mod/Staff.php` (`listRates`, `addRate`) · `backend/migrations/004-people-places.sql` (`staff_pay_rates`, unique per person and day) · suites `backend/tests/suites/080-staff.php`, `backend/tests/suites/220-frontend-switch.php` · Supabase era: `0104`, 11 pgTAP assertions
 - [x] CAP-087 🟢 Overtime — still a declared number, now shown beside what the clock recorded for that
       person that day, so an approver judges it against something. Evidence, deliberately not derivation
-      `supabase/migrations/0097_overtime_evidence.sql` · 7 pgTAP assertions
+      `backend/src/Mod/Leave.php` (the overtime routes and the clock-and-rota evidence for a day) · suite `backend/tests/suites/105-leave-overtime.php` · Supabase era: `0097`, 7 pgTAP assertions
 - [x] CAP-088 🟢 Document expiry — alerts a manager on a schedule, once per document per expiry date
-      `supabase/migrations/0093_scheduled_alerts.sql` · GAP-013 closed #214
-      **PHP API (R2 slice S10, branch `r2/s10-compliance`, not released):** folded into the compliance module's
+      GAP-013 closed #214 · Supabase era: `0093`
+      **PHP API (R2 slice S10; the branch `r2/s10-compliance` is gone and the code is on `main`):** folded into the compliance module's
       reminder job (d30, d14, d7 and expired, once per document and stage, organisation timezone, the person and the
-      managers). `backend/src/Mod/Compliance.php` · suite `230-compliance` (116 assertions)
+      managers; `ComplianceRules`, primary key `document_id`, `stage` of `document_reminders`). `backend/src/Mod/Compliance.php` · `backend/src/ComplianceRules.php` · suite `230-compliance` (116 assertions when written; not recounted)
 - [ ] CAP-088b 🟡 Compliance: document types (UK presets), uploads that count only once approved, four-eyes review,
       supersede on approval, the eligibility service S12 consumes, and the eligibility chip on the rota and open shifts.
-      **Built on the branch, behind the `staff_documents` flag (seeded off), not released.** Becomes 🟢 when the owner
+      **Code is on `main`, behind the `staff_documents` flag, seeded off in a migration (`backend/migrations/015-compliance.sql`); the live flag value, and whether a release has carried the module, are `NOT VERIFIED`.** Becomes 🟢 when the owner
       turns the flag on after a local-live walk-through. `backend/migrations/015-compliance.sql` ·
       `backend/src/Mod/Compliance.php` · suite `230-compliance` · `src/lib/compliance.test.ts`
 - [x] CAP-089 🟢 Multi-location workers — **and the row's proposed fix would have been wrong.**
       It said `staff_profiles` has no `location_id`; adding one cannot express a person who
       works two sites, which is the thing being asked for. The real shape: a site is inherited
       from the DEPARTMENT, so everybody has exactly one by construction. `staff_locations` is a
-      set, with a trigger refusing a row whose org disagrees with either parent. Nothing
+      set, with composite foreign keys refusing a row whose org disagrees with either parent (Supabase era: a trigger). Nothing
       recorded still falls back to the department, so an organisation that ignores it sees no
       change — and it never refuses an assignment, only answers "who can cover here"
-      `supabase/migrations/0105_staff_locations.sql` · 9 pgTAP assertions
+      `backend/migrations/004-people-places.sql` (`staff_locations`) · `backend/src/Mod/Staff.php` · suite `backend/tests/suites/080-staff.php` · Supabase era: `0105`, 9 pgTAP assertions
 - [x] CAP-090 🟢 Delegation — cover that expires by time rather than by somebody remembering
       to undo a promotion. Enforced inside `has_org_role`, so every managerial policy honours
       it at once. **It confers `manager` and never `owner`**: an owner going away for a
       fortnight is not a reason to hand somebody the ability to delete the organisation or
-      change billing, and the screen says so. It cannot be chained — `delegate_role` reads the
-      caller's own membership, not `has_org_role`, which now returns true for a delegate
-      `supabase/migrations/0106_role_delegation.sql` · 10 pgTAP assertions
+      change billing, and the screen says so. It cannot be chained — `Orgs::delegate` reads the
+      caller's real role (`Scope::requireReal`), not the effective one, which is manager for a delegate. Live, cover is also capped at 90 days (`MAX_COVER_DAYS`, an assumption recorded in the code). Enforced in `Scope::membership` (Supabase era: inside `has_org_role`)
+      `backend/src/Mod/Orgs.php` (`delegate`, `revokeDelegation`) · `backend/src/Scope.php` · suite `backend/tests/suites/040-members.php` · Supabase era: `0106`, 10 pgTAP assertions
 - [x] CAP-091 🟢 Ownership transfer — one transaction, promoting and demoting together, from the
       owner-only settings page; the outgoing owner stays on as a manager
-      `supabase/migrations/0095_ownership_transfer_and_duplicates.sql` · 10 pgTAP assertions
-- [x] CAP-092 🟢 Duplicate detection — one account cannot hold two staff records, and two sites cannot
-      share a name. Payroll ids were already unique since `0041`, which this row did not know
-      `supabase/migrations/0095_ownership_transfer_and_duplicates.sql`
+      `backend/src/Mod/Orgs.php` (`transferOwnership`, real owner only) · suite `backend/tests/suites/040-members.php` ("exactly one owner") · Supabase era: `0095`, 10 pgTAP assertions
+- [ ] CAP-092 🟡 Duplicate detection — one account cannot hold two staff records (409 `account_linked`), and payroll ids are unique per organisation (Supabase era: since `0041`, which this row did not know). **Two sites can share a name again.**
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** the rule of the Supabase era that two sites cannot share a name has no equivalent: `locations` in `backend/migrations/004-people-places.sql` has no unique name key and `backend/src/Mod/Places.php` has no duplicate-name check
+      `backend/migrations/004-people-places.sql` (`staff_profiles_org_user`, `staff_profiles_org_payroll`) · `backend/src/Mod/Staff.php` · `backend/src/Mod/Places.php` · suite `backend/tests/suites/080-staff.php` · Supabase era: `0095`
 - [x] CAP-093 🟢 Unified approvals queue — `/app/approvals` lists leave, swaps and overtime
       together, oldest first, and decides them in place. A swap still waiting on a colleague is
       deliberately excluded: a queue with rows the reader cannot clear stops being read. The
@@ -1030,7 +1028,7 @@ itself: a restore, a real charge, and a phone.
       `src/lib/approvalQueue.ts` · `src/pages/app/ApprovalsPage.tsx` · 9 unit tests
 - [x] CAP-094 🟢 Onboarding — the org is still created at step 1 by design, and an unfinished wizard now
       resumes at step 2 instead of bouncing to the dashboard forever
-      `supabase/migrations/0094_onboarding_completion.sql` · GAP-015 closed #218 · 6 pgTAP assertions
+      `backend/src/Mod/Account.php` (`completeOnboarding`, owner only, sets `onboarding_completed_at` once) · suite `backend/tests/suites/085-account.php` · GAP-015 closed #218 · Supabase era: `0094`, 6 pgTAP assertions
 
 ### Reliability and operations
 
