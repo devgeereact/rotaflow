@@ -43,7 +43,7 @@ duplicates either; it exists only to map the shared contract onto Codex.
 ## What is identical
 
 Everything that matters. The quality gates are npm scripts, the register is a
-file, the guardrails are enforced by RLS and CI rather than by a harness, and the
+file, the guardrails are enforced by the PHP access checks, the PHP suites (the access sweep is `backend/tests/suites/099-access-sweep.php`) and CI rather than by a harness, and the
 task contract is a document any agent can read and write. If a rule seems to
 apply only to Claude Code, it is either a mapping, which belongs here, or a
 mistake, which belongs in a pull request.

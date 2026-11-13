@@ -35,9 +35,11 @@ paraphrase it from memory.
 1. **Never run against production.** RotaFlow is a live multi-tenant SaaS (`rotaflow.space`)
    with real customer organisations. All mutating/destructive testing happens in a dedicated
    QA test organisation (`QA RotaFlow Test Organisation [timestamp]`) created via real sign-up,
-   or against a local/staging Supabase project. If only production is reachable, STOP and
+   or against a local environment (`scripts/walk.sh`: a throwaway MariaDB and the PHP API on
+   this machine, signing in through the Clerk development instance; nothing is ever written
+   to the live API). If only production is reachable, STOP and
    report this before creating any test org or touching any record.
-2. **Do not cheat.** No direct SQL/Supabase Studio inserts to make a feature look functional.
+2. **Do not cheat.** No direct SQL inserts into MariaDB to make a feature look functional.
    No bypassing the UI to skip an inconvenient workflow. Every CRUD/PASS claim must be
    demonstrated through the actual application UI.
 3. **Start from zero.** No reliance on seed data, demo orgs, or pre-existing records. If a

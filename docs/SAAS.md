@@ -1,5 +1,17 @@
 # RotaFlow — SaaS Capability Register
 
+> **Which stack this register describes (9 November 2026).** It was written in the Supabase era:
+> the product ran on Supabase (retired). On 1 November 2026 it moved to a PHP 8.4 JSON API
+> (`backend/src/Api.php`, modules in `backend/src/Mod`), MariaDB (`backend/migrations`) and
+> Clerk sign-in. A capability row whose evidence names a retired Supabase object, a retired
+> row-level security policy, a retired Edge Function, a retired pgTAP test, retired `pg_cron`
+> or `pg_net` jobs, retired Inngest or retired ImageKit describes the Supabase era; the live
+> equivalent is the PHP module or migration. The owners are `docs/API-SPEC.md` for routes,
+> `docs/DATA-MODEL.md` for tables and `docs/RLS-TO-PHP.md` for the retired policies. Statuses
+> are set here, and only the code proves them: this clean-up changes a status only where the
+> row says so. State of the clean-up: this clean-up is in progress (Phase 3): evidence cells are
+> being re-pointed group by group, and a row that still names retired Supabase has not been reached yet.
+
 **The single plan of record.** Five planning documents were merged into this file on
 2026-08-29: the root project-memory file, the 13 August transformation plan, its 20 August
 v2, the go-live decisions list, and the six shipped-feature plans and specs that lived
@@ -32,20 +44,24 @@ Each needs the owner's account, money, signature or a production change.
 
 | #   | Action                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Unblocks                                                                        |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| O1  | Mint a new `SUPABASE_ACCESS_TOKEN` GitHub secret, re-run `auth-config.yml`, then repair `plan-drift-audit.yml` (red since 14 September)                                                                                                                                                                                                                                                                                                                                                                                                                                              | GAP-036                                                                         |
-| O2  | Switch on GitHub email for failed scheduled runs, add Sentry alert rules that email, and add a free external uptime check on `/` and the REST endpoint                                                                                                                                                                                                                                                                                                                                                                                                                               | `docs/DEPLOYMENT.md#alert-owners`, GAP-036                                      |
-| O3  | Merge #338 (it applies `0154` to `0156` to production on merge), then the work-queue PRs or their integration branch (they apply `0157` to `0162`), then deploy by name: `public-enquiry`, `stripe-webhook`, `create-checkout-session`, `billing-account`, `calendar-feed` (with `--no-verify-jwt`), `purge-storage`, `delete-account` and `send-invite`. Deploy `purge-storage` and `delete-account` before a site build carrying the new Privacy Notice goes live. Then, in the Stripe dashboard for both modes, add `invoice.finalized` to the `stripe-webhook` endpoint's events | CAP-126, CAP-127, BUG-107, BUG-108, GAP-128, GAP-129, GAP-052, GAP-056, GAP-057 |
-| O4  | **Superseded 2026-11-08** (the database is MariaDB since the cutover): install the backup command `backend/bin/backup.php` on the server (`docs/DEPLOYMENT.md`, "Database backups"), keep an encrypted off-site copy, and rehearse a restore with `--restore-check`                                                                                                                                                                                                                                                                                                                                                                                                               | GAP-001, CAP-095, CAP-107                                                       |
-| O5  | Put one Stripe test-mode charge through Checkout, then authorise one supervised live charge                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | CAP-036                                                                         |
+| O1  | **Superseded 2026-11-09:** no Supabase token is needed any more. Was: mint a new `SUPABASE_ACCESS_TOKEN` GitHub secret, re-run `auth-config.yml`, then repair `plan-drift-audit.yml` (red since 14 September). Replaced by: repoint or retire `.github/workflows/auth-config.yml` (it still reads the Supabase Auth configuration; its latest scheduled run, 12 October 2026, failed) and repair `.github/workflows/plan-drift-audit.yml` (latest scheduled run listed by `gh run list` on 2026-11-09: failure, 12 October 2026; its header says it needs the `OPENROUTER_API_KEY` repository secret, which is an owner action; whether the secret is set is `NOT VERIFIED`). The workflow edits are Phase 5 code work (`docs/DEPLOYMENT.md`, Alert owners) | GAP-036 |
+| O2  | Switch on GitHub email for failed scheduled runs, add Sentry alert rules that email, and add a free external uptime check on `/` and on `/api/health` (answered by `backend/public/api/index.php`; the release smoke check in `release.json` expects `"ok":true` from it). All three are third-party dashboards: `NOT VERIFIED` that any is on. Nothing in the repository alerts anyone when `backend/bin/cron.php` or `backend/bin/backup.php` fails | `docs/DEPLOYMENT.md#alert-owners`, GAP-036 |
+| O3  | **Superseded 2026-11-09 as a deploy list:** no Edge Function is deployed any more. The PHP API and the build ship with `pnpm release` (`scripts/release.mjs`, `release.json`), and a database migration is applied by `php backend/bin/migrate.php` on the host (the release uploads the `.sql` files and does not run them, `docs/DEPLOYMENT.md`). Was: merge #338 (it applied `0154` to `0156` to production on merge), the work-queue PRs (`0157` to `0162`), then deploy `public-enquiry`, `stripe-webhook`, `create-checkout-session`, `billing-account`, `calendar-feed`, `purge-storage`, `delete-account` and `send-invite` by name. The PHP equivalents are `Mod/Enquiries.php`, `Mod/StripeWebhook.php`, `Mod/Billing.php`, `Mod/CalendarFeed.php`, `Lifecycle::cron`, `Gdpr::cron` and `Mod/Invites.php` under `backend/src`. **Still an owner action:** in the Stripe dashboard, for both modes, point one endpoint at `POST /stripe/webhook` on the live origin (`backend/src/Mod/StripeWebhook.php`) and subscribe it to the events that handler processes: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.trial_will_end`, `invoice.finalized`, `invoice.paid` and `invoice.payment_failed`. The dashboard state is `NOT VERIFIED` | CAP-126, CAP-127, BUG-107, BUG-108, GAP-128, GAP-129, GAP-052, GAP-056, GAP-057 |
+| O4  | **Superseded 2026-11-08** (the database is MariaDB since the cutover): install the backup command `backend/bin/backup.php` on the server (`docs/DEPLOYMENT.md`, "Database backups"), keep an encrypted off-site copy, and rehearse a restore with `--restore-check`. **Installed and proven 2026-11-08, recorded in `docs/AUDIT.md`** (section "2026-11-08: Phase 1, live safety and ground truth") and `docs/DEPLOYMENT.md`: the cron line `17 */6 * * *` (the six-hour cadence is the suggested schedule in that section; `backend/bin/backup.php` states none), the first live backup, and a restore into the scratch database, which passed with every count inside the recorded range. The host state today was not re-checked. **Still open, and never to be read as done:** the encrypted off-site copy, an alert on a failed run and a scheduled monthly restore drill (O18) | GAP-001, CAP-095, CAP-107 |
+| O5  | Put one Stripe test-mode charge through Checkout (`POST /orgs/{o}/billing/checkout`, `backend/src/Mod/Billing.php`), then authorise one supervised live charge. Which mode the live server runs in is a private-config setting (`stripe.mode`): `NOT VERIFIED` | CAP-036 |
 | O6  | Decide sole trader or limited company (D7), have Terms, Privacy and a DPA reviewed, and pay the ICO fee                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | GAP-059                                                                         |
 | O7  | Run a UKIPO search in classes 9 and 42 (D1), then claim one suffixed handle everywhere (D11)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | §5a naming paragraph                                                            |
 | O8  | Run both loops on a real iPhone and a real Android phone: a push received, a clock-in queued offline and sent                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | CAP-023a, CAP-106                                                               |
-| O9  | Use a real authenticator once, then switch on `require_mfa`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | CAP-049                                                                         |
-| O10 | Turn on Turnstile and leaked-password protection in Supabase Auth (the second needs the paid plan in O4)                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | GAP-033, GAP-034                                                                |
+| O9  | **Superseded 2026-11-09:** the `require_mfa` switch has no backend (`git grep -n require_mfa -- backend` finds only `backend/src/DataMove/Map.php`, which records it as "two-step sign-in is set in Clerk"; the Platform settings switch is rejected in the front end, `src/services/platformSettingsService.ts`). Was: use a real authenticator once, then switch on `require_mfa`. Replaced by: require two-step verification in the Clerk dashboard for platform administrators and organisation owners, and sign in once with a real second factor. A Clerk dashboard setting: `NOT VERIFIED` | CAP-049 |
+| O10 | **Superseded 2026-11-09:** Supabase Auth is retired; sign-in is Clerk (`backend/src/Jwt.php`). Was: turn on Turnstile and leaked-password protection in Supabase Auth (the second needed the paid plan in O4). Replaced by the Clerk equivalents: bot protection on sign-up and a breached-password check where a password exists. Both are Clerk dashboard settings and `NOT VERIFIED`. The Turnstile check on the public enquiry form is separate and lives in `backend/src/Mod/Enquiries.php` (private config `turnstile_secret`; whether it is set is `NOT VERIFIED`) | GAP-033, GAP-034 |
 | O11 | ~~Export existing `medical_notes` values for the owner, so the column can be purged (D5)~~ Done 2026-10-22: a count-only read of production, approved by the owner, found 0 rows, so there was nothing to export                                                                                                                                                                                                                                                                                                                                                                     | GAP-058                                                                         |
-| O12 | Close or rebase the bot branch `plan-drift-audit/weekly` (do not merge it as written: it rewrites the maturity line), and decide Dependabot #342 (vitest 5 fails CI)                                                                                                                                                                                                                                                                                                                                                                                                                 | GAP-037                                                                         |
-| O13 | Send one invitation from Team, Invite to a real inbox you can read, and confirm it arrives with a working link                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | BUG-015, GAP-115                                                                |
-| O14 | GitHub Actions is disabled for the owner's account: on 2026-10-22 a manual `workflow_dispatch` of CI was refused with HTTP 422 "Actions has been disabled for this user". The repository's workflows are all `active`, so this is an account-level block (billing, a spending limit or a GitHub flag), not a repository setting. Check the account's billing and Actions settings, contact GitHub Support if neither explains it, then re-run CI on #355 and let `backup.yml` succeed again before merging. No PR run since 12 October, no scheduled run since 18 October            | gates 27 and 28 in `qa/LAUNCH-CHECKLIST.md`                                     |
+| O12 | **Superseded 2026-11-09:** the bot branch `plan-drift-audit/weekly` is gone (`git ls-remote --heads origin "plan-drift-audit/*"` prints nothing) and Dependabot #342 (vitest 5) is closed (`gh pr view 342`). Was: close or rebase the branch (do not merge it as written: it rewrites the maturity line) and decide #342. A successful weekly run of `.github/workflows/plan-drift-audit.yml` would open that branch again, so review its pull request when it does | GAP-037 |
+| O13 | Send one invitation from Team, Invite to a real inbox you can read, and confirm it arrives with a working link. It goes out over SMTP: the organisation's own account if one is saved, else the platform `smtp` private config (`backend/src/Mail.php`, `backend/src/SmtpMailer.php`, `backend/src/Mod/Invites.php`). Whether the platform account is configured is `NOT VERIFIED` | BUG-015, GAP-115 |
+| O14 | GitHub Actions is disabled for the owner's account: on 2026-10-22 a manual `workflow_dispatch` of CI was refused with HTTP 422 "Actions has been disabled for this user". The repository's workflows are all `active`, so this is an account-level block (billing, a spending limit or a GitHub flag), not a repository setting. Check the account's billing and Actions settings, contact GitHub Support if neither explains it, then re-run CI on #355 and let `backup.yml` succeed again before merging. No PR run since 12 October, no scheduled run since 18 October. **State on 2026-11-09: `NOT VERIFIED`.** `gh run list` (read only) shows scheduled `backup` runs starting daily up to 2026-11-09, all failures (that workflow dumps the retired Supabase database), and the newest `CI` run listed is from 12 October 2026; a manual dispatch was not retried | gates 27 and 28 in `qa/LAUNCH-CHECKLIST.md` |
+| O15 | Remove the `x-turbo-charged-by: LiteSpeed` response header. The composed root `.htaccess` was pushed on 2026-11-08 with `pnpm htaccess push --go --accept-extra` (six smoke checks passed, recorded in `docs/AUDIT.md`), but LiteSpeed adds that header after `.htaccess`, so `Header unset` cannot remove it; it needs a Cloudflare response-header rule or a LiteSpeed setting (`docs/DEPLOYMENT.md`, "Composing the live `.htaccess`"). The live header today is `NOT VERIFIED` | `docs/SECURITY.md`, open items |
+| O16 | Replace the `CF-RAY` origin lock with Cloudflare Authenticated Origin Pulls (or a Cloudflare IP-range lock). The lock block is `scripts/htaccess/origin-lock.conf`; the `CF-RAY` header can be sent by anyone who reaches the origin address directly. A Cloudflare setting: `NOT VERIFIED` | `docs/SECURITY.md`, open items |
+| O17 | In the Clerk dashboard, add `email_verified` to the session token, then require it in `Users::resolve` (`backend/src/Users.php` refuses a token only when the claim is present and not true). The second half is code work. A Clerk dashboard setting: `NOT VERIFIED` | `docs/SECURITY.md`, open items |
+| O18 | Copy the MariaDB dumps off the server, encrypted, with a key the owner holds; alert on a failed backup run; schedule the monthly `--restore-check` drill. Installed and proven on 2026-11-08 is recorded in `docs/AUDIT.md`; these three are the parts that are not done. `backend/bin/backup.php` dumps the database only: stored files and private configuration are not in it (`docs/SECURITY.md`, section 1) | GAP-001, CAP-095, CAP-107 |
 
 ### 2. Next up, for an agent
 
@@ -55,23 +71,38 @@ holds its status and evidence.
 1. ~~**Offline and shared-device proof.**~~ Done 2026-10-21:
    `e2e/offline-clock-in.spec.ts` and `e2e/pwa-offline.spec.ts`, both in CI, and the
    cache-teardown spec now runs in CI too. GAP-049, GAP-050, GAP-054 and GAP-086
-   closed; GAP-072 was already closed. Real phones remain O8.
-2. **Private document and photo storage** (D4): documents built in `0159`, photos in
-   `0162` (a private `staff-photos` bucket any colleague may see, erasure removes
-   it), both removed by `purge-storage`. What is left is deploying the function
-   (O3) and one upload, open and erasure on a real project. GAP-056, GAP-084.
+   closed; GAP-072 was already closed. Real phones remain O8. (Supabase era:
+   `e2e/offline-clock-in.spec.ts` needs a local Supabase stack (legacy), so it cannot prove
+   the queue against the PHP API; `NOT VERIFIED`, see `docs/ARCHITECTURE.md`, Offline and PWA.)
+2. **Private document and photo storage** (D4): built in the Supabase era as `0159`
+   (documents) and `0162` (photos), removed by the `purge-storage` function.
+   **Superseded 2026-11-09:** the live implementation is `backend/src/FileStore.php` (plain
+   files under the private root, outside every web root, two buckets `staff-documents` and
+   `staff-photos`), documents in `backend/src/Mod/Compliance.php`, photos in
+   `backend/src/Mod/Photos.php`, and removal by `Lifecycle::cron`
+   (`backend/src/Mod/Lifecycle.php`), which drains `storage_deletions`. Nothing is left to
+   deploy. What is left is one upload, open and erasure on the live host: `NOT VERIFIED`.
+   GAP-056, GAP-084.
 3. ~~**Purge `medical_notes`**~~ Done: `0164` drops the column (2026-10-22).
    GAP-058.
-4. **Trial reminder email**: built in `0157`, live once its migration merges. GAP-127.
-5. **Invoice follow-ups**: built in `billing-account` and, for unpaid invoices, in
-   `stripe-webhook` (`invoice.finalized`). Live once both are deployed and the
-   Stripe endpoint is subscribed to `invoice.finalized` (O3). GAP-128, GAP-129.
-6. **Calendar feed**: built in `0158` (idle expiry, a rate limit, Reset link on My rota). Remaining step: deploy `calendar-feed` by hand once the branch merges. GAP-052.
+4. **Trial reminder email**: built in the Supabase era as `0157`. Live implementation:
+   `Notifications::cron` (`backend/src/Mod/Notifications.php`, `trialEndingAlerts`) tells an
+   organisation's owners once when its own trial ends within three days and no plan is chosen.
+   It runs from `backend/bin/cron.php`, which the live host runs every five minutes
+   (`docs/AUDIT.md`, 2026-11-08). A real delivery to an inbox is `NOT VERIFIED`. GAP-127.
+5. **Invoice follow-ups**: built in the Supabase era in `billing-account` and
+   `stripe-webhook`. Live implementation: `backend/src/Mod/Billing.php` (invoice links,
+   `POST /orgs/{o}/billing/invoices/{i}/links`) and `backend/src/Mod/StripeWebhook.php`
+   (`invoice.finalized`, `invoice.paid`, `invoice.payment_failed`). Live once the Stripe
+   endpoint is subscribed to those events (O3). GAP-128, GAP-129.
+6. **Calendar feed**: built in the Supabase era as `0158` (idle expiry, a rate limit, Reset link on My rota). **Superseded 2026-11-09:** the live implementation is `backend/src/Mod/CalendarFeed.php` (public `GET /ics`, an unused feed switches itself off after 90 days, `IDLE_DAYS`; public routes are limited per address in `backend/src/Api.php`). No function is left to deploy. GAP-052.
 7. **Account deletion behind an erasure request.** Built: the "Your data" page files
-   requests (`0160`), and closing an erasure case as completed queues the login for
-   the new `delete-account` function (`0162`), which removes it through the Auth
-   Admin API. What is left is deploying `delete-account` (O3) and one erasure on a
-   real project. GAP-057.
+   requests, and closing an erasure case as completed queues the login for deletion.
+   **Superseded 2026-11-09:** in the Supabase era that was `0160`, `0162` and the
+   `delete-account` function; the live implementation is `backend/src/Mod/Gdpr.php`
+   (`Gdpr::cron` drains `account_deletions` and deletes the Clerk user with the
+   `clerk_secret_key` private config). Nothing is left to deploy. What is left is one erasure
+   on the live host: `NOT VERIFIED`. GAP-057.
 8. **Recovered defects: done on the agent side.** Each re-tested verdict now names
    its test; the real-inbox invitation is O13. BUG-012 and BUG-024 are fixed in page
    callbacks with no unit seam and are left to the authenticated e2e run. GAP-115.
@@ -79,12 +110,12 @@ holds its status and evidence.
    matched or matched by a recorded decision; the per-screen results are in
    `docs/UX-SPEC.md#design-match-loop`. Reopen a screen only for a regression.
 10. **Performance beyond what was measured**: the 20-site, 250-staff set was measured
-    on 21 October 2026 and its hotspot fixed (`0161`). Left: a 500-staff tenant, reads
+    on 21 October 2026 and its hotspot fixed (Supabase era, `0161`). Left: a 500-staff tenant, reads
     as a staff member, and concurrent load. HARDEN-007.
 11. **Dependency majors still held**: eslint 10, TypeScript 7 and Sentry 11, each
     waiting on the condition in GAP-037 (`@vitejs/plugin-react` 6 taken 2026-10-22). Sentry 11 is the one
     with work in it: verify scrubbing against a probe DSN.
-12. ~~**Re-run the release gate.**~~ Done 21 October 2026 on the integration branch
+12. ~~**Re-run the release gate.**~~ (Supabase era.) Done 21 October 2026 on the integration branch
     (all eleven work-queue PRs merged together): every local gate passes, and the
     decision is NOT READY FOR PRODUCTION on owner actions alone (O3, O4, O5, O8,
     O14). Re-run it against `main` after the merge and the deploys.
@@ -96,8 +127,10 @@ holds its status and evidence.
     neither a file nor a route with a real 404 and the prerendered not-found page.
     The deploy carries `.htaccess`, so it must be composed with the origin-lock block
     (`docs/DEPLOYMENT.md#composing-the-live-htaccess`) and then checked with the
-    table there. JSON-LD and the not-found screen were done earlier. No row; this
-    line is its home.
+    table there. JSON-LD and the not-found screen were done earlier. Since then the
+    release path changed: `pnpm release` rebuilds `dist` and smoke-checks `/no-such-page`
+    for a 404 (`release.json`). Whether the prerendered pages are live is `NOT VERIFIED`.
+    No row; this line is its home.
 14. **Locale-aware formatting**: `src/lib/format.ts` exists (2026-10-21) and the
     account screens use it; the remaining inline `toLocaleString('en-GB')` calls
     move to it as each screen is touched. No row; this line is its home.
@@ -115,9 +148,15 @@ card. Each is a ❓ row or a deploy step, not engineering:
 
 - A push seen arriving on a phone (CAP-023a) and offline use on a phone (CAP-106).
 - A completed charge (CAP-036).
-- A restore into a real Supabase project (CAP-107).
-- Merged Edge Function changes that nobody has deployed: merging never deploys them
-  (see §2, "What is actually deployed").
+- A restore of the live MariaDB database from a dump into a scratch database: the
+  restore check passed on 2026-11-08 (recorded in `docs/AUDIT.md`, CAP-107). What has not
+  been done is a restore that replaces the live database, and the stored files are not in the
+  dump.
+- A deploy of the PHP API: `pnpm release` uploads it (`release.json`), but a merged
+  migration is applied only by `php backend/bin/migrate.php` on the host, so whether one is
+  pending is `NOT VERIFIED` (`docs/DEPLOYMENT.md`). The former wording here, about Edge
+  Function changes nobody had deployed, described the Supabase era (`supabase/functions`,
+  retired).
 
 ### 4. Evidence archive
 
@@ -144,7 +183,8 @@ in the repository until now.
 - **CI tests the branch head, not the merge result.** Two green pull requests can turn
   `main` red together. Re-check `origin/main` itself before building to deploy.
 - **`npm install` passing proves nothing about `npm ci`**, because it rewrites the
-  lockfile. Verify a dependency bump with a clean `npm ci`.
+  lockfile. Verify a dependency bump with a clean install from the lockfile (the project now
+  uses `pnpm install --frozen-lockfile`).
 - **The checkout is shared by several agents.** Do multi-step work in its own
   worktree, and copy `.env` into a fresh worktree or the dev server serves a page that
   never mounts.
@@ -157,9 +197,10 @@ in the repository until now.
 - **Stacked pull requests are reviewed by CodeRabbit only once they target `main`.**
 - **A hosted runner can fail to start** and fail the job after 15 minutes without
   running a step. A rerun is refused while the old run is still active.
-- **Local Supabase needs the worktree under the home directory**, because the
-  container runtime shares only that; elsewhere `supabase test db` can report no tests
-  and still exit 0.
+- **Local Supabase needs the worktree under the home directory** (Supabase era; the
+  mechanism no longer exists on the live stack), because the container runtime shares only
+  that; elsewhere the legacy `supabase test db` can report no tests and still exit 0. The PHP
+  suites use a throwaway local MariaDB instead (`scripts/test-db.sh`).
 - **A 200 from the live site does not prove a file exists**: the SPA fallback answers
   every path. Verify by content or on the server.
 
@@ -210,7 +251,7 @@ phone Requests switcher and announcement read receipts (CAP-027).
 | "What changed" summary on publish      | Added, moved and removed shifts shown before Publish and in the staff notification              | P1       |
 | My next shifts available offline       | A read-only cache of the person's own next 14 days, with its "last updated" time                | P2       |
 | Missed clock-in follow-up list         | A "Didn't clock in" filter on Attendance, from the existing state machine                       | P1       |
-| Change my email                        | A verified change through Supabase Auth (GAP-085)                                               | P1       |
+| Change my email                        | A verified change through Clerk (identity is the Clerk user id, and the email claim links a row: `backend/src/Users.php`; GAP-085) | P1       |
 | Annual billing                         | Annual Stripe prices and a toggle (D3)                                                          | P2       |
 | What's new panel, in-app help articles | From the console content source once it exists (D9)                                             | P2       |
 | Status notice on the website           | One line from `site_settings` or a public incident flag                                         | P2       |
@@ -231,7 +272,7 @@ links to them:
 | ------------------------------ | ----------------------------------------- |
 | Coding standards               | `docs/RULES.md`                           |
 | Folder layout, data flow       | `docs/ARCHITECTURE.md`                    |
-| Tables, columns, RLS           | `docs/DATA-MODEL.md`                      |
+| Tables, columns, access checks (RLS retired) | `docs/DATA-MODEL.md`                      |
 | Hook contracts                 | `docs/ARCHITECTURE.md#hook-contracts`     |
 | Design tokens                  | `docs/DESIGN-SYSTEM.md` + `src/index.css` |
 | Screen-by-screen build status  | `docs/UX-SPEC.md`                         |
@@ -243,7 +284,7 @@ links to them:
 | Release evidence               | `qa/LAUNCH-CHECKLIST.md`                  |
 | How agent work is routed       | `docs/README.md#how-gee-os-is-applied`    |
 
-**Automated freshness.** `.github/workflows/plan-drift-audit.yml` reads this file weekly via
+**Automated freshness.** `.github/workflows/plan-drift-audit.yml` (its latest scheduled run listed by `gh run list` on 2026-11-09 was a failure on 12 October 2026, owner action O1) reads this file weekly via
 `PLAN_DOC`, resolves every repo path cited below to an `EXISTS`/`MISSING` verdict _before_ any
 model runs, and appends to the Drift Audit Log at the bottom. A row whose evidence path
 disappears is flagged automatically. Keep citations to one path per row so the audit stays
@@ -257,7 +298,7 @@ would move it are not code.
 
 | Mark | Meaning                                                                       |
 | ---- | ----------------------------------------------------------------------------- |
-| 🟢   | Works end to end: UI → service → RPC/function → DB → RLS → audit → error path |
+| 🟢   | Works end to end: UI → service → API route (Supabase era: RPC/function) → database → access check in PHP (Supabase era: RLS) → audit → error path |
 | 🟡   | Real implementation, important pieces missing                                 |
 | 🔴   | No meaningful implementation                                                  |
 | 🟠   | Exists, does not reliably do what it claims                                   |
@@ -270,8 +311,9 @@ would move it are not code.
 mark a row 🟢 because a button exists.
 
 ❓ rows name the exact test that would settle them. They exist because the repository cannot
-answer everything — a real Stripe charge, an RLS fixture matrix against the deployed project,
-real-device offline UAT and a restore-from-backup all need a live environment.
+answer everything — a real Stripe charge, a cross-organisation access matrix against the live host (the PHP
+suite `backend/tests/suites/099-access-sweep.php` runs against a throwaway database only; the Supabase era's
+RLS fixture matrix is retired), real-device offline UAT and a restore-from-backup all need a live environment.
 
 ## §2 Verdict summary
 
@@ -280,7 +322,7 @@ Recounted 2026-08-31, after eighty-three pull requests landed (#178-#265); the f
 The platform console repolish of 2026-09-07, and `0150` (a colleague is not a payroll record) the same day, then took the tree to 151 migrations as it stood that day, counting `0151` (the staff view does not hoist, correcting a claim `0150` made about its own plan): `0140` (a finance role reads billing, not people — the functions `0122` missed), `0141` (the first owner can be invited again, restoring the bootstrap branch `0126` dropped), `0142` (the last platform owner survives a race), `0143` (the queue depth reads the queue that exists), `0144` (a reopened case keeps its rating), `0145` (consent is the customer's, and withdrawing it ends a live session), `0146` (revoking a platform role ends the support sessions it was holding), `0147` (the second-factor switch has one writer), `0148` (only the decision function approves a swap), `0149` (a support reply is audited), `0148` (a reply reaches the person who asked) and `0149` (a credit is recorded against an invoice).
 
 The verification pass of 2026-09-10 added no migration and changed no schema. It drove the built
-application against a local Supabase stack seeded with two tenants, sixteen staff, a published week,
+application against a local Supabase stack (Supabase era) seeded with two tenants, sixteen staff, a published week,
 an amendment, leave, a swap and clock events, as an owner, a manager, two staff members, an owner
 with no staff record and a platform owner. Five defects were found and fixed — GAP-118 to GAP-122 in
 §7 — of which two were P1: **every staff member reached an error boundary instead of a dashboard**,
@@ -292,6 +334,10 @@ A sixth defect, GAP-123, was a missing rule rather than a broken one — nothing
 booking the same days off twice, and the entitlement was then spent twice on days they were absent
 for once. It was recorded as a decision first and closed on the owner's instruction the same day by
 `0152`, the only migration this pass adds, which took the tree to 152. On 2026-10-11 `0153` (a new organisation starts with support access off, plan decision D8) made it 153. On 2026-10-12 `0154` (a 30-day trial, then a plan or read-only, decision D2) and `0155` (a website enquiry is stored and triaged in the console, CAP-126) took the tree to 155. `0156` (an invoice keeps its Stripe hosted page and PDF links, CAP-127) took the tree to 156. On 2026-10-21 `0157` (a no-card trial's owners are reminded before it ends, GAP-127), `0158` (a calendar feed nobody reads stops working, and one read too often is refused, GAP-052), `0159` (staff documents are kept in a private bucket, and every delete above a file queues it for removal, GAP-056), `0160` (a person can ask for their own data, GAP-057) and `0161` (the shift and rota reads stop paying for the write rule, GAP-071) took `main` to 161. On 2026-10-22 `0162` (a staff photo is a private upload that erasure removes, and a completed erasure case removes the person's login, GAP-056 and GAP-057) took `main` to 162. On 2026-10-22 `0163` (a person keeps their own clock format, week start and email summary choice, GAP-088) and `0164` (medical notes are purged: the `emergency_contacts.medical_notes` column is dropped, GAP-058) took `main` to 164 migrations.
+
+Those figures count the legacy Postgres folder `supabase/migrations` (Supabase era). The live MariaDB schema has 19 migrations in `backend/migrations` (001 to 020, no 012) and 69 tables (`docs/DATA-MODEL.md`); the PHP API has 242 route entries in 36 modules (`docs/API-SPEC.md`).
+
+Dated 2026-08-31, Supabase era. The table below measured the Supabase production database on that day; no current production count is recorded here, and the live data is in MariaDB (`docs/DATA-MODEL.md`).
 
 ### What production actually holds, 2026-08-31
 
@@ -323,14 +369,14 @@ precisely because they cannot be, and "it works" throughout this document means
 
 | Status                | Count |
 | --------------------- | ----- |
-| 🟢 Complete           | 113   |
-| 🟡 Partial            | 9     |
+| 🟢 Complete           | 101   |
+| 🟡 Partial            | 20    |
 | 🟠 Defective          | 0     |
 | 🔵 Hardening required | 0     |
 | ⚪ Surface only       | 0     |
-| 🔴 Missing            | 0     |
-| ⚫ Deferred           | 10    |
-| ❓ Not audited        | 4     |
+| 🔴 Missing            | 1     |
+| ⚫ Deferred           | 11    |
+| ❓ Not audited        | 3     |
 
 **Seven rows moved 🟡 → 🟢 on 2026-08-31 without new code, and that needs the same
 scepticism.** Each was partial for a residual that is not the capability: a verification with
@@ -452,9 +498,9 @@ Each gate is phrased so two people could argue about whether it has been met.
 
 | Stage           | Gate                                                                                                                                                      | Blocking                         |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| 1. Safe         | A restore has been performed from a backup into a scratch project, and no screen tells a user something happened that did not                             | GAP-001 (043/044/045 closed)     |
+| 1. Safe         | A restore has been performed from a backup into a scratch database (Supabase era: project), and no screen tells a user something happened that did not | GAP-001 (043/044/045 closed)     |
 | 2. Reliable     | Publishing a rota with the browser closed still results in a delivered, recorded notification                                                             | ❓-007 (GAP-026 closed)          |
-| 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org fails at the database | ❓-002 (GAP-008, BUG-052 closed) |
+| 3. Commercial   | A real charge appears in the live Stripe dashboard against a real subscription row, and adding a 16th staff member to a Starter org is refused by the server (Supabase era: at the database; now `Billing::requireSeat` in `backend/src/Billing.php`, 402 `seat_limit`) | ❓-002 (GAP-008, BUG-052 closed) |
 | 4. Professional | An organisation's staff receive mail from that organisation's own address, and the org can be branded                                                     | CAP-031, GAP-016                 |
 | 5. Enterprise   | MFA can be required org-wide and enforced below the UI; a Trust Centre answers a security questionnaire without a human                                   | GAP-017, GAP-018                 |
 | 6. Connected    | A third-party system can read a rota and receive a webhook when it changes                                                                                | GAP-019, GAP-020                 |
@@ -463,6 +509,8 @@ Each gate is phrased so two people could argue about whether it has been met.
 | 9. Scaled       | A 500-staff, 20-site tenant loads the rota grid inside the performance budget                                                                             | HARDEN-007                       |
 
 Stages are strictly ordered. Do not open stage 3 while stage 1 is unmet.
+
+Stage 1 and the live database: a restore of the MariaDB dump into a scratch database was performed on 2026-11-08 (recorded in `docs/AUDIT.md`; the tool is `backend/bin/backup.php --restore-check`). The stage stays blocked by GAP-001 because the off-site copy and the failed-run alert are not done (owner action O18). The columns above are otherwise unchanged from the Supabase era.
 
 **Every stage above 3 is blocked by a decision, not by outstanding work**, and the difference
 matters when reading the column: GAP-016 (stage 4), GAP-018 (stage 5), GAP-019 and GAP-020
@@ -480,30 +528,31 @@ itself: a restore, a real charge, and a phone.
 
 - [x] CAP-001 🟢 Rota builder — weekly/fortnightly/monthly grid, drag-and-drop, copy-previous-week
       `src/pages/app/RotaBuilderPage.tsx`
-- [x] CAP-002 🟢 Rota lifecycle — draft/published/archived, DB-enforced, four guards no client can bypass
-      `supabase/migrations/0061_rota_revisions.sql`, `0114_publication_boundary_in_the_database.sql` · GAP-039 closed #280 · 25 pgTAP assertions
+- [x] CAP-002 🟢 Rota lifecycle — draft/published/archived; the API is the only writer and never edits a published or archived rota (Supabase era: four database guards no client could bypass)
+      `backend/src/Mod/Rotas.php` · `backend/src/Mod/Shifts.php` (`rota_published`, `rota_archived`) · `backend/migrations/005-rota.sql` (`rotas_one_draft`, `rotas_one_published`) · suite `backend/tests/suites/090-rota.php` · GAP-039 closed #280 · Supabase era: `0061`, `0114`, 25 pgTAP assertions
 - [x] CAP-003 🟢 Amendment flow — a published rota is amended via a revision, the original stays visible
-      `supabase/migrations/0061_rota_revisions.sql` (`begin_rota_revision`)
-- [x] CAP-004 🟢 Minimum cover — `publish_rota` refuses a shortfall, counting exactly as the builder
-      does; the escape hatch is lowering that day's minimum, not a force flag
-      `supabase/migrations/0080_enforce_minimum_cover.sql` · GAP-006 closed #192 · 9 pgTAP assertions
+      `backend/src/Mod/Rotas.php` (`beginRevision`, `discardRevision`, `publish`) · suite `backend/tests/suites/090-rota.php` (an amendment is a draft that supersedes the published rota) · Supabase era: `0061` `begin_rota_revision`
+- [x] CAP-004 🟢 Minimum cover — `POST /orgs/{o}/rotas/{r}/publish` refuses a shortfall (409 `cover_below_minimum`), counting exactly as the builder
+      does; the escape hatch is lowering that day's minimum, not a force flag (the route takes no body field)
+      `backend/src/MinimumCover.php` · `backend/src/Mod/Rotas.php` (`publish`, `shortfall`) · `backend/migrations/005-rota.sql` (`minimum_cover_rules`) · suites `backend/tests/suites/089-minimum-cover.php`, `backend/tests/suites/090-rota.php` · GAP-006 closed #192 · Supabase era: `0080` `publish_rota`, 9 pgTAP assertions
 - [ ] CAP-004b 🟡 Scheduling tools (R2 slice S11) — rota warnings (daily rest, weekly hours, approved leave,
       declared unavailability) at assign and in a publish preview; a double-booking blocks publishing, warnings never
       do; recurring patterns (weekly or days on/off, split shifts, 92 days, 500 shifts, wall-clock across clock
-      changes); the shifts that clash with an approved leave request. **Built on the branch `r2/s11-scheduling`,
-      behind the `scheduling_tools` flag (seeded off), not released.** Becomes 🟢 when the owner turns the flag on
+      changes); the shifts that clash with an approved leave request. **Code is on `main` (the branch `r2/s11-scheduling` is gone),
+      behind the `scheduling_tools` flag, seeded off in `backend/migrations/016-scheduling.sql`; whether the flag is on in the live
+      database, and whether a release has carried the module to the live host, is `NOT VERIFIED`.** Becomes 🟢 when the owner turns the flag on
       after a local-live walk-through. `backend/migrations/016-scheduling.sql` · `backend/src/Mod/Scheduling.php` ·
       suites `235-scheduling-rules`, `240-scheduling` · `src/lib/schedulingRules.test.ts`, `src/lib/zonedTime.test.ts`
 - [x] CAP-005 ⚫ Shift templates — removed rather than built. A pre-filled placement is a different
       feature from a shift type, and should be designed as one if it is ever wanted
-      `supabase/migrations/0096_drop_shift_templates.sql` · BUG-051 closed #229
-- [x] CAP-006 🟢 Repeating a week — `repeat_rota_weeks()` copies a week forward up to 26 weeks
+      no `shift_templates` table exists in `backend/migrations` (`git grep -n shift_templates -- backend` prints nothing) · BUG-051 closed #229 · Supabase era: `0096` dropped it
+- [x] CAP-006 🟢 Repeating a week — `POST /orgs/{o}/rotas/{r}/repeat` copies a week forward up to 26 weeks
       in one transaction, rather than twelve rounds of copy-navigate-paste and several hundred
       round trips that can each fail alone. The arithmetic is done in the SITE'S timezone: in
       UTC a 07:00 shift becomes 08:00 after the last Sunday in March, and nobody notices until
       somebody turns up late. It never writes over a published week or a draft already holding
       work, and reports how many it left alone
-      `supabase/migrations/0107_repeat_rota_weeks.sql` · 9 pgTAP assertions
+      `backend/src/Mod/Rotas.php` (`repeat`, `copyShifts`, which moves each shift by local days in its site's time zone with `Time::plusLocalDays`; a published week, or a draft already holding shifts, is skipped and counted) · suite `backend/tests/suites/090-rota.php` (weeks 1 to 26) · Supabase era: `0107` `repeat_rota_weeks()`, 9 pgTAP assertions
 - [x] CAP-007 🟢 Conflict detection — leave, overlap, declared unavailability as hard blockers
       `src/lib/rotaInsights.ts`
 - [x] CAP-008 🟢 Overnight shifts and DST — absolute-instant arithmetic, fall-back day tested
@@ -515,11 +564,11 @@ itself: a restore, a real charge, and a phone.
       before it is sent. One-off royal holidays cannot be derived and have a named place to go
       `src/lib/bankHolidays.ts` · 15 unit tests
 - [x] CAP-010 🟢 Open-shift board — `/app/open-shifts` lists published, unclaimed, future shifts
-      and `claim_open_shift()` takes one. The UPDATE re-checks "still open" in its WHERE, so two
+      and `POST /orgs/{o}/open-shifts/{h}/claim` takes one (Supabase era: `claim_open_shift()`). The claim takes the organisation lock first and re-checks eligibility, so two
       people tapping at once cannot both win. A shift clashing with the reader's own roster is
       shown and flagged rather than filtered — a board that silently hides rows leaves somebody
       staring at "nothing to cover" while a colleague sees four
-      `supabase/migrations/0103_open_shift_claims.sql` · 11 pgTAP assertions
+      `backend/src/Mod/Swaps.php` (`claimOpenShift`) · `backend/src/Mod/Cover.php` (the eligibility check) · suite `backend/tests/suites/110-swaps-open-shifts.php` · `backend/tests/suites/270-open-shift-eligibility.php` · Supabase era: `0103`, 11 pgTAP assertions
 - [ ] CAP-010b 🟡 Cover (R2 slice S12) — staff report that they cannot work a shift and offer to cover; owners and
       managers open a cover request (the person comes off the published shift, eligible people are told), see ranked
       candidates with reasons, and approve or assign in one transaction with the organisation locked first and
@@ -527,30 +576,32 @@ itself: a restore, a real charge, and a phone.
       the instant open-shift claim gains the same check (always, whatever the flag, by owner decision); swaps cancel
       themselves when their shift changes or starts; two-way swaps (one shift for another, both moved or neither) behind
       their own `two_way_swaps` flag (S12d, `019-two-way-swaps.sql`, suite `265-two-way-swaps`).
-      **Built on the branch `r2/s12-cover`, behind the `cover_tools` flag (seeded off), not released.** Becomes 🟢 when
+      **Code is on `main` (the branch `r2/s12-cover` is gone), behind the `cover_tools` flag, seeded off in `backend/migrations/017-cover.sql`;
+      the live flag value and whether a release has carried the module are `NOT VERIFIED`.** Becomes 🟢 when
       the owner turns the flag on after a local-live walk-through. `backend/migrations/017-cover.sql` ·
       `backend/src/Mod/Cover.php` · suites `245-cover-rules`, `250-cover` · `src/lib/coverRules.test.ts`
 - [ ] CAP-011b 🟡 Timesheet flags and payroll export (R2 slice S13) — each timesheet line shows late, early finish
       and overtime chips beyond the organisation's tolerance (default 10 minutes, Settings, Policies), computed on the
       server from UTC instants (exact across clock changes, scheduled break deducted both sides); owners and managers
       export a payroll CSV of approved periods (at most 31 days, UTF-8 with a BOM, fixed columns, formula-injection
-      safe, exact minutes and hours, never to a platform support session). **Built on the branch `r2/s13-timesheets`,
-      behind the `timesheet_tools` flag (seeded off), not released.** Becomes 🟢 when the owner turns the flag on after
+      safe, exact minutes and hours, never to a platform support session). **Code is on `main` (the branch `r2/s13-timesheets` is gone),
+      behind the `timesheet_tools` flag, seeded off in `backend/migrations/018-timesheets.sql`; the live flag value and whether a release has
+      carried the module are `NOT VERIFIED`.** Becomes 🟢 when the owner turns the flag on after
       a local-live walk-through. `backend/migrations/018-timesheets.sql` · `backend/src/TimesheetRules.php` ·
       `backend/src/Mod/Timesheets.php` · suites `255-timesheet-rules`, `260-timesheets` · `src/lib/timesheetRules.test.ts`
 - [x] CAP-011 🟢 Clock in/out — GPS and manual, offline outbox, geofence recorded, duplicates refused server-side
-      `src/pages/app/ClockInPage.tsx`, `supabase/migrations/0115_clock_event_sequence_guard.sql` · GAP-040 closed #281 · 6 pgTAP assertions
+      `src/pages/app/ClockInPage.tsx`, `backend/src/Mod/Clock.php` (clocking in twice within five minutes is refused; a replayed `client_event_id` answers 200 `already_applied`) · suite `backend/tests/suites/100-clock.php` · GAP-040 closed #281 · Supabase era: `0115`, 6 pgTAP assertions
 - [x] CAP-012 🟢 Offline clock-in honesty — a queued write is labelled "Saved on this device, not sent yet"
       `src/pages/app/ClockInPage.tsx` · BUG-043 closed #162
 - [x] CAP-013 🟢 Sync state display — reads queue depth, not `navigator.onLine`
       `src/lib/clockRows.ts` (`syncStatusLabel`, 4 tests) · BUG-044 closed #162
 - [x] CAP-014 🟢 Offline timestamp integrity — the guard still clamps, but records what the device claimed
-      `supabase/migrations/0068_clock_event_reported_time.sql` · BUG-045 closed #172 · 9 pgTAP assertions · applied to production 2026-08-29
+      `backend/src/Mod/Clock.php` (a person's time is trusted only within 5 minutes ahead and 72 hours behind the server clock; the device's claim is kept in `event_at_reported`, `backend/migrations/006-time-and-requests.sql`) · suite `backend/tests/suites/100-clock.php` · BUG-045 closed #172 · Supabase era: `0068`, 9 pgTAP assertions, applied to the Supabase production database 2026-08-29
 - [x] CAP-015 🟢 Replay idempotency — a key minted before the first attempt on all three offline writes,
       a partial unique index, and a collision counted as synced rather than dead-lettered
-      `supabase/migrations/0081_outbox_idempotency.sql`, `src/lib/queuedWrite.ts` · BUG-046 closed #193, GAP-041 closed #282 · 5 pgTAP assertions · 4 unit tests
+      `backend/migrations/006-time-and-requests.sql` (unique keys `clock_events_client_event`, `leave_requests_client_event`, `shift_swaps_client_event`), `src/lib/queuedWrite.ts` · suites `backend/tests/suites/100-clock.php`, `backend/tests/suites/110-swaps-open-shifts.php` · BUG-046 closed #193, GAP-041 closed #282 · Supabase era: `0081`, 5 pgTAP assertions · 4 unit tests
 - [x] CAP-016 🟢 Dead-letter recovery — surfaced, retryable and dismissable, and scoped to the person
-      who queued it; the retry is safe because the idempotency keys (`0081`) recognise a write that
+      who queued it; the retry is safe because the idempotency keys (Supabase era `0081`; now the `client_event_id` unique keys) recognise a write that
       secretly landed
       `src/services/syncQueue.ts` · `src/components/FailedWritesNotice.tsx` · GAP-042 closed #283 · 40 unit tests
 - [ ] CAP-017 ⚫ QR clock-in — **deferred with a reason, 2026-08-31.** The schema accepts `'qr'`
@@ -563,27 +614,29 @@ itself: a restore, a real charge, and a phone.
       `src/pages/app/ClockInPage.tsx` · P3
 - [x] CAP-018 🟢 Timesheets — week approval, amendment, CSV export
       `src/pages/app/TimesheetsPage.tsx`
-- [x] CAP-019 🟢 Missed clock-in — the dashboard keeps its live view, and a pg_cron job now alerts a
-      manager without one being open, deduped per shift
-      `supabase/migrations/0093_scheduled_alerts.sql` · GAP-013 closed #214 · 9 pgTAP assertions
+- [x] CAP-019 🟢 Missed clock-in — the dashboard keeps its live view, and a cron job now alerts a
+      manager without one being open, deduped per shift (Supabase era: `pg_cron`)
+      `backend/src/Mod/Notifications.php` (`scheduledAlerts`, `MISSED_AFTER_MIN` 30 minutes, run by `Notifications::cron` from `backend/bin/cron.php`) · `backend/migrations/007-communication.sql` (`notification_outbox_dedupe`) · suite `backend/tests/suites/120-notifications.php` ("running the job again adds nothing") · GAP-013 closed #214 · Supabase era: `0093`, 9 pgTAP assertions
 
 ### Communications
 
-- [x] CAP-020 🟢 Notification dispatch — a rota publish enqueues its own notification in the same transaction; pg_cron drains it
-      `supabase/migrations/0069_notification_outbox.sql` · BUG-047 #166, GAP-026 #174 · 10 pgTAP assertions
-      ✅ **Draining since 2026-08-31.** `0091` moved the shared secret into `vault` alone, generated
-      in-database; `send-notification` v20 verifies against it. Confirmed live: only `service_role` may ask,
-      and the drain's value and the verifier agree.
-- [x] CAP-020a 🟢 Leave, swap and announcement dispatch — triggers, in the same transaction as the decision;
-      the unread reminder is an RPC, because no row changes when you press it
-      `supabase/migrations/0087_server_side_dispatch.sql` · GAP-026 closed #200 · 13 pgTAP assertions
-      ⚠️ `0088` follow-up: `announcement_audience` was still executable by `authenticated` — `0075` leaves a
-      default ACL granting new functions to that role, so revoking `public`/`anon` alone is not enough (#201)
+- [x] CAP-020 🟢 Notification dispatch — a rota publish enqueues its own notification in the same transaction; cron drains it (Supabase era: `pg_cron`)
+      `backend/src/Notify.php` (`enqueue`) · `backend/src/Dispatcher.php` (`drain`) · `backend/src/Mod/Notifications.php` (`cron`) · `backend/migrations/007-communication.sql` (`notification_outbox`) · suite `backend/tests/suites/120-notifications.php` · BUG-047 #166, GAP-026 #174 · Supabase era: `0069`, 10 pgTAP assertions
+      ✅ **Draining since 2026-08-31 (Supabase era).** `0091` moved the shared secret into `vault` alone, generated
+      in-database; `send-notification` v20 verified against it, and the drain's value and the verifier agreed.
+      Live now: there is no secret and no HTTP hop; `Dispatcher::drain` runs inside `Notifications::cron`, which
+      `backend/bin/cron.php` runs every five minutes on the live host (`docs/AUDIT.md`, 2026-11-08). That a
+      notification has been delivered from the live host is `NOT VERIFIED`.
+- [x] CAP-020a 🟢 Leave, swap and announcement dispatch — the handler enqueues in the same request as the decision (Supabase era: triggers);
+      the unread reminder is its own route, `POST /orgs/{o}/announcements/{n}/remind`, because no row changes when you press it
+      `backend/src/Mod/Leave.php` · `backend/src/Mod/Swaps.php` · `backend/src/Mod/Announcements.php` (`remind`) · suites `backend/tests/suites/120-notifications.php`, `backend/tests/suites/125-communication.php` · GAP-026 closed #200 · Supabase era: `0087`, 13 pgTAP assertions
+      ⚠️ Supabase era, history: the `0088` follow-up found `announcement_audience` still executable by `authenticated` because `0075` left a
+      default ACL on new functions (#201). The PHP API has no database functions to grant, so the mechanism is retired.
 - [x] CAP-021 🟢 Notification preferences — org matrix and per-user switch both read on the send path
-      `supabase/functions/send-notification/index.ts` · BUG-048 closed #165 · deployed v17, 2026-08-29
+      `backend/src/Dispatcher.php` (the organisation's matrix, 5 events by 3 channels, decides which channels an event may use; a person's own switch mutes only email and push, never their inbox; absent or malformed settings read as on) · suite `backend/tests/suites/120-notifications.php` · BUG-048 closed #165 · Supabase era: `send-notification` deployed v17, 2026-08-29
 - [x] CAP-022 🟢 Channel record — the column says what kind of record the row is (`in_app`); per-channel
       outcomes live in `notification_deliveries`, which is where the question belonged
-      `supabase/migrations/0082_notification_channel_is_in_app.sql` · BUG-049 closed #195
+      `backend/migrations/007-communication.sql` (`notification_deliveries`, channel `in_app`, `email`, `push`) · `backend/src/Dispatcher.php` · BUG-049 closed #195 · Supabase era: `0082`
 - [x] CAP-023 🟢 Web push — handler shipped and imported into the generated service worker,
       VAPID keys server-side, delivery outcomes recorded. **Whether one has ever arrived on a
       real device is CAP-023a**, which is a verification rather than a build and has its own
@@ -592,190 +645,176 @@ itself: a restore, a real charge, and a phone.
 - [ ] CAP-023a ❓-007 A push has still never been seen arriving on a real device
       **Test:** subscribe on a phone, publish a rota, confirm the notification appears and opens `/app/notifications` · P1
 - [x] CAP-024 🟢 Delivery tracking — one row per recipient per channel, with why a send was skipped
-      `supabase/migrations/0067_notification_deliveries.sql` · GAP-004 closed #168 · 11 pgTAP assertions · migration applied and send-notification redeployed v18, 2026-08-29
-- [x] CAP-025 🟢 Invite emails — sent automatically on **every** path, including the two sales-led ones
-      that were still copy-a-link until 2026-08-30; the copyable link stays as the fallback
-      `supabase/functions/send-invite/index.ts` · GAP-005 closed #198 · deployed v1, 2026-08-29
-- [x] CAP-026 🟢 In-app notifications — per-recipient rows, no client insert policy
-      `supabase/migrations/0002_rotaflow.sql`
+      `backend/migrations/007-communication.sql` (`notification_deliveries`: status `sent`, `failed`, `skipped`, `expired`, with a `detail`) · `backend/src/Dispatcher.php` · suite `backend/tests/suites/120-notifications.php` · GAP-004 closed #168 · Supabase era: `0067`, 11 pgTAP assertions, applied and `send-notification` redeployed v18, 2026-08-29
+- [ ] CAP-025 🟡 Invite emails — sent automatically from an organisation's Team page (create and resend); the copyable link stays as the fallback.
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** the two platform-led paths, `POST /platform/orgs` and `POST /platform/orgs/{o}/owner-invites`
+      (`backend/src/Mod/Platform.php`, `createOrg` and `inviteOwner`), return the token and send no email (the file has no mail call), so a first-owner
+      invitation is copy-a-link again. In the Supabase era the register claimed every path sent (the two sales-led paths were copy-a-link until 2026-08-30, then emailed); the front end
+      still reads `email_sent` from the owner-invite response (`src/services/inviteService.ts`) and falls back to "Copy the link and send it yourself."
+      `backend/src/Mod/Invites.php` (`create`, `resend`, through `Mail::forOrg`) · `backend/src/Mod/Platform.php` · suite `backend/tests/suites/050-invites.php` · GAP-005 closed #198 · Supabase era: `send-invite` deployed v1, 2026-08-29
+- [x] CAP-026 🟢 In-app notifications — per-recipient rows; the inbox is written only by the Dispatcher, so nobody can put a row into someone else's inbox through the API (Supabase era: no client insert policy)
+      `backend/src/Mod/Notifications.php` (header, `list`) · `backend/src/Dispatcher.php` · `backend/migrations/007-communication.sql` (`notifications`) · suite `backend/tests/suites/120-notifications.php` · Supabase era: `0002`
 - [x] CAP-027 🟢 Announcements with read receipts
-      `supabase/migrations/0046_announcement_reads.sql`
+      `backend/src/Mod/Announcements.php` (`read`, `reads`: staff see the read flag and no count, managers see who has not read) · `backend/migrations/007-communication.sql` (`announcement_reads`) · suite `backend/tests/suites/125-communication.php` · Supabase era: `0046`
 - [x] CAP-028 🟢 Rota change notice — one message per affected person, naming the day and the before
       and after; people whose shifts did not change are not notified at all
-      `supabase/migrations/0083_rota_amendment_diff.sql` · GAP-007 closed #197 · 8 pgTAP assertions
+      `backend/src/RotaDiff.php` · `backend/src/Mod/Rotas.php` (`publish` enqueues one message per person whose shifts changed) · suite `backend/tests/suites/120-notifications.php` ("an amendment tells each person only what changed for them") · GAP-007 closed #197 · Supabase era: `0083`, 8 pgTAP assertions
 - [ ] CAP-029 ⚫ SMS — channel reserved in schema, no provider. A toggle that sends nothing is worse than none
       `src/lib/orgPreferences.ts`
 
 ### Organisation identity
 
 - [x] CAP-030 🟢 Per-org SMTP — org sends from its own mailbox; password never readable by the client
-      `supabase/migrations/0010_org_smtp_settings.sql`
-- [x] CAP-031 🟢 Platform sender — `rotaflow.space` carries MX ×3, SPF, DKIM and DMARC, and
-      since `0108` the messages are templated rather than `subject = title`. They are **plain
+      `backend/src/Mod/OrgSettings.php` (`saveSmtp`, `testSmtp`; the owner only) · `backend/src/Secret.php` · `backend/src/Mail.php` (`forOrg`) · `backend/migrations/007-communication.sql` (`org_smtp_settings`, password stored encrypted) · suite `backend/tests/suites/125-communication.php` ("the password is never returned", "the database holds it encrypted") · Supabase era: `0010`
+- [x] CAP-031 🟢 Platform sender — `rotaflow.space` carries MX ×3, SPF, DKIM and DMARC (DNS records at Cloudflare and the platform mail account: `NOT VERIFIED` from the repository), and
+      since the template work (Supabase era `0108`; now `notification_templates`) the messages are templated rather than `subject = title`. They are **plain
       text on purpose**: text renders everywhere, carries no tracking pixel, and cannot be the
       reason a rota notice lands in spam. HTML mail is not planned, and that is a decision
       rather than an omission
-      `supabase/migrations/0064_rotaflow_space_domain.sql` · `0108` · P2
+      `backend/src/Mail.php` (the platform `smtp` private config when the organisation has none) · `backend/src/Dispatcher.php` (the text body only: `Mailer::send` is given no HTML) · `backend/src/SmtpMailer.php` · P2 · Supabase era: `0064`, `0108`
 - [ ] CAP-032 ⚫ Per-tenant branding — **Phase 2, and `CLAUDE.md` has said so all along.** The
       register carried it as 🔴 "missing", which reads as an oversight; it is a scope decision. Not
       free either: a tenant logo is an upload path, a moderation question and a second place every
       email template has to be correct
       `src/types/database.types.ts` · GAP-016 · P3
 - [x] CAP-033 🟢 Email templates — `notification_templates` with a platform default per event
-      and an organisation's own wording overriding it, substituted in TWO passes so a value
-      containing `{{…}}` cannot rewrite the email around it. In the database rather than the
-      Edge Function on purpose: functions do not deploy on merge, so copy living in one is copy
-      nobody can fix. **Deployed 2026-08-31: `send-notification` v26**, verified after —
-      unauthenticated and wrong-secret both still 401, and `render_notification` returns a real
+      and an organisation's own wording overriding it, substituted in ONE pass (Supabase era: two) so a value
+      containing `{{…}}` is never expanded again and cannot rewrite the email around it. In the database rather than the
+      Edge Function on purpose (Supabase era): functions did not deploy on merge, so copy living in one was copy
+      nobody could fix. **Deployed 2026-08-31 (Supabase era): `send-notification` v26**, verified after —
+      unauthenticated and wrong-secret both still 401, and `render_notification` returned a real
       message ("Sunnyvale Care: Your leave request was approved"). What is still unproven is
       the same thing that is unproven for push: nobody has read one of these in a mailbox. That
       is a real-recipient test, tracked with ❓-004, not a build
-      `supabase/migrations/0108_notification_templates.sql` · 10 pgTAP assertions · deployed v26
+      `backend/src/Dispatcher.php` (`fill`) · `backend/src/Mod/Templates.php` (platform owners and admins write the wording; only known placeholders are accepted) · `backend/migrations/007-communication.sql` (`notification_templates`) · suite `backend/tests/suites/120-notifications.php` ("template filling is one pass") · Supabase era: `0108`, 10 pgTAP assertions, deployed v26
 - [x] CAP-034 🟢 Stripe Checkout, Billing Portal, signature-verified webhook
-      `supabase/functions/stripe-webhook/index.ts`
+      `backend/src/Mod/Billing.php` (`checkout`, `portal`) · `backend/src/Mod/StripeWebhook.php` (`POST /stripe/webhook`, signature checked by `BillingRules::verifySignature`) · `backend/src/StripeClient.php` · suite `backend/tests/suites/140-billing.php` · Supabase era: `supabase/functions/stripe-webhook`
 - [x] CAP-035 🟢 Dual test/live credentials coexisting
-      `supabase/migrations/0058_stripe_dual_mode.sql`
+      `backend/src/StripeClient.php` (`stripe.test_secret_key` and `stripe.secret_key` as separate private-config names, the mode selects one) · `backend/migrations/008-billing.sql` (`subscriptions.stripe_mode`, `billing_events_identity` on provider, mode and event) · suite `backend/tests/suites/140-billing.php` · Supabase era: `0058`
 - [ ] CAP-036 ❓-002 No real charge has ever completed end to end
       **Test:** run one Stripe test-mode charge, then one live charge, and confirm the `subscriptions` row.
       Was blocked on `STRIPE_TEST_SECRET_KEY`. **Corrected 2026-10-11:** the test keys were set on
       7 September 2026 and signature rejection and duplicate delivery were proven against Stripe
       (GAP-073). What is still missing is the capability itself: no completed charge, test or live,
       is recorded · **P0**
-- [x] CAP-037 🟢 `STRIPE_MODE` fails closed — unset is refused with a 503 naming the secret, never assumed live
-      `supabase/functions/_shared/stripe.ts` · BUG-052 closed #163 · deployed v11, 2026-08-29
+- [x] CAP-037 🟢 The Stripe mode fails closed — unset is refused with a 503 `billing_unavailable` (Supabase era: a 503 naming `STRIPE_MODE`), never assumed live; a key of the other mode is refused before any request
+      `backend/src/StripeClient.php` (`modeFrom`, `stripe.mode`: `stripe_mode_invalid`, `stripe_key_mode_mismatch`) · `backend/src/Mod/Billing.php` · suite `backend/tests/suites/140-billing.php` ("a live key while in test mode is a 503 and sends nothing") · BUG-052 closed #163 · Supabase era: `supabase/functions/_shared/stripe.ts` deployed v11, 2026-08-29. The live mode setting is `NOT VERIFIED` (server config)
 - [x] CAP-038 🟢 Feature entitlements — every name in `plans.features` is now read by something:
-      `ai_rota_assistant` in the Edge Function that spends the money, `advanced_reporting` on the
+      `ai_rota_assistant` in the module that spends the money (Supabase era: an Edge Function), `advanced_reporting` on the
       Reports screen, and `gps_clock_in` removed because a gate every plan passes is not a gate
-      `supabase/migrations/0090_entitlements_say_what_they_gate.sql` · BUG-064 closed #208 · 10 pgTAP assertions
-- [x] CAP-039 🟢 Plan-limit enforcement — seats and sites refused at the database, inclusive of the cap
-      `supabase/migrations/0070_enforce_plan_limits.sql` · GAP-008 closed #176 · 8 pgTAP assertions
-- [x] CAP-040 🟢 Price source of truth — the duplication is structural and stays: the pricing
-      page is unauthenticated and `plans` has an RLS policy requiring a session, so it cannot be
+      `backend/src/Billing.php` (`hasFeature`) · `backend/src/Mod/AiAssistant.php` (`ai_rota_assistant`) · `backend/migrations/008-billing.sql` (the seeded `plans.features`; `gps_clock_in` is part of every plan and is not an entitlement) · suite `backend/tests/suites/140-billing.php` · BUG-064 closed #208 · Supabase era: `0090`, 10 pgTAP assertions
+- [x] CAP-039 🟢 Plan-limit enforcement — seats and sites refused by the API inside the transaction that adds them (Supabase era: at the database), inclusive of the cap
+      `backend/src/Billing.php` (`requireSeat`, `requireLocationRoom`, which lock the organisation row; 402 `seat_limit`, `location_limit`) · suite `backend/tests/suites/140-billing.php` · GAP-008 closed #176 · Supabase era: `0070`, 8 pgTAP assertions
+- [ ] CAP-040 🟡 Price source of truth — the duplication is structural and stays: the pricing
+      page is unauthenticated and `GET /plans` needs a sign-in (`backend/src/Mod/Billing.php`; Supabase era: an RLS policy requiring a session), so it cannot be
       fetched at render time. What was missing was anything that noticed a disagreement, and
       `marketing.test.ts` now reads the seeded rows out of the migrations — including later
       `update ... set description` statements — and fails when the two drift. The capability is
-      "the page quotes what the customer is charged", and that is enforced
-      `src/lib/marketing.test.ts` · BUG-053 closed #219
+      "the page quotes what the customer is charged", and that was enforced.
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `src/lib/marketing.test.ts` still reads its seed from the retired Postgres tree
+      (its constants `SEED` and `MIGRATIONS`, lines 32 and 33, point into the retired folder), not from the live seed in `backend/migrations/008-billing.sql`, so nothing now
+      notices when the page and the plans the PHP stack charges disagree. The four prices agree today (£29, £129, £299 and £790 a month in `src/lib/marketing.ts`
+      and in the seed, compared by hand on 2026-11-09). Becomes 🟢 when that test reads the MariaDB seed (a code change, out of scope for the documentation phase)
+      `src/lib/marketing.test.ts` · `backend/migrations/008-billing.sql` · BUG-053 closed #219
 - [x] CAP-041 🟢 Subscription state — a failed payment now records when dunning opened and the date the
       subscription is at risk, and the billing page says so instead of showing a bare `past_due` badge
-      `supabase/migrations/0098_subscription_grace_window.sql` · 6 pgTAP assertions
+      `backend/src/Billing.php` (`setStatus`: the grace window starts on the first move to `past_due` and a further failure never extends it) · `backend/src/BillingRules.php` (`invoiceFailure`) · `backend/migrations/008-billing.sql` (`subscriptions.grace_until`, 14 days) · suite `backend/tests/suites/140-billing.php` · Supabase era: `0098`, 6 pgTAP assertions
 - [ ] CAP-125 🟡 Trial, then a plan or read-only (decision D2): every new organisation trials
       for 30 days on Professional limits, server-set; without a trial, a paid or trialing
       subscription or a grace window the organisation is read-only: rotas, shifts and invites
-      refuse authenticated writes with `BILL1`, plan features stop, and clock-in, leave, reads
+      refuse authenticated writes with 402 `billing_read_only` (Supabase era: `BILL1`), plan features stop, and clock-in, leave, reads
       and exports keep working. Checkout carries the trial into Stripe (`trial_end`) and the
       webhook queues "Your trial ends in 3 days" and "Payment failed". The no-card trial's
-      owner is reminded three days before it ends (`0157`, GAP-127). Partial because no Stripe
+      owner is reminded three days before it ends (`Notifications::trialEndingAlerts`; Supabase era `0157`, GAP-127). Partial because no Stripe
       trial has been run in test mode
-      `supabase/migrations/0154_a_trial_then_a_plan.sql` · GAP-126 closed · 17 pgTAP assertions ·
-      `supabase/tests/database/trial_end_reminder.test.sql` (8)
+      `backend/src/Billing.php` (`state`, `requireNotReadOnly`) · `backend/src/BillingRules.php` (`checkoutTrialEnd`, `trialEndingNotice`) · `backend/src/Mod/Orgs.php` (a new organisation gets `trial_ends_at` 30 days out) · `backend/src/Mod/Notifications.php` · suites `backend/tests/suites/030-identity.php`, `backend/tests/suites/140-billing.php` · GAP-126 closed · Supabase era: `0154`, 17 pgTAP assertions, `trial_end_reminder.test.sql` (8)
 
 ### Security
 
-- [x] CAP-042 🟢 Tenant isolation — all 52 `public` tables have RLS enabled
-      `supabase/migrations/0002_rotaflow.sql`
-- [x] CAP-043 🟢 Security predicates — all six `SECURITY DEFINER` with `search_path` pinned
-      `supabase/migrations/0028_support_access_gate.sql`
-- [x] CAP-044 🟢 Support access — a time-boxed session is the actual RLS gate, not a log of intent.
+- [x] CAP-042 🟢 Tenant isolation — every organisation-scoped route starts with `Scope::membership` and every query carries the validated `org_id`; there is no row-level security in MariaDB (Supabase era: all 52 `public` tables had RLS enabled). Six single-column links between tenant tables are guarded by PHP alone (`docs/DATA-MODEL.md`, section 4)
+      `backend/src/Scope.php` · `backend/migrations/001-foundation.sql` (composite `org_id`, `id` keys) · suite `backend/tests/suites/099-access-sweep.php` · `docs/RLS-TO-PHP.md` · Supabase era: `0002`
+- [x] CAP-043 🟢 Security predicates — the access checks are PHP functions, not database functions: `Scope::membership`, `Scope::require`, `Scope::requireReal`, `Scope::requireWritable` and `Scope::platformRole` (Supabase era: six `SECURITY DEFINER` functions with `search_path` pinned)
+      `backend/src/Scope.php` · suites `backend/tests/suites/030-identity.php`, `backend/tests/suites/040-members.php` · Supabase era: `0028`
+- [x] CAP-044 🟢 Support access — a time-boxed session is the actual gate (`Scope::supportMembership`; Supabase era: the RLS gate), not a log of intent.
       **What it is not (recorded 2026-10-11):** customer approval per session. The tenant's consent is
       `organisations.support_access_allowed`, a standing flag, and the platform administrator opens the
       time-boxed session themselves. **Since `0153` (plan decision D8) a new organisation starts with it
-      off**; organisations created earlier kept their value (the old default was on, `0017`). Not built
+      off** (live: `organisations.support_access_allowed` defaults to 0 in `backend/migrations/002-identity.sql`); organisations created earlier kept their value (the old default was on, `0017`). Not built
       yet: the switch turning itself off when a session ends
-      `supabase/migrations/0028_support_access_gate.sql` · `supabase/migrations/0153_support_access_is_asked_for.sql` ·
-      `supabase/tests/database/support_access_is_asked_for.test.sql` (5 pgTAP assertions, NOT TESTED locally)
-- [x] CAP-045 🟢 Cross-tenant isolation — the org A/org B matrix runs in CI: 20 assertions across every
-      tenant table, both write directions, and the org-scoped RPCs, as `authenticated` with real JWT claims
-      `supabase/tests/database/cross_tenant_isolation.test.sql` · ❓-003 answered 2026-08-31 #232
+      `backend/src/Scope.php` (`supportMembership`: consent flag, unexpired and unrevoked session, a manager's reach and never an owner's; a `read` session refuses writes) · `backend/src/Mod/Console.php` (`requestSession`, `consent`, `orgRevoke`, `platformRevoke`) · `backend/migrations/009-platform-access.sql` (`support_access_sessions`, reason of at least 15 characters) · suites `backend/tests/suites/150-console.php`, `backend/tests/suites/160-support.php` · Supabase era: `0028`, `0153`, `support_access_is_asked_for.test.sql` (5 pgTAP assertions, NOT TESTED locally)
+- [x] CAP-045 🟢 Cross-tenant isolation — the access sweep reads the route table and calls every route as nobody, as a stranger (a member of another organisation), as a signed-in person with no organisation and with random ids; an organisation-scoped route must answer a stranger 404 with no data (Supabase era: the org A/org B pgTAP matrix of 20 assertions in CI). It runs with `pnpm run check` (`check:php`) on a throwaway local MariaDB and in the manual Deploy workflow; `.github/workflows/ci.yml` has no PHP job, so a merge is not gated by it (`NOT VERIFIED`: which checks branch protection requires)
+      `backend/tests/suites/099-access-sweep.php` · `backend/tests/run.php` · ❓-003 answered 2026-08-31 #232 · Supabase era: `supabase/tests/database/cross_tenant_isolation.test.sql`
 - [x] CAP-046 🟢 Rate limiting — org creation, invitations and the AI are capped, with a token
-      ceiling and a per-org cap, and the limiter that takes a subject is revoked from every
-      client role. The auth endpoints are GoTrue's, read and asserted by
-      `scripts/check-auth-config.mjs` — which ran green on 5 and 7 September 2026 and has
-      failed with `401` since 14 September (GAP-031, GAP-036). **That they are per-IP is GAP-033**, which is a CAPTCHA
+      ceiling and a per-org cap, and the limiter is a server-side table no client reaches (`RateLimiter`, the `rate_limits` table; Supabase era: revoked from every
+      client role). Every signed-in route is limited to 600 requests a minute per person and every public route to 300 a minute per address (`backend/src/Api.php`). The auth endpoints are Clerk's now (Supabase era: GoTrue's, read and asserted by
+      `scripts/check-auth-config.mjs` — which ran green on 5 and 7 September 2026 and failed with `401` from 14 September, GAP-031, GAP-036; the script targets the retired project, and Clerk's own limits are `NOT VERIFIED`, a dashboard matter). **That they are per-IP is GAP-033**, which is a CAPTCHA
       decision the owner has taken and tracked — carrying it here as well left this row partial
       for somebody else's open question
-      `supabase/migrations/0085_rate_limiting.sql` · GAP-009 #199, GAP-031 #209, GAP-033
-- [x] CAP-047 🟢 Grants wider than policies — `anon` holds nothing in `public` but schema usage;
-      the default ACL that would have handed it back is narrowed too. **Now asserted rather than
-      remembered (2026-08-31):** four pgTAP assertions check that every table in `public` has RLS
-      enabled, that every table `authenticated` can read has a policy, and that neither `anon` nor
-      `PUBLIC` holds a table privilege. `CLAUDE.md` has stated the first of those as a rule since
-      the merge and nothing enforced it — a table added without RLS is not an error, it is every
-      tenant reading every other tenant's rows in silence
-      `supabase/migrations/0075_narrow_anon_privileges.sql` · `supabase/tests/database/rls_invariants.test.sql` · HARDEN-001
-- [x] CAP-048 🟢 Predicate execute grants — `PUBLIC` and `anon` execute revoked on every callable
-      function except `preview_invite`; trigger functions left, with the reason recorded
-      `supabase/migrations/0075_narrow_anon_privileges.sql` · HARDEN-002 · P2
-- [ ] CAP-049 🟡 MFA: **enrolment and a sign-in challenge (challenge added 2026-10-11); not yet
-      exercised with a real authenticator, and `require_mfa` is still off.** After any first factor
-      (password, magic link, OAuth return, or a session restored from storage) `MfaGate`, inside
-      `ProtectedRoute`, reads the assurance level and, when it is `aal1` with `aal2` available, shows
-      "Enter the 6-digit code from your authenticator app" in place of every protected route,
-      `/admin/*` included. A wrong or expired code keeps the person on the step with the field cleared
-      and refocused; more than one verified authenticator offers a choice; Sign out is always there;
-      a level that cannot be read fails closed. It re-checks on every new access token, without
-      unmounting an admitted session on a routine refresh. Decision logic is pure
-      (`src/lib/mfaStep.ts`). TOTP enrolment on the account screen is unchanged, and
-      `platform_settings.require_mfa` decides something: `is_platform_admin()` requires an `aal2`
-      session when it is on, so every console policy enforces it in one place. Turning it **on** is
-      refused from a session that has not itself done MFA (the classic self-lockout) and turning it
-      off is not, on purpose; an owner with no verified factor can still lift it from the console's
-      refusal screen. Set to **off** in `0102`, because off is what was true: the flag had defaulted
-      to on since `0027` with zero enrolled factors anywhere. Still 🟡 until somebody has signed in
-      through the challenge with a real authenticator app and the owner has switched the requirement
-      on from that session. No recovery codes: a person who loses the phone needs support to remove
-      the factor
-      `supabase/migrations/0102_platform_mfa_is_real.sql` · `src/components/auth/MfaGate.tsx` ·
-      `src/lib/mfaStep.test.ts` · `src/components/auth/MfaGate.test.tsx` · GAP-017 · 11 pgTAP
-      assertions
-- [x] CAP-050 🟢 Sessions — `my_sessions()` lists every device on the account with its user agent,
-      IP and last use, and `revoke_my_other_sessions()` signs the rest out. The row's "no server-side
-      registry" was wrong: `auth.sessions` always had this and nothing read it
-      `supabase/migrations/0100_own_sessions.sql` · 10 pgTAP assertions
-- [x] CAP-051 🟢 URL scheme validation — both columns carry a database CHECK, so the browser is no longer
-      the only thing between a `javascript:` link and an `<a href>`
-      `supabase/migrations/0092_url_schemes_and_notification_retention.sql` · HARDEN-003 closed #213 · 7 pgTAP assertions
+      `backend/src/RateLimiter.php` · `backend/src/Api.php` · `backend/src/Mod/Orgs.php` (5 organisations an hour per person) · `backend/src/Mod/Invites.php` · `backend/src/Mod/AiAssistant.php` (30 an hour per person, 200 an hour per organisation) · suites `backend/tests/suites/020-api.php`, `backend/tests/suites/030-identity.php`, `backend/tests/suites/180-ai.php` · GAP-009 #199, GAP-031 #209, GAP-033 · Supabase era: `0085`
+- [x] CAP-047 🟢 Grants wider than policies — in the Supabase era `anon` held nothing in `public` but schema usage, asserted by four pgTAP assertions (every table had RLS, every readable table a policy, neither `anon` nor `PUBLIC` a table privilege; 2026-08-31). Live: no browser reaches the database; the only public surface is six route entries marked `'public'` (GET `/ics`, GET `/document-files`, POST `/enquiries`, POST `/invites/preview`, POST `/stripe/webhook`, GET `/files`), and the access sweep fails when a protected route answers nobody with anything but 401
+      `backend/src/Api.php` · `backend/tests/suites/099-access-sweep.php` · `docs/API-SPEC.md` (public routes) · HARDEN-001 · Supabase era: `0075`, `rls_invariants.test.sql`
+- [x] CAP-048 🟢 Predicate execute grants — no database function is callable from a browser (Supabase era: `PUBLIC` and `anon` execute revoked on every callable
+      function except `preview_invite`; its live counterpart is the public route `POST /invites/preview`, limited to 30 a minute per address). The API holds the only database connection; the four MariaDB triggers are the append-only guards on `audit_logs` and `clock_event_corrections`
+      `backend/src/Mod/Invites.php` (`preview`) · `backend/migrations/003-audit-immutable.sql` · suite `backend/tests/suites/050-invites.php` · HARDEN-002 · P2 · Supabase era: `0075`
+- [ ] CAP-049 🟡 MFA: **two-step sign-in is a Clerk setting; the application's own MFA code was removed at the cutover, and nobody has confirmed the setting is on.** Live: RotaFlow keeps no factors of its own. `backend/src/Jwt.php` verifies the Clerk session token (signature, issuer, expiry, authorised party) and reads no assurance level, so the API cannot tell a one-factor session from a two-factor one; `backend/src/DataMove/Map.php` records the old `require_mfa` setting as "two-step sign-in is set in Clerk"; the Platform settings switch is rejected in the front end (`src/services/platformSettingsService.ts`); and the account screen hosts Clerk's own (`src/pages/app/account/SecurityPage.tsx`). Whether Clerk requires a second factor for platform administrators and owners is a dashboard setting, `NOT VERIFIED` (owner action O9). Still 🟡.
+      Supabase era, history: enrolment and a sign-in challenge (challenge added 2026-10-11) with `MfaGate` inside `ProtectedRoute` reading the assurance level, pure decision logic in `mfaStep`, and `platform_settings.require_mfa`, which `is_platform_admin()` enforced for every console policy; turning it on was refused from a session that had not itself done MFA; `0102` set it off because off was what was true (the flag had defaulted to on since `0027` with zero enrolled factors). None of that code exists now: `src/components/auth/MfaGate.tsx` and `src/lib/mfaStep.ts` were removed. No recovery codes were built
+      `backend/src/Jwt.php` · `backend/src/DataMove/Map.php` · `src/pages/app/account/SecurityPage.tsx` · GAP-017 · Supabase era: `0102`, 11 pgTAP assertions
+- [x] CAP-050 🟢 Sessions — in the Supabase era `my_sessions()` listed every device on the account with its user agent,
+      IP and last use, and `revoke_my_other_sessions()` signed the rest out. Live: RotaFlow keeps no sessions of its own; the Security page hosts Clerk's account screen, and the old `/app/account/sessions` route redirects to it. That Clerk's screen lists devices and signs the others out is Clerk's behaviour and `NOT VERIFIED` in a browser here; the status is left at 🟢 because the code does not disprove it, and the evidence behind it is a third party's
+      `src/pages/app/account/SecurityPage.tsx` · `src/App.tsx` · Supabase era: `0100`, 10 pgTAP assertions
+- [x] CAP-051 🟢 URL scheme validation — the API refuses a staff `photo_url` that is not https and hands out a legacy pasted document link only if it is https, so the browser is no longer
+      the only thing between a `javascript:` link and an `<a href>`. MariaDB has no CHECK on either column (Supabase era: both columns carried a database CHECK), so the guard is in PHP alone
+      `backend/src/Mod/Staff.php` (`photo_url must be an https address`) · `backend/src/Mod/Compliance.php` (`link`) · suites `backend/tests/suites/080-staff.php`, `backend/tests/suites/230-compliance.php` · HARDEN-003 closed #213 · Supabase era: `0092`, 7 pgTAP assertions
 
 ### Compliance
 
 - [x] CAP-052 🟢 GDPR anonymisation — **and it was leaving the email address behind until
-      2026-08-31.** `0011` clears the name, phone, photo, payroll id and login link; `0053`
+      2026-08-31 (Supabase era).** `0011` cleared the name, phone, photo, payroll id and login link; `0053`
       added `staff_profiles.email` two months later for account linking and nothing went back,
       so the record read "Deleted Member" with the person's email still on it — the strongest
       identifier of the lot, and usually the very thing an erasure request is made from. This
       row said "live-tested end to end", and it was: the test ran before the column existed.
-      `0111` clears it, revokes any live calendar feed (a URL in somebody's phone would keep
-      serving an erased person's shifts), and adds `erasure_retained_columns()` so the pgTAP
-      test asserts over the COLUMN LIST — the next column added cannot survive an erasure the
-      way this one did
-      `supabase/migrations/0111_erasure_misses_email.sql` · 7 pgTAP assertions
-- [x] CAP-052a 🟢 Subject-access export — **it covered eight datasets and missed the three a
+      `0111` cleared it, revoked any live calendar feed (a URL in somebody's phone would keep
+      serving an erased person's shifts), and added `erasure_retained_columns()` so the retired pgTAP
+      test asserted over the COLUMN LIST. Live: `Gdpr::ERASURE_CLEARED` lists the cleared columns (name, email, phone, photo, payroll id, user link) and
+      `Gdpr::ERASURE_RETAINED` the kept ones, the erasure revokes the person's calendar feed tokens, and the suite fails when a new
+      `staff_profiles` column is in neither list
+      `backend/src/Mod/Gdpr.php` · suite `backend/tests/suites/190-lifecycle.php` · Supabase era: `0111`, 7 pgTAP assertions
+- [ ] CAP-052a 🟡 Subject-access export — **it covered eight datasets and missed the three a
       worker would ask for first.** Timesheets, overtime claims and pay rates were all absent,
       so somebody in a dispute about their hours or their money got their shifts and their
       holidays. Thirteen now, with the calendar feed token excluded and the reason printed in
       the file — it is a live credential, and emailing somebody a working URL to their rota
       would create the disclosure the export exists to answer for. `npm run check:export`
-      covers both exports, so neither can drift again
+      covered both exports, so neither could drift again.
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `listDocumentsForStaff` in `src/services/gdprService.ts` returns an empty list ("Documents arrive with compliance (S10)") although
+      `backend/src/Mod/Compliance.php` now stores documents, so a subject-access package omits the person's uploaded documents. The file bytes were never in it (the file says so);
+      the gap is the `documents` rows. `pnpm run check:export` (`scripts/check-export-coverage.mjs`) still reads the retired Postgres folder, so it no longer guards the live tables
       `src/services/gdprService.ts` · `scripts/check-export-coverage.mjs`
-- [x] CAP-053 🟢 Organisation export and delete, with a pgTAP test — and the export was
+- [ ] CAP-053 🟡 Organisation export and delete, with a PHP suite (Supabase era: pgTAP) — and the export was
       **materially incomplete until 2026-08-31**: 19 tables against 40 carrying an `org_id`,
       missing the organisation's invoices, staff inboxes, minimum-cover rules, integration
       history, GDPR log, support cases and the record of platform support access to its data.
       None of that was a decision; each table was added and nobody went back. Now 33 exported
-      and 7 excluded with a reason printed in the file, and `npm run check:export` fails CI
-      when a tenant table is in neither list
-      `supabase/migrations/0063_delete_organisation.sql` · `scripts/check-export-coverage.mjs`
-- [x] CAP-054 🟢 Retention enforcement — nightly `pg_cron`, running since 2026-08-21
-      `supabase/migrations/0029_retention_enforcement.sql`
-- [x] CAP-055 🟢 Audit trail — severity, scope, visibility, actor snapshot, immutability trigger
-      `supabase/migrations/0016_audit_events.sql`
+      and 7 excluded with a reason printed in the file, and `npm run check:export` failed CI
+      when a tenant table was in neither list (Supabase era).
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** the export is materially incomplete again. Of the 36 names in `EXPORTED_TABLES` (`src/services/orgLifecycleService.ts`) 22
+      have an API route and 14 are written to the file's `omitted` list with "Not available from the API in this release": `staff_locations`, `staff_pay_rates`, `clock_event_corrections`, `emergency_contacts`,
+      `documents`, `announcement_reads`, `notifications`, `notification_deliveries`, `notification_templates`, `support_cases`, `org_integrations`, `integration_sync_runs`, `subscriptions` and `invoice_credits`
+      (two of the names are not MariaDB tables). Clock events and the audit trail are one page each (1000 and 100 rows). The deletion half is complete: deleting an organisation (`backend/src/Mod/Lifecycle.php`) is one transaction with the exact name typed, an audit row first,
+      owed file deletions queued and restricting tables cleared child-first. `scripts/check-export-coverage.mjs` reads the retired Postgres folder, so nothing guards the live tables
+      `backend/src/Mod/Lifecycle.php` · `src/services/orgLifecycleService.ts` · `scripts/check-export-coverage.mjs` · suite `backend/tests/suites/190-lifecycle.php` · Supabase era: `0063`
+- [x] CAP-054 🟢 Retention enforcement — a daily cron step (Supabase era: nightly `pg_cron`, running since 2026-08-21). Live: `Lifecycle::cron` runs `Retention::run` once a day after 02:15 UTC (plain deletes by date for six data types; the audit trail is never removed; the deleted-organisation policy is not enforced). That it has run on the live host is `NOT VERIFIED` (database state: `retention_runs`)
+      `backend/src/Retention.php` · `backend/src/Mod/Lifecycle.php` (`cron`) · `backend/migrations/013-data-lifecycle.sql` (`retention_policies`, `retention_runs`) · suite `backend/tests/suites/190-lifecycle.php` · Supabase era: `0029`
+- [x] CAP-055 🟢 Audit trail — severity, organisation, visibility (`org` or `platform_only`), the organisation's name copied onto the row, immutability triggers
+      `backend/src/Audit.php` · `backend/migrations/002-identity.sql` (`audit_logs`) · `backend/migrations/003-audit-immutable.sql` (`audit_logs_no_update`, `audit_logs_no_delete`) · suites `backend/tests/suites/030-identity.php`, `backend/tests/suites/085-account.php` · Supabase era: `0016`
 - [x] CAP-056 🟢 Audit labelling — every action the system writes has a name, with a readable fallback
       `src/lib/auditActions.ts` · BUG-054 closed #177 · 5 tests
-- [x] CAP-057 🟢 Audit visibility — `visibility='both'` is readable by the tenant it concerns
-      `supabase/migrations/0071_audit_visibility_both_readable.sql` · BUG-055 closed #177 · 7 pgTAP assertions
-- [x] CAP-057a 🟢 Own-activity — the policy has allowed `actor_user_id = auth.uid()` since `0016`, and the
-      writes carry it; the actorless rows are service-role actions, correctly labelled and not anybody's
-      `supabase/migrations/0016_audit_events.sql` · BUG-063 closed #217 — the screen's claims were the bug
+- [x] CAP-057 🟢 Audit visibility — a row with `visibility='org'` is readable by the tenant it concerns (Supabase era: `visibility='both'`); `platform_only` rows never appear in `GET /orgs/{o}/audit`
+      `backend/src/Mod/Account.php` (`audit`) · `backend/migrations/002-identity.sql` · suite `backend/tests/suites/085-account.php` · BUG-055 closed #177 · Supabase era: `0071`, 7 pgTAP assertions
+- [x] CAP-057a 🟢 Own-activity — `GET /orgs/{o}/audit` gives an owner every visible entry and anyone else only the entries they caused (`actor_user_id` equals the caller; Supabase era: the policy allowed `actor_user_id = auth.uid()` since `0016`), and the
+      writes carry it; the actorless rows are system actions (cron and webhooks), correctly labelled and not anybody's
+      `backend/src/Mod/Account.php` (`audit`) · suite `backend/tests/suites/085-account.php` ("staff with no actions see nothing") · BUG-063 closed #217 — the screen's claims were the bug · Supabase era: `0016`
 - [x] CAP-058 🟢 Consent capture — **reopened and built, 2026-09-04.** It was deferred on
       2026-08-31 with reasoning that is still correct about the half it covered: consent is the
       wrong lawful basis for employment data, the ICO's position is that it is rarely valid where
@@ -801,12 +840,13 @@ itself: a restore, a real charge, and a phone.
       is deliberately not drafted here and never will be**: it is a contract needing UK counsel,
       not a description of the system, and what it schedules is written and dated. Keeping the
       row partial for a document that is out of scope by decision made the register look like it
-      was waiting on engineering
+      was waiting on engineering. **Known gaps in the published list, found by reading the code on 2026-11-09 and left for the
+      documentation of Phase 4:** `src/lib/subprocessors.ts` omits the web push services browsers use (`backend/src/Mod/Notifications.php`, `PUSH_HOSTS`) and an organisation's own mail server (`backend/src/Mail.php`); whether they are processors is the owner's call
       `src/pages/legal/TrustPage.tsx` · `src/lib/subprocessors.ts` · GAP-014
-- [x] CAP-060 🟢 Legal pages — Privacy, Cookies and Accessibility are written, from the code
+- [ ] CAP-060 🟡 Legal pages — Privacy, Cookies and Accessibility are written, from the code
       rather than from a template, because each is a DESCRIPTION of what the software does and
-      a description can be checked. The cookie page can say plainly that there are none — no
-      cookies, no analytics, no third-party script — and list every browser key with where it is
+      a description can be checked. The cookie page could say plainly that there were none — no
+      cookies, no analytics, no third-party script (Supabase era; since sign-in moved to Clerk the page lists Clerk's cookies, `src/pages/legal/CookiesPage.tsx`) — and lists every browser key with where it is
       set. Accessibility says what the gate covers AND that an automated scan finds a minority
       of real problems, rather than claiming an audit nobody has done.
       **All five pages are now written (2026-09-04), and two were wrong.** The Privacy page was
@@ -818,10 +858,14 @@ itself: a restore, a real charge, and a phone.
       than omitted. Terms has left the placeholder for the same reason and with the same
       honesty: the descriptive two thirds (eligibility, roles, plans, billing, the grace window,
       deletion) are facts about a system that exists, and the commercial third says what has to
-      be decided instead of inventing it. **Neither is publication-ready and both say so**
+      be decided instead of inventing it. **Neither is publication-ready and both say so**.
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** published text still describes the retired Supabase stack. `src/lib/privacyNotice.ts` (the "How it is protected" section) says each organisation's data is separated "in the database itself rather than by application code",
+      that the site "loads no third-party script", and that "there are no backups and no point-in-time recovery on the production database"; on the live stack the separation is PHP (`backend/src/Scope.php`), sign-in loads Clerk's script,
+      and a six-hourly backup was installed and proven on 2026-11-08 (`docs/AUDIT.md`). Several of its `evidence` strings still name the retired Postgres folder. `src/lib/legalFacts.ts` still opens with "There are **no cookies**".
+      Correcting them is a source change for Phase 4, not a documentation change
       `src/lib/legalFacts.ts` · `src/lib/privacyNotice.ts` · `src/lib/termsDraft.ts` · `src/pages/legal/` · P2
 - [x] CAP-061 🟢 Data-residency claim — corrected when BUG-056 closed (#161) and verified again 2026-08-31:
-      `SECURITY.md` §2 now names both US processors and says the old claim was wrong
+      `SECURITY.md` §2 named both US processors and said the old claim was wrong (Supabase era). Since the cutover section 2 names Clerk, Stripe and OpenRouter as the three that send personal data outside the UK and EU; where the database and files are hosted is `NOT VERIFIED` (hosting dashboard)
       `docs/SECURITY.md` · BUG-056 closed #161 — this row was simply never flipped
 
 ### Integrations and API
@@ -830,10 +874,11 @@ itself: a restore, a real charge, and a phone.
       `src/lib/csv.ts`
 - [x] CAP-063 🟢 Calendar — a real subscription feed, not just a file: a per-person tokenised ICS URL a
       calendar re-reads, so an amended rota reaches the phone. The download stays for "send me this week"
-      `supabase/functions/calendar-feed/index.ts` · `supabase/migrations/0099_calendar_feed_tokens.sql` · 8 pgTAP assertions
-- [x] CAP-064 🟢 Connector catalogue — every connector is `planned` and `available = false`, so the
-      console states it and `connect_integration` refuses one
-      `supabase/migrations/0073_connectors_are_planned.sql` · BUG-057 · P2
+      `backend/src/Mod/CalendarFeed.php` (public `GET /ics`, authorised by the token in the query; only the token's SHA-256 is stored; an unused feed switches off after 90 days) · `backend/migrations/007-communication.sql` (`calendar_feed_tokens`) · suite `backend/tests/suites/125-communication.php` · Supabase era: `calendar-feed` function, `0099`, 8 pgTAP assertions
+- [ ] CAP-064 ⚫ Connector catalogue — **deferred with a reason, 2026-11-09.** In the Supabase era every connector was `planned` and `available = false`, so the
+      console stated it and `connect_integration` refused one. The catalogue tables were not carried to MariaDB: the connector, organisation-integration and sync-run tables are on the cut list (`docs/MERGE-TARGET.md`, "Every connector `planned`; no writer for sync runs; Phase 2 in CLAUDE.md").
+      **Status changed 🟢 to ⚫ on 2026-11-09, proved by the code:** `src/services/integrationService.ts` answers every read with an empty list and refuses every write with 405 `not_available` ("Integrations are not available in this release."); `git grep -n integration -- backend/migrations` finds no integration table. The console shows its empty state. Reopens with the integrations work of Phase 2 (CAP-066, CAP-067)
+      `src/services/integrationService.ts` · `src/pages/admin/AdminIntegrationsPage.tsx` · BUG-057 · P2 · Supabase era: `0073`
 - [ ] CAP-065 ⚫ Public API — **Phase 2 per `CLAUDE.md`, and the product already says so to users**:
       the account tab explains there are no tokens rather than showing an empty list. A public API is
       a versioning commitment, not an endpoint — once one customer scripts against it, the schema
@@ -853,30 +898,29 @@ itself: a restore, a real charge, and a phone.
 - [ ] CAP-068 ⚫ SSO / SCIM — **Phase 2 per `CLAUDE.md`, and no longer advertised.** This row said
       "marketing copy only" for two days while the copy stayed up: a £790/month plan whose summary
       read "Unlimited sites and staff, with SSO" and whose feature list promised "SSO with Microsoft
-      365 or Google". Removed 2026-08-31 in `0101` and `src/lib/marketing.ts`. It is also gated
-      outside this repository — Supabase SAML is a paid add-on above the free plan this project runs
-      on — so it could not have been built to match the copy even in principle
+      365 or Google". Removed 2026-08-31 in `0101` and `src/lib/marketing.ts`. It was also gated
+      outside this repository (Supabase era: Supabase SAML was a paid add-on above the free plan this project ran
+      on), so it could not have been built to match the copy even in principle; whether Clerk offers it on the plan in use is `NOT VERIFIED` (dashboard)
       `src/lib/marketing.ts` · GAP-018 · P3
 
 ### Intelligence
 
 - [x] CAP-069 🟢 Deterministic rota review — pure functions over the org's own rows
       `src/lib/rotaInsights.ts`
-- [x] CAP-070 🟢 AI grounding for rota suggestions — every id validated against real rows before return
-      `supabase/functions/ai-rota-assistant/index.ts`
+- [x] CAP-070 🟢 AI grounding for rota suggestions — every id validated against real rows before return; staff are sent to the model as aliases (S1, S2) without names, and an alias is mapped back to a real staff id and nothing else
+      `backend/src/Mod/AiAssistant.php` (`POST /orgs/{o}/ai/rota`) · `backend/src/AiGrounding.php` · `backend/src/AiStaffAliases.php` · suite `backend/tests/suites/180-ai.php` · Supabase era: `supabase/functions/ai-rota-assistant`
 - [x] CAP-071 🟢 AI announcement drafting — a date in neither the rota period nor the manager's
       own prompt is refused, and a name matching nobody on the roster is warned about. **Numbers
       are deliberately not checked**: "we need three more people on Saturday" is a statement
       about the business, not a claim about the rota, and a grounding rule that refused it would
       block the sentences managers most want to write. The two things a model actually
       hallucinates here — a date and a person — are caught
-      `supabase/functions/ai-rota-assistant/grounding.ts` · BUG-058 closed #202 · 17 unit tests
-- [x] CAP-072 🟢 AI cost control — `max_tokens`, a prompt cap, a context-size cap, per-user AND per-org
-      hourly limits, and real token usage recorded on every audit row
-      `supabase/migrations/0089_org_rate_limit.sql` · HARDEN-004 closed #204 · 6 pgTAP assertions · deployed v20, 2026-08-30
-- [x] CAP-072a 🟢 AI resilience — a fallback model is configured and deployed: `google/gemini-3.5-flash-lite`,
-      a different provider, so an outage routes away rather than returning 502
-      `supabase/functions/ai-rota-assistant/index.ts` · HARDEN-010 closed #233 · deployed 2026-08-31
+      `backend/src/AiGrounding.php` (`extractDates`, `extractNameCandidates`) · `backend/src/Mod/AiAssistant.php` (`POST /orgs/{o}/ai/announcement`) · suite `backend/tests/suites/180-ai.php` · BUG-058 closed #202 · Supabase era: `grounding.ts`, 17 unit tests
+- [x] CAP-072 🟢 AI cost control — `max_tokens` (2000), a prompt cap (2000 characters), a context-size cap (about 30k tokens), per-user AND per-org
+      hourly limits (30 an hour per person, 200 an hour per organisation), and real token usage recorded on every audit row
+      `backend/src/Mod/AiAssistant.php` (`MAX_PROMPT_CHARS`, `limits->hit`, `Audit::log`) · `backend/src/RateLimiter.php` · suite `backend/tests/suites/180-ai.php` · HARDEN-004 closed #204 · Supabase era: `0089`, 6 pgTAP assertions, deployed v20, 2026-08-30
+- [x] CAP-072a 🟢 AI resilience — a fallback model can be configured (`openrouter_fallback_model`, optional), and OpenRouter routes to it inside the same request when the first model fails, so an outage routes away rather than returning 502. In the Supabase era the fallback was `google/gemini-3.5-flash-lite`, a different provider; which models the live host is configured with is `NOT VERIFIED` (private config)
+      `backend/src/Mod/AiAssistant.php` (`models`, `complete`) · HARDEN-010 closed #233 · Supabase era: deployed 2026-08-31
 - [ ] CAP-073 ⚫ Predictive insight — **deferred, 2026-08-31, for a reason that is about data
       rather than difficulty.** Coverage risk and absence patterns are predictions, and production
       holds zero clock events and zero organisations. A model or heuristic fitted to nothing is a
@@ -886,27 +930,25 @@ itself: a restore, a real charge, and a phone.
 
 ### Platform administration
 
-- [x] CAP-074 🟢 Platform console — 18 page components under `/admin` and 14 routes narrowed by
-      `RequirePlatformRole`, counted in `src/App.tsx` on 2026-10-11 (this row said 19 and four, then 13;
-      `/admin/gdpr` became the fourteenth, for the operational roles, matching `0138`), all behind
-      `RequirePlatformAdmin`. `/admin/organisations/:id` is deliberately ungated: finance needs its
+- [x] CAP-074 🟢 Platform console — page components under `/admin` and routes narrowed by
+      `RequirePlatformRole`, all behind `RequirePlatformAdmin`. The counts are owned by `docs/UX-SPEC.md` section 11 (recounted from `src/App.tsx` on 2026-11-09); the figures this row used to quote (18 and 14 on 2026-10-11, before that 19 and four, then 13; `/admin/gdpr` the fourteenth, matching `0138`, Supabase era) drifted, so none is repeated here. The server side is `backend/src/Mod/Console.php`, `backend/src/Mod/Platform.php` and the other `Platform*` modules, which answer 404 to anyone without a platform role. `/admin/organisations/:id` is deliberately ungated: finance needs its
       Subscription and Usage tabs, and the operational tabs are gated per role in
       `src/lib/organisationTabs.ts`
-      `src/lib/adminNav.ts`
+      `src/lib/adminNav.ts` · `backend/src/Mod/Console.php` · `backend/src/Scope.php` (`platformRole`) · suite `backend/tests/suites/150-console.php`
 - [x] CAP-075 🟢 Incident register
-      `supabase/migrations/0021_platform_incidents.sql`
-- [x] CAP-076 🟢 Feature flags — `my_feature_access` returns them and the AI gate honours a flag as well
+      `backend/src/Mod/Incidents.php` · `backend/migrations/011-platform-ops.sql` (a resolved incident needs a resolution) · suite `backend/tests/suites/170-ops.php` · Supabase era: `0021`
+- [x] CAP-076 🟢 Feature flags — `GET /orgs/{o}/features` returns them (Supabase era: `my_feature_access`) and the AI gate honours a flag as well
       as a plan; `beta_integrations` is retired rather than left describing connectors that do not exist
-      `supabase/migrations/0090_entitlements_say_what_they_gate.sql` · BUG-064 closed #208
+      `backend/src/Flags.php` · `backend/src/Mod/FeatureFlags.php` · `backend/migrations/011-platform-ops.sql` (`feature_flags`, `feature_flag_targets`) · suite `backend/tests/suites/170-ops.php` · BUG-064 closed #208 · Supabase era: `0090`. The live flag values are `NOT VERIFIED` (database state)
 - [x] CAP-077 🟢 Demo constants in the console — the file is deleted; every console figure is measured
       or reads "Not sampled"
       `src/pages/admin/AdminPlatformHealthPage.tsx` · BUG-059 · P2
-- [x] CAP-078 🟢 Platform health — `pg_cron` probes every five minutes, unattended; the summary view
-      answers uptime and latency from separate sources rather than averaging them
-      `supabase/migrations/0076_scheduled_health_probe.sql` · GAP-011 · P2
-- [x] CAP-079 🟢 Support CSAT — the requester rates a resolved case from `/app/help`; the RPC now
-      refuses an out-of-range score in its own words rather than through the column CHECK
-      `src/pages/app/HelpPage.tsx` · BUG-060 · P2
+- [ ] CAP-078 🔴 Platform health — **in the Supabase era `pg_cron` probed every five minutes, unattended, and the summary view
+      answered uptime and latency from separate sources rather than averaging them.** Nothing probes now.
+      **Status changed 🟢 to 🔴 on 2026-11-09, proved by the code:** `backend/src/DataMove/Map.php` lists `platform_health_probes` and `platform_health_samples` as "Supabase health probe; replaced by an external uptime check" and no table, job or route in `backend/` replaces them; the console health page reads "Not sampled" (`src/pages/admin/AdminPlatformHealthPage.tsx`). The replacement is an external uptime check on `/api/health` (`backend/src/Api.php`), which is owner action O2 and `NOT VERIFIED`. Becomes 🟡 when that monitor exists and the page reads it
+      `backend/src/Api.php` (`/health`) · `src/pages/admin/AdminPlatformHealthPage.tsx` · GAP-011 · P2 · Supabase era: `0076`
+- [x] CAP-079 🟢 Support CSAT — the requester rates a resolved case from `/app/help`; the API (Supabase era: the RPC) refuses an out-of-range score in its own words ("A satisfaction score is 1 to 5") rather than through a column CHECK
+      `src/pages/app/HelpPage.tsx` · `backend/src/Mod/Support.php` (`rate`) · suite `backend/tests/suites/160-support.php` · BUG-060 · P2
 - [x] CAP-080 🟢 Support cases — the requester sees their own cases and the non-internal thread
       (BUG-060), **replies into it** (GAP-012, on an open or a resolved case but not a closed one,
       because a closed case is the one state nobody is watching), and there is now a promise with a
@@ -916,13 +958,13 @@ itself: a restore, a real charge, and a phone.
       on the customer (the standard alternative lets a case sit three weeks and still report as
       within target), and escalating a late case recomputes from arrival, so a breach cannot be
       escalated away. **Email ingress is a separate capability, not part of this row**
-      `supabase/migrations/0110_support_sla.sql` · GAP-012 closed, GAP-035 (email ingress) opened · 9 pgTAP assertions
+      `backend/src/Mod/Support.php` (`reply`, `rate`, `queue`) · `backend/src/SupportRules.php` (`deadlines` hang off `created_at`, so escalating a late case cannot restart its clock) · `backend/migrations/010-support-desk.sql` · suite `backend/tests/suites/160-support.php` · GAP-012 closed, GAP-035 (email ingress) opened · Supabase era: `0110`, 9 pgTAP assertions
 - [x] CAP-081 🟢 Staff records — contract type, hours, skills, payroll id, documents, emergency contact
       `src/components/staff/StaffFormModal.tsx`
 - [x] CAP-082 🟢 Leave, overtime and swap request/approval flows
       `src/pages/app/LeavePage.tsx`
-- [x] CAP-083 🟢 Open swap board — claim an untargeted swap, RLS-enforced
-      `supabase/migrations/0044_swap_open_board.sql`
+- [x] CAP-083 🟢 Open swap board — claim an untargeted swap (`POST /orgs/{o}/swaps/{w}/claim`), checked in PHP by the organisation scope (Supabase era: RLS-enforced); a second claim loses (`swap_unavailable`)
+      `backend/src/Mod/Swaps.php` (`claim`) · suite `backend/tests/suites/110-swaps-open-shifts.php` · Supabase era: `0044`
 - [x] CAP-084 🟢 CSV import — Team → Import reads a spreadsheet, shows every row back with its
       own problems, and creates the ones that are clean. Hand-written parser (quoted commas,
       quoted newlines, CRLF, Excel's BOM) rather than a dependency; refuses an ambiguous date
@@ -937,47 +979,47 @@ itself: a restore, a real charge, and a phone.
       late start and an early finish is still half a day, and a request worth nothing would
       pass every entitlement check ever written. A range clipped at the year boundary keeps
       only the half day that falls inside it, so the two years still sum to what was taken
-      `src/lib/leaveYear.ts` · `supabase/migrations/0109_half_day_leave.sql` · 7 pgTAP + 26 unit
-- [x] CAP-086 🟢 Pay rates and labour cost — `staff_pay_rates` with its own policies, because a
+      `src/lib/leaveYear.ts` · `backend/src/Mod/Leave.php` (`starts_half`, `ends_half`) · `backend/migrations/006-time-and-requests.sql` (`leave_requests`) · suite `backend/tests/suites/105-leave-overtime.php` · Supabase era: `0109`, 7 pgTAP + 26 unit
+- [x] CAP-086 🟢 Pay rates and labour cost — `staff_pay_rates` is read only through owner and manager routes (Supabase era: its own policies), because a
       rate on `staff_profiles` would publish everybody's pay to every colleague (that table is
       readable by any member). A history, not a value: a raise in April must not rewrite what
-      March cost. `labour_cost()` returns money without handing out the rates it used, and
-      COUNTS the people it could not price rather than treating them as free
-      `supabase/migrations/0104_pay_rates.sql` · 11 pgTAP assertions
+      March cost. `GET /orgs/{o}/labour-cost` (Supabase era: `labour_cost()`) returns money without handing out the rates it used, and
+      names how many rostered people have no rate rather than pricing them at zero
+      `backend/src/Mod/LabourCost.php` · `backend/src/Mod/Staff.php` (`listRates`, `addRate`) · `backend/migrations/004-people-places.sql` (`staff_pay_rates`, unique per person and day) · suites `backend/tests/suites/080-staff.php`, `backend/tests/suites/220-frontend-switch.php` · Supabase era: `0104`, 11 pgTAP assertions
 - [x] CAP-087 🟢 Overtime — still a declared number, now shown beside what the clock recorded for that
       person that day, so an approver judges it against something. Evidence, deliberately not derivation
-      `supabase/migrations/0097_overtime_evidence.sql` · 7 pgTAP assertions
+      `backend/src/Mod/Leave.php` (the overtime routes and the clock-and-rota evidence for a day) · suite `backend/tests/suites/105-leave-overtime.php` · Supabase era: `0097`, 7 pgTAP assertions
 - [x] CAP-088 🟢 Document expiry — alerts a manager on a schedule, once per document per expiry date
-      `supabase/migrations/0093_scheduled_alerts.sql` · GAP-013 closed #214
-      **PHP API (R2 slice S10, branch `r2/s10-compliance`, not released):** folded into the compliance module's
+      GAP-013 closed #214 · Supabase era: `0093`
+      **PHP API (R2 slice S10; the branch `r2/s10-compliance` is gone and the code is on `main`):** folded into the compliance module's
       reminder job (d30, d14, d7 and expired, once per document and stage, organisation timezone, the person and the
-      managers). `backend/src/Mod/Compliance.php` · suite `230-compliance` (116 assertions)
+      managers; `ComplianceRules`, primary key `document_id`, `stage` of `document_reminders`). `backend/src/Mod/Compliance.php` · `backend/src/ComplianceRules.php` · suite `230-compliance` (116 assertions when written; not recounted)
 - [ ] CAP-088b 🟡 Compliance: document types (UK presets), uploads that count only once approved, four-eyes review,
       supersede on approval, the eligibility service S12 consumes, and the eligibility chip on the rota and open shifts.
-      **Built on the branch, behind the `staff_documents` flag (seeded off), not released.** Becomes 🟢 when the owner
+      **Code is on `main`, behind the `staff_documents` flag, seeded off in a migration (`backend/migrations/015-compliance.sql`); the live flag value, and whether a release has carried the module, are `NOT VERIFIED`.** Becomes 🟢 when the owner
       turns the flag on after a local-live walk-through. `backend/migrations/015-compliance.sql` ·
       `backend/src/Mod/Compliance.php` · suite `230-compliance` · `src/lib/compliance.test.ts`
 - [x] CAP-089 🟢 Multi-location workers — **and the row's proposed fix would have been wrong.**
       It said `staff_profiles` has no `location_id`; adding one cannot express a person who
       works two sites, which is the thing being asked for. The real shape: a site is inherited
       from the DEPARTMENT, so everybody has exactly one by construction. `staff_locations` is a
-      set, with a trigger refusing a row whose org disagrees with either parent. Nothing
+      set, with composite foreign keys refusing a row whose org disagrees with either parent (Supabase era: a trigger). Nothing
       recorded still falls back to the department, so an organisation that ignores it sees no
       change — and it never refuses an assignment, only answers "who can cover here"
-      `supabase/migrations/0105_staff_locations.sql` · 9 pgTAP assertions
+      `backend/migrations/004-people-places.sql` (`staff_locations`) · `backend/src/Mod/Staff.php` · suite `backend/tests/suites/080-staff.php` · Supabase era: `0105`, 9 pgTAP assertions
 - [x] CAP-090 🟢 Delegation — cover that expires by time rather than by somebody remembering
       to undo a promotion. Enforced inside `has_org_role`, so every managerial policy honours
       it at once. **It confers `manager` and never `owner`**: an owner going away for a
       fortnight is not a reason to hand somebody the ability to delete the organisation or
-      change billing, and the screen says so. It cannot be chained — `delegate_role` reads the
-      caller's own membership, not `has_org_role`, which now returns true for a delegate
-      `supabase/migrations/0106_role_delegation.sql` · 10 pgTAP assertions
+      change billing, and the screen says so. It cannot be chained — `Orgs::delegate` reads the
+      caller's real role (`Scope::requireReal`), not the effective one, which is manager for a delegate. Live, cover is also capped at 90 days (`MAX_COVER_DAYS`, an assumption recorded in the code). Enforced in `Scope::membership` (Supabase era: inside `has_org_role`)
+      `backend/src/Mod/Orgs.php` (`delegate`, `revokeDelegation`) · `backend/src/Scope.php` · suite `backend/tests/suites/040-members.php` · Supabase era: `0106`, 10 pgTAP assertions
 - [x] CAP-091 🟢 Ownership transfer — one transaction, promoting and demoting together, from the
       owner-only settings page; the outgoing owner stays on as a manager
-      `supabase/migrations/0095_ownership_transfer_and_duplicates.sql` · 10 pgTAP assertions
-- [x] CAP-092 🟢 Duplicate detection — one account cannot hold two staff records, and two sites cannot
-      share a name. Payroll ids were already unique since `0041`, which this row did not know
-      `supabase/migrations/0095_ownership_transfer_and_duplicates.sql`
+      `backend/src/Mod/Orgs.php` (`transferOwnership`, real owner only) · suite `backend/tests/suites/040-members.php` ("exactly one owner") · Supabase era: `0095`, 10 pgTAP assertions
+- [ ] CAP-092 🟡 Duplicate detection — one account cannot hold two staff records (409 `account_linked`), and payroll ids are unique per organisation (Supabase era: since `0041`, which this row did not know). **Two sites can share a name again.**
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** the rule of the Supabase era that two sites cannot share a name has no equivalent: `locations` in `backend/migrations/004-people-places.sql` has no unique name key and `backend/src/Mod/Places.php` has no duplicate-name check
+      `backend/migrations/004-people-places.sql` (`staff_profiles_org_user`, `staff_profiles_org_payroll`) · `backend/src/Mod/Staff.php` · `backend/src/Mod/Places.php` · suite `backend/tests/suites/080-staff.php` · Supabase era: `0095`
 - [x] CAP-093 🟢 Unified approvals queue — `/app/approvals` lists leave, swaps and overtime
       together, oldest first, and decides them in place. A swap still waiting on a colleague is
       deliberately excluded: a queue with rows the reader cannot clear stops being read. The
@@ -986,37 +1028,30 @@ itself: a restore, a real charge, and a phone.
       `src/lib/approvalQueue.ts` · `src/pages/app/ApprovalsPage.tsx` · 9 unit tests
 - [x] CAP-094 🟢 Onboarding — the org is still created at step 1 by design, and an unfinished wizard now
       resumes at step 2 instead of bouncing to the dashboard forever
-      `supabase/migrations/0094_onboarding_completion.sql` · GAP-015 closed #218 · 6 pgTAP assertions
+      `backend/src/Mod/Account.php` (`completeOnboarding`, owner only, sets `onboarding_completed_at` once) · suite `backend/tests/suites/085-account.php` · GAP-015 closed #218 · Supabase era: `0094`, 6 pgTAP assertions
 
 ### Reliability and operations
 
-- [ ] CAP-095 🟡 Production backups — **running nightly since 5 September 2026, and the
-      restore now brings the grants back too.** This entry said the secrets were missing and
-      cited a failure of 2026-08-31; both secrets were set on 5 September and `backup.yml` has
-      succeeded on its schedule since. The 7 September restore rehearsal then found the part
-      that mattered: the dump was taken `--no-privileges`, so it restored 64 tables and 99
-      policies with **zero grants**, and RLS admits nobody on its own — a database restored
-      from any earlier artifact refuses every request. Fixed the same day; run `34166278425`
-      measured 173 table grants and 135 function EXECUTE grants to `authenticated`, and 0 to
-      `anon`. Amber rather than green because two things remain and neither is code:
-      `pitr_enabled: false` is a paid Supabase feature and the owner's billing decision, and no
-      restore into a real Supabase project has been done, so auth and storage are still
-      unproven (❓-005)
-      `.github/workflows/backup.yml` · GAP-001 · **P0, owner only**
-- [x] CAP-096 🟢 Migration safety gate — nine destructive statement classes must carry `-- SAFETY(<rule>)`
-      in the migration; verified to fire on all nine and stay silent on all ten written today
-      `scripts/check-migration-safety.mjs` · GAP-002 closed #194
-- [x] CAP-097 🟢 Branch protection — `verify`, `e2e`, `db-tests` and `e2e-authenticated` are all
-      required on `main`. `enforce_admins` stays **off by the repository owner's decision**, so
+- [ ] CAP-095 🟡 Production backups — **the MariaDB database is dumped every six hours and a restore check into a scratch database passed on 2026-11-08; amber because the copy never leaves the server.**
+      Live: `backend/bin/backup.php` writes a gzipped, checksummed dump (mode 0600) with a row-count file, prunes to the newest 28, and `--restore-check` loads the newest dump into an empty scratch database and compares the counts. The six-hour cadence is the suggested schedule in `docs/DEPLOYMENT.md` ("Database backups"); the script states none. **Installed on the live host and proven on 2026-11-08, recorded in `docs/AUDIT.md`** (cron line `17 */6 * * *`, first live backup, restore proof). Open, and never to be read as done: an encrypted off-site copy (the dumps sit on the same hosting account as the database), an alert on a failed run, a scheduled monthly restore drill, and point-in-time recovery; the stored files and private configuration are not in the dump. The host state today was not re-checked (`NOT VERIFIED`)
+      Supabase era, history: the nightly `backup.yml` dump ran from 5 September 2026 once its secrets were set; the 7 September rehearsal found the dump taken `--no-privileges` restored 64 tables and 99 policies with zero grants, fixed the same day (run `34166278425`: 173 table grants and 135 function EXECUTE grants to `authenticated`, 0 to `anon`); `pitr_enabled: false` was a paid Supabase feature. `.github/workflows/backup.yml` still targets that retired project, and its scheduled runs fail daily (`gh run list`, 2026-11-09)
+      `backend/bin/backup.php` · `backend/src/Backup.php` · suite `backend/tests/suites/300-backup.php` · `docs/DEPLOYMENT.md` · GAP-001 · **P0, owner only** (O18)
+- [ ] CAP-096 🟡 Migration safety gate — nine destructive statement classes must carry `-- SAFETY(<rule>)`
+      in the migration; verified to fire on all nine and stay silent on all ten written today (Supabase era).
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `scripts/check-migration-safety.mjs` scans `supabase/migrations` (its constant `DIR`), the retired Postgres folder, not `backend/migrations`, so no gate checks a MariaDB migration; the applier `backend/bin/migrate.php` refuses an edited migration (checksum, exit 2) and the migrations are written to be additive and re-runnable (`docs/DATA-MODEL.md`, section 8). Becomes 🟢 when the script reads the live folder (a code change outside this phase)
+      `scripts/check-migration-safety.mjs` · `backend/bin/migrate.php` · GAP-002 closed #194
+- [x] CAP-097 🟢 Branch protection — `verify`, `e2e`, `db-tests` and `e2e-authenticated` were all
+      required on `main` (a GitHub setting: `NOT VERIFIED` on 2026-11-09; `qa/README.md` holds the table of what a merge requires, and `db-tests` and `e2e-authenticated` boot the retired local Supabase stack). `enforce_admins` stays **off by the repository owner's decision**, so
       the row is complete: a setting somebody has chosen is not an outstanding defect, and
       recording it as one made every reader look for work that nobody intends to do
       `.github/workflows/ci.yml` · GAP-003
 - [x] CAP-098 🟢 CI gates — typecheck, lint, format, the unit suite, build, SW assertion, bundle budget,
       migration safety, dependency audit. The test count is not quoted here: it was "636" and then "684",
-      and a number nothing verifies is a number that drifts
+      and a number nothing verifies is a number that drifts. The PHP suites (`pnpm run check:php`) run with `pnpm run check` and in the manual Deploy workflow, and are not a job of `ci.yml`
       `.github/workflows/ci.yml`
-- [x] CAP-099 🟢 E2E coverage — 26 authenticated screens rendered and scanned in BOTH themes, plus a test
-      that genuinely signs up and creates an organisation against a local Supabase stack
+- [ ] CAP-099 🟡 E2E coverage — 26 authenticated screens rendered and scanned in BOTH themes (through the `-preview` routes, which need no back end), plus a test
+      that genuinely signed up and created an organisation against a local Supabase stack (retired).
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `e2e/authenticated-loop.spec.ts` skips itself unless `E2E_LIVE_SUPABASE` is set, which only the `e2e-authenticated` job does after starting a local Supabase stack, now retired (lines 43 to 46), so no end-to-end test signs in through Clerk and calls the PHP API; `e2e/offline-clock-in.spec.ts` has the same dependency. Becomes 🟢 when an authenticated loop runs against the PHP API and a throwaway MariaDB (a test change outside this phase)
       `e2e/app-surface.spec.ts` · `e2e/authenticated-loop.spec.ts` · GAP-010 closed #222
 - [x] CAP-100 🟢 Component tests — three suites now, chosen by the same rule rather than by
       coverage: the components whose WORDING is load-bearing. `FailedWritesNotice` (which
@@ -1039,28 +1074,25 @@ itself: a restore, a real charge, and a phone.
       need capture are already named in OBSERVABILITY — rota-session starts, schedule views,
       an explicit AI-suggestion outcome, and Web Vitals
       `docs/PRODUCT-SPEC.md#metrics-and-events` · P3
-- [x] CAP-103 🟢 Error tracking — Sentry in the client, and in all twelve Edge Functions via
-      `_shared/sentry.ts`; the Stripe webhook no longer fails into a log nobody reads
-      `supabase/functions/_shared/sentry.ts` · HARDEN-005 closed #216 · deployed 2026-08-31
-- [x] CAP-104 🟢 Query shape — 16 composite indexes cover the predicates the app issues; the
+- [ ] CAP-103 🟡 Error tracking — Sentry in the client (only with the visitor's consent, `src/lib/sentry.ts`), and in the Supabase era in all twelve Edge Functions via
+      `_shared/sentry.ts`; the Stripe webhook no longer failed into a log nobody reads.
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `git grep -li sentry -- backend/src` prints nothing, so the PHP API reports no error to Sentry; a failure in `backend/src/Mod/StripeWebhook.php` or a cron job goes to the private log file (`Bootstrap::log`, `cron.log`), which nobody is alerted about (owner action O2). Becomes 🟢 when the server reports errors somewhere a person is told
+      `src/lib/sentry.ts` · `backend/src/Bootstrap.php` · HARDEN-005 closed #216 · Supabase era: `supabase/functions/_shared/sentry.ts` deployed 2026-08-31
+- [x] CAP-104 🟢 Query shape — composite indexes cover the predicates the app issues (Supabase era: 16, `0072`; the MariaDB indexes are the `KEY` lines of `backend/migrations`, not recounted here); the
       builder loads every location's week in two queries, not two per location
-      `supabase/migrations/0072_hot_path_indexes.sql` · HARDEN-006 · P2
+      `backend/migrations/005-rota.sql` · `backend/migrations/006-time-and-requests.sql` · HARDEN-006 · P2
 - [x] CAP-105 🟢 Concurrency on approvals — the UPDATE carries a state predicate, so the losing
       writer changes zero rows and is told so
       `src/services/reviewConcurrency.test.ts` · BUG-061 · P2
 - [ ] CAP-106 ❓-004 Real-device offline UAT has never been performed
       **Test:** sign up → publish → no-signal clock-in → reconnect → correction, on real hardware · P1
-- [ ] CAP-107 ❓-005 No restore has ever been performed from a backup by a person — **but the
-      nightly job now rehearses one.** `verify-restore` decrypts the dump it just took, restores
-      it into a throwaway PostgreSQL and asserts a database came back rather than a file: 40+
-      tables, and `organisations`, `shifts`, `clock_events` and `audit_logs` all present with
-      their row counts printed. That closes the failure where the job writes an encrypted file
-      for months and the first person to open it finds it never contained anything. It does NOT
-      close this row: a logical dump into stock Postgres proves the DATA survives, and auth,
-      storage and RLS are Supabase's and are not in the dump
-      **Test:** restore a snapshot into a scratch project and diff the row counts · **P0**
-- [x] CAP-108 🟢 `pg_cron` retention job — verified scheduled on production as `rotaflow-retention @ 15 2 * * *`
-      `supabase/migrations/0029_retention_enforcement.sql` · ❓-006 answered 2026-08-29
+- [ ] CAP-107 🟡 (was ❓-005) A restore from a backup by a person: **the named test passed on 2026-11-08 for the database, and a restore that replaces the live database has never been done.**
+      Supabase era: no restore had ever been performed by a person, and the nightly `verify-restore` step only rehearsed one (a throwaway PostgreSQL, 40+ tables, row counts printed); auth, storage and RLS were Supabase's and not in the dump.
+      Live: the test this row named (restore the newest dump into a scratch database and diff the row counts) is `backend/bin/backup.php --restore-check`, and its run on the live host on 2026-11-08 passed with every count inside the recorded range, the scratch database left empty (recorded in `docs/AUDIT.md`; the host state today was not re-checked, `NOT VERIFIED`). **Status changed ❓ to 🟡 on 2026-11-09** because the tracked record shows the test was performed; it stays amber because the stored files and private configuration are not in the dump, the restore replaced nothing, and the monthly drill is not scheduled. Owner action O18
+      **Test:** replace a scratch copy of the database from the newest dump, then diff the row counts and open the app against it · **P0**
+      `backend/bin/backup.php` · `backend/src/Backup.php` · suite `backend/tests/suites/300-backup.php`
+- [x] CAP-108 🟢 Retention job — verified scheduled on the Supabase production database as `rotaflow-retention @ 15 2 * * *` (Supabase era, `pg_cron`). Live: `Lifecycle::cron` runs `Retention::run` once a day after 02:15 UTC, and `backend/bin/cron.php` runs every five minutes on the live host (`docs/AUDIT.md`, 2026-11-08); a live row in `retention_runs` is `NOT VERIFIED`
+      `backend/src/Mod/Lifecycle.php` · `backend/src/Retention.php` · suite `backend/tests/suites/190-lifecycle.php` · ❓-006 answered 2026-08-29 · Supabase era: `0029`
 
 ### The workforce pass, 2026-09-06
 
@@ -1089,21 +1121,20 @@ itself: a restore, a real charge, and a phone.
       department, job title, person and status; sort by expected start, actual start, name or
       exception severity; a detail panel with the full event timeline, the planned-versus-actual
       comparison and the correction history; and an export of every matching row carrying its
-      own scope and timezone. Corrections go through `correct_clock_event` (`0128`), which
-      demands a reason, records the row either side and the actor, refuses a stale write, and
-      flags an already-approved timesheet for a fresh decision rather than moving a signed total.
-      The direct `UPDATE` grant on `clock_events` is withdrawn in the same migration, so the
-      audited path is not optional. **Evidence:**
-      `supabase/tests/database/clock_corrections_are_kept.test.sql` (14) ·
+      own scope and timezone. Corrections go through `POST /orgs/{o}/clock-events/{e}/correct` (Supabase era: `correct_clock_event`, `0128`), which
+      demands a reason of 3 to 500 characters, keeps the row before and after and the actor in `clock_event_corrections` (append-only triggers refuse an update or delete of a correction), and
+      flags an already-approved timesheet (`recalculation_required_at`) for a fresh decision rather than moving a signed total.
+      The API offers no other way to edit a clock event, so the audited path is not optional (Supabase era: the direct `UPDATE` grant was withdrawn). **Evidence:**
+      `backend/src/Mod/Clock.php` (`correct`, `corrections`) · `backend/migrations/006-time-and-requests.sql` · suite `backend/tests/suites/100-clock.php` (corrections block) · Supabase era: `clock_corrections_are_kept.test.sql` (14) ·
       **NOT verified:** a real offline device syncing a queued clock-in into a corrected period
 - [x] CAP-112 🟢 Job-title catalogue — `job_titles` (`0127`), org-owned, with case- and
       whitespace-insensitive unique names, one colour per active title, archive rather than
       delete, and a twelve-colour palette solved for separation under simulated protanopia,
       deuteranopia and tritanopia (worst pair ΔE 16.4) with every ink measuring at least 4.60:1
       on its wash in both themes. Owners always manage it; managers only where the organisation
-      has said so, enforced by `can_manage_job_titles` in the policy rather than in the picker.
+      has said so, enforced by `Staff::titleManager` reading `job_titles_managed_by` in the API (Supabase era: `can_manage_job_titles` in the policy) rather than in the picker.
       The free-text `staff_profiles.job_title` is kept in step and retires later.
-      **Evidence:** `supabase/tests/database/job_titles_catalogue.test.sql` (14),
+      **Evidence:** `backend/src/Mod/Staff.php` · `backend/migrations/004-people-places.sql` (`job_titles_name`, `job_titles_colour`) · suite `backend/tests/suites/080-staff.php` (job titles block) · Supabase era: `job_titles_catalogue.test.sql` (14),
       `src/lib/jobTitlePalette.test.ts` (14) · **NOT verified:** the backfill against real tenant
       data — production holds no organisations, so it has only run against synthetic rows
 - [x] CAP-113 🟢 One filter contract — `src/lib/filters.ts` and `useFilterState`. Declared
@@ -1119,7 +1150,7 @@ itself: a restore, a real charge, and a phone.
       contract is written for it to adopt, and adopting it is not done
 
 - [x] CAP-114 🟢 Setup is a report, not a wizard — `/app/setup` lists the ten things an
-      organisation needs, each with its status derived from a **count read back through RLS**
+      organisation needs, each with its status derived from a **count read back through the API with the caller's own access** (Supabase era: through RLS)
       rather than a stored progress flag, so it cannot drift from what it describes and it goes
       back to "to do" if somebody deletes their last location. Ordered as a dependency chain: a
       blocked step names what it is waiting for rather than being a dead end, and the required
@@ -1129,12 +1160,12 @@ itself: a restore, a real charge, and a phone.
       last three into "pending". The dashboard carries a banner only while the essentials are
       unfinished, because a board reporting zero of everything is otherwise indistinguishable
       from a quiet Tuesday. **Evidence:** `src/lib/setupProgress.test.ts` (19),
-      `supabase/tests/database/invite_send_is_recorded.test.sql` (8) · **NOT verified:**
+      `backend/src/Mod/Invites.php` (writes `last_sent_at` and `send_error` on every send; no suite assertion on the recorded outcome was found, `NOT VERIFIED`) · Supabase era: `invite_send_is_recorded.test.sql` (8) · **NOT verified:**
       resending a failed invitation end to end — that needs a real mail endpoint, and none is
       configured here
 
-- [x] CAP-115 🟢 Every swap read works again — `0123` added `applied_shift_id`, a second foreign
-      key from `shift_swaps` to `shifts`, and PostgREST then refused the un-hinted
+- [x] CAP-115 🟢 Every swap read works again — (Supabase era) `0123` added `applied_shift_id`, a second foreign
+      key from `shift_swaps` to `shifts`, and PostgREST (retired) then refused the un-hinted
       `shift:shifts(*)` embed outright with `PGRST201 · Could not embed because more than one
 relationship was found`. Every read of a swap has failed since that migration merged,
       which took the dashboard's whole "waiting on a decision" half with it — and it was
@@ -1143,7 +1174,8 @@ relationship was found`. Every read of a swap has failed since that migration me
       Found by the setup banner failing to appear in `e2e/owner-workforce.spec.ts`: the banner
       is set at the end of the dashboard's load, so anything throwing earlier removes it, which
       is what makes that assertion a guard on this rather than only on the banner.
-      **Evidence:** `e2e/owner-workforce.spec.ts` against a real session ·
+      Live: the swap reads are plain SQL in `Swaps::list` (`backend/src/Mod/Swaps.php`), so that embed failure cannot recur; `applied_shift_id` is a column of `shift_swaps` (`backend/migrations/006-time-and-requests.sql`).
+      **Evidence:** suite `backend/tests/suites/110-swaps-open-shifts.php` ("each swap carries its shift") · Supabase era: `e2e/owner-workforce.spec.ts` against a real session ·
       **NOT verified:** whether any production organisation was affected — production holds no
       swaps, and no organisations
 
@@ -1168,36 +1200,36 @@ relationship was found`. Every read of a swap has failed since that migration me
       closed GAP-078 for why
 - [x] CAP-117 🟢 The platform directories are counted by the database — `/admin/organisations`
       and `/admin/users` loaded whole tables and filtered, sorted, counted and exported the
-      arrays. PostgREST truncates at `db.max_rows` in silence, so past the cap the total tile
+      arrays. PostgREST (retired) truncated at `db.max_rows` in silence, so past the cap the total tile
       was the cap, a search for an older tenant reported "no match", and Export CSV wrote the
-      loaded page under the name of the whole set. `platform_organisation_directory` (`0130`)
-      and `platform_user_directory` (`0131`) filter, sort, page and count under one set of
-      predicates; the facet functions beside them supply the estate-wide tiles and the filter
-      option lists, so a plan or a role only older records hold is still offered. Both are
-      aggregate-only, and owner contact is returned only to an operational platform role.
-      **Evidence:** `supabase/tests/database/platform_directory.test.sql` (24) and
+      loaded page under the name of the whole set. In the Supabase era `platform_organisation_directory` (`0130`)
+      and `platform_user_directory` (`0131`) filtered, sorted, paged and counted under one set of
+      predicates. **Live it is done differently:** `GET /platform/orgs` and `GET /platform/users` filter by name, status and plan and page by `limit` and `offset`, and the screens walk every page
+      (`estate()` in `src/services/platformDirectoryService.ts`, 100 a page) before filtering, sorting and counting, so no total is silently capped. Owner contact and the directories are for the operational platform roles. A full walk per load is `NOT VERIFIED` at production volumes
+      **Evidence:** `backend/src/Mod/Console.php` (`orgDirectory`, `userDirectory`) · suite `backend/tests/suites/150-console.php` ("the directory filters by name, status and plan") · Supabase era: `platform_directory.test.sql` (24) and
       `platform_user_directory.test.sql` (14), against 60- and 5-record fixtures ·
       **NOT verified:** production volumes — production holds no tenant
 
-- [x] CAP-118 🟢 A multi-organisation account is findable — the user search matched
+- [ ] CAP-118 🟡 A multi-organisation account is findable — the user search matched
       `soleOrgName`, which the membership summary set only for an account belonging to
       exactly one organisation, so the accounts a support case is most often about could not
-      be found by either of their organisations' names. `platform_user_directory` searches
-      every membership and returns one row per account; organisation and role are AND-ed
-      within a single membership, so "owner at Beta" cannot match somebody who owns Alpha and
+      be found by either of their organisations' names. In the Supabase era `platform_user_directory` searched
+      every membership and returned one row per account; organisation and role were AND-ed
+      within a single membership, so "owner at Beta" could not match somebody who owns Alpha and
       merely belongs to Beta.
-      **Evidence:** `supabase/tests/database/platform_user_directory.test.sql`
+      **Status changed 🟢 to 🟡 on 2026-11-09, proved by the code:** `GET /platform/users` (`Console::userDirectory`, `backend/src/Mod/Console.php`) matches only the email and the name and returns a count of active memberships; the screen's service sets `orgNames: []` and says per-organisation detail is on the person's page (`src/services/platformDirectoryService.ts`, lines 380 to 384), so an account cannot be found by an organisation's name or role. Becomes 🟢 when the directory searches memberships
+      **Evidence:** `backend/src/Mod/Console.php` · suite `backend/tests/suites/150-console.php` · Supabase era: `platform_user_directory.test.sql`
 
 - [x] CAP-119 🟢 A platform announcement is composed, scheduled and dispatched — the console
       disabled its composer with "There is no announcement table to write to" while listing
       rows from that table. `publish_platform_announcement` also stamped `sent_at` at insert,
       so every recipient counted as delivered before anything carried anything, and
-      `status = 'scheduled'` was read by no job at all. `0132` queues one dispatch per
+      `status = 'scheduled'` was read by no job at all. `0132` (Supabase era) queued one dispatch per
       recipient organisation through `notification_outbox` — the queue that has drained rota
-      publications since `0069` — leaves deliveries visibly queued until reconciliation
-      confirms them, publishes what is due on the minute tick, and adds the cancel path the
-      status value never had.
-      **Evidence:** `supabase/tests/database/announcement_delivery.test.sql` (15) ·
+      publications since `0069` — left deliveries visibly queued until reconciliation
+      confirmed them, published what was due on the minute tick, and added the cancel path the
+      status value never had. Live: `PlatformAnnouncements` queues the organisation's owners and managers through the same outbox, a delivery counts as delivered only when the outbox row really went, and `PlatformAnnouncements::cron` publishes what is due on the cron heartbeat (every five minutes on the live host, so "the minute tick" is five minutes).
+      **Evidence:** `backend/src/Mod/PlatformAnnouncements.php` · `backend/migrations/014-platform-comms.sql` (`platform_deliveries_once`) · suite `backend/tests/suites/200-platform-comms.php` · Supabase era: `announcement_delivery.test.sql` (15) ·
       **NOT verified:** real email or push arriving on a device. That needs a live
       environment and sends real messages to real people; see ❓-007
 
@@ -1208,7 +1240,8 @@ relationship was found`. Every read of a swap has failed since that migration me
       with a period filter and an id tie-break so paging cannot repeat a row. The export walks
       every matching event and writes its range, its filters and its truncation state into the
       file's own header.
-      **Evidence:** `src/services/platformService.ts` · driven in the preview harness ·
+      Live: `GET /platform/audit` filters by scope, actor, severity, search text and period (newest first, id as the tie-break) for platform owner, admin and support.
+      **Evidence:** `src/services/platformService.ts` · `backend/src/Mod/PlatformAudit.php` · suite `backend/tests/suites/200-platform-comms.php` · driven in the preview harness ·
       **NOT verified:** behaviour above the API cap against a real audit table
 
 - [x] CAP-121 🟢 Billing totals are summed per currency, over every row — Collected,
@@ -1216,9 +1249,9 @@ relationship was found`. Every read of a swap has failed since that migration me
       had loaded, printed as platform totals, and every one of them added `amount_pence`
       across currencies and printed the result with a pound sign. `platform_billing_summary`
       (`0134`) groups by currency and never converts; the console shows one currency at a
-      time and says which. `platform_invoice_directory` pages the list and resolves the
-      organisation name server-side.
-      **Evidence:** `supabase/tests/database/platform_billing_summary.test.sql` (11)
+      time and says which. `platform_invoice_directory` paged the list and resolved the
+      organisation name server-side (Supabase era; live: `PlatformBilling` keeps totals per currency and never converts).
+      **Evidence:** `backend/src/Mod/PlatformBilling.php` · suite `backend/tests/suites/150-console.php` · Supabase era: `platform_billing_summary.test.sql` (11)
 
 - [x] CAP-122 🟢 Bulk organisation import — the Import button was disabled with "Bulk import
       is not built" while `admin_create_organisation_with_invite` (`0051`) had been available
@@ -1227,7 +1260,8 @@ relationship was found`. Every read of a swap has failed since that migration me
       database and against the file, per-row outcome and retry of the refused rows only.
       Nothing is emailed: fifty invitations is not a fan-out to trigger from a preview screen,
       so every link is shown and offered as a CSV.
-      **Evidence:** `src/lib/organisationImport.test.ts` (15) · driven in the preview harness ·
+      Live: each row posts `POST /platform/orgs` (`Platform::createOrg`, `backend/src/Mod/Platform.php`), which is **limited to 20 creations an hour per administrator** (`platform-org-create`; the function of the Supabase era was exempt from the self-serve limit), so a long file is refused part-way and the refused rows are retried later.
+      **Evidence:** `src/lib/organisationImport.test.ts` (15) · `backend/src/Mod/Platform.php` · suite `backend/tests/suites/060-invite-only-orgs.php` · driven in the preview harness ·
       **NOT verified:** fifty real transactions. The harness answers the creation RPC from a
       fixture
 
@@ -1236,9 +1270,9 @@ relationship was found`. Every read of a swap has failed since that migration me
       else. `Promise.allSettled` now, with each source named, each panel reporting its own
       unavailability, and every figure rendering an em dash rather than a zero when unread —
       a zero is a claim, and "no open cases" is what somebody acts on by going home. Growth,
-      churn and the support queue moved to server aggregates (`0133`) rather than being
-      bucketed or counted from bounded lists.
-      **Evidence:** `supabase/tests/database/platform_overview.test.sql` (9) · the preview
+      churn and the support queue moved to server aggregates (`0133`, Supabase era) rather than being
+      bucketed or counted from bounded lists. Live: `GET /platform/summary` (`Console::summary`) returns counts by organisation status, plan and subscription status, users, active staff, monthly recurring pence, open support sessions, published rotas and shifts this month; no server aggregate for growth or churn was found (`NOT VERIFIED`).
+      **Evidence:** `backend/src/Mod/Console.php` (`summary`) · suite `backend/tests/suites/150-console.php` · Supabase era: `platform_overview.test.sql` (9) · the preview
       harness's `?fail=` mode, which is what makes the partial-failure states reviewable
 
 - [x] CAP-124 🟢 No console control is decorative — seven disabled buttons resolved by asking
@@ -1251,41 +1285,35 @@ relationship was found`. Every read of a swap has failed since that migration me
       **2026-10-11:** Subscriptions "Change plan" is removed too (it only opened the organisation, where no
       plan control exists; the customer changes plan in their Stripe Billing Portal), and Platform settings
       hides its General and Maintenance fields, which saved values nothing reads. Only the second-factor
-      switch, the retention facts and the administrator grants remain
+      switch, the retention facts and the administrator grants remained. Since the cutover the second-factor switch is rejected in the front end (two-step sign-in is a Clerk setting, CAP-049)
       **Evidence:** each page · driven in the preview harness
 
 - [ ] CAP-126 🟡 Website enquiries are received, not handed to a mail client — `/contact`
-      posts to the `public-enquiry` Edge Function, which checks the origin, validates every
+      posts to `POST /enquiries` (`backend/src/Mod/Enquiries.php`; Supabase era: the `public-enquiry` Edge Function), which checks the origin, validates every
       field, drops a filled honeypot silently, verifies Turnstile when its secret is set and
-      stores the row through `receive_enquiry` (`0155`), rate-limited per HMAC-hashed address
-      and in total. `anon` holds nothing on `enquiries`; operational platform roles read and
+      stores the row (Supabase era: `receive_enquiry`, `0155`), rate-limited per keyed-hash address
+      and in total. No browser reaches the table (Supabase era: `anon` held nothing on `enquiries`); operational platform roles read and
       move it on at `/admin/enquiries` (New, Replied, Demo booked, Closed). Kept 24 months by
       the nightly job. Every "Book a demo" link ticks the demo box. From the 2026 plan pack.
-      **Partial because:** the function has not been deployed, and its handler (origin
-      refusal, Turnstile, the RPC call, the notice email) has been `deno check`ed and read,
-      never executed. The notice to platform staff is a direct email to `ENQUIRY_NOTIFY_EMAIL`,
-      not an outbox row, because the outbox cannot address anybody outside an organisation
-      (`docs/NOTIFICATIONS-SPEC.md`); without that secret and platform SMTP, nobody is told
+      **Partial because:** no enquiry from the live site has been seen arriving, and the live configuration is `NOT VERIFIED` (private config `turnstile_secret`, `enquiry_notify_email` and the platform `smtp` account). The PHP handler is exercised by a suite (`backend/tests/suites/170-ops.php`); in the Supabase era the function was never deployed. The notice to platform staff is one email per new enquiry to `enquiry_notify_email`, sent by cron (`Enquiries::cron`) with no visitor text in it, not an outbox row, because the outbox cannot address anybody outside an organisation
+      (`docs/NOTIFICATIONS-SPEC.md`); without that address and a platform mail account, nobody is told
       and the inbox is the only place an enquiry shows. The `mailto:` form this replaces lost
       every enquiry from a device with no mail client configured.
-      **Evidence:** `supabase/tests/database/enquiries.test.sql` (16) ·
-      `supabase/functions/public-enquiry/validate.test.ts` (19) · the preview harness at
+      **Evidence:** `backend/src/Mod/Enquiries.php` · `backend/migrations/011-platform-ops.sql` (`enquiries`) · suite `backend/tests/suites/170-ops.php` · Supabase era: `enquiries.test.sql` (16),
+      `public-enquiry/validate.test.ts` (19) · the preview harness at
       `/admin-preview/enquiries`
 
 - [ ] CAP-127 🟡 Invoices in the app: Settings, Billing lists the owner's last 12 invoices
       (date, number, amount in the invoice's currency, status in words) with "View" and
       "Download PDF" links to the hosted page and PDF Stripe issued. `invoices` stores both
-      links (`0156`), each CHECKed to https on `invoice.stripe.com` or `pay.stripe.com`;
-      `stripe-webhook` writes them on `invoice.paid` and `invoice.payment_failed`, retrieving
-      the invoice when the event lacks them. RLS is unchanged: only the organisation's owners
-      (and platform billing roles) read a row. From the 2026 plan pack.
-      **Partial because:** the webhook change has not been deployed, so no stored invoice has
-      a link yet, and none has been written from a real Stripe event. Stripe expires these
-      links within 120 days; "Refresh links" now asks Stripe for working ones, and "Use for
-      Stripe invoices" sends the billing contact to the Stripe customer, both through the
-      owner-only `billing-account` function, which is not deployed yet (GAP-128, GAP-129).
-      **Evidence:** `supabase/tests/database/invoice_documents.test.sql` (14) ·
-      `supabase/functions/stripe-webhook/reconcile.test.ts` (invoice documents block) ·
+      links (`backend/migrations/008-billing.sql`; Supabase era `0156`), each CHECKed to https on `invoice.stripe.com` or `pay.stripe.com`;
+      `Mod/StripeWebhook.php` writes them on `invoice.paid` and `invoice.payment_failed` (and `invoice.finalized`), retrieving
+      the invoice when the event lacks them. Only the organisation's real owner (and platform billing roles) read a row: `Mod/Billing.php` checks it (Supabase era: RLS). From the 2026 plan pack.
+      **Partial because:** no stored invoice has been written from a real Stripe event, so none is known to carry a link (the live Stripe endpoint and mode are `NOT VERIFIED`, owner action O3). Stripe expires these
+      links within 120 days; "Refresh links" asks Stripe for working ones (`POST /orgs/{o}/billing/invoices/{i}/links`), and "Use for
+      Stripe invoices" sends the billing contact to the Stripe customer (`POST /orgs/{o}/billing/sync-contact`), both owner-only in `Mod/Billing.php` (Supabase era: the `billing-account` function, never deployed) (GAP-128, GAP-129).
+      **Evidence:** `backend/src/BillingRules.php` (`documentUrl`, `documentsToWrite`) · suite `backend/tests/suites/140-billing.php` · Supabase era: `invoice_documents.test.sql` (14),
+      `stripe-webhook/reconcile.test.ts` (invoice documents block) ·
       `src/components/settings/BillingInvoices.test.tsx` (5) · `src/lib/billingState.test.ts`
 
 ## §5 The recommendation we rejected
@@ -1294,15 +1322,15 @@ An enterprise review recommended replacing per-org SMTP with a transactional pro
 per-tenant domain claim, DNS verification, DKIM signing and reputation isolation.
 
 **Rejected.** `org_smtp_settings` already reaches the stated goal more cheaply: each organisation
-supplies its own SMTP account, `send-notification` resolves org SMTP → global fallback → skip, and
-`test-smtp` is the only writer of `verified_at`, so "saved" and "known to work" stay distinct.
+supplies its own SMTP account, `Mail::forOrg` (`backend/src/Mail.php`) resolves org SMTP → platform account → skip (Supabase era: `send-notification`), and
+`OrgSettings::testSmtp` (`backend/src/Mod/OrgSettings.php`) is the only writer of `verified_at` (Supabase era: the `test-smtp` function), so "saved" and "known to work" stay distinct.
 Mail leaves the organisation's own server, which already holds valid SPF and DKIM and carries its
 own reputation. The proposed workstream would rebuild that at significant cost.
 
-The platform half is now better than that review assumed. Migration `0064` records the real
+The platform half is now better than that review assumed. Migration `0064` (Supabase era) recorded the real
 cause of the old deliverability failure: a **missing MX**, not missing SPF/DKIM. The old host
 signed outbound mail correctly while silently dropping every reply. `rotaflow.space` carries MX
-×3, one SPF, one DKIM and one DMARC.
+×3, one SPF, one DKIM and one DMARC (DNS: `NOT VERIFIED` from the repository).
 
 The same review's pillar tree assumed QR clock-in, calendar sync, working push and eight live
 connectors. None of those exist (CAP-017, CAP-063, CAP-023, CAP-064). A structure drawn over
@@ -1316,21 +1344,21 @@ resolved ones are not re-litigated.
 
 | #   | Decision                                                                 | Status                                                                                                                                                                                                                                                     |
 | --- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Platform staff can read every tenant; a support session does not gate it | ✅ **Resolved** — `0028` redefines `is_org_member`/`has_org_role` onto `has_support_access`, so a time-boxed session is now the actual RLS gate                                                                                                            |
+| 1   | Platform staff can read every tenant; a support session does not gate it | ✅ **Resolved** — in the Supabase era `0028` redefined `is_org_member`/`has_org_role` onto `has_support_access`, so a time-boxed session was the actual RLS gate; live it is `Scope::supportMembership` in `backend/src/Scope.php` (CAP-044) |
 | 2   | Demo data attached to real organisations                                 | 🟡 Dataset torn down 2026-08-14; seed scripts deleted in `#120`. `is_demo` survives as an unread column                                                                                                                                                    |
-| 3   | Feature flags control nothing                                            | ✅ **Resolved** — `my_feature_access` returns them and the AI gate honours one (CAP-076). This row still read "🔴 Still true" against a capability marked 🟢; corrected 2026-09-02                                                                         |
-| 4   | No payment provider                                                      | ✅ **Resolved** — Stripe shipped (`0050`, `0058`). Open sub-item: no charge has completed (CAP-036)                                                                                                                                                        |
-| 5   | Retention is a published policy nothing enforces                         | ✅ **Resolved** — nightly since 2026-08-21 (`0029`, fixed by `0057`)                                                                                                                                                                                       |
-| 6   | Three RPCs callable from nowhere                                         | ✅ Resolved 2026-08-30. All three now have callers — `rate_support_case` was the last, from `/app/help` (CAP-079)                                                                                                                                          |
-| 7   | Health and uptime figures are seeded, not measured                       | ✅ **Resolved** — `pg_cron` probes every five minutes, unattended (CAP-078). This row read 🟡 after the capability went 🟢; corrected 2026-10-21                                                                                                           |
+| 3   | Feature flags control nothing                                            | ✅ **Resolved** — `GET /orgs/{o}/features` returns them (Supabase era: `my_feature_access`) and the AI gate honours one (CAP-076). This row still read "🔴 Still true" against a capability marked 🟢; corrected 2026-09-02 |
+| 4   | No payment provider                                                      | ✅ **Resolved** — Stripe shipped (`0050`, `0058`, Supabase era; live: `backend/src/Mod/Billing.php`, `backend/src/Mod/StripeWebhook.php`). Open sub-item: no charge has completed (CAP-036) |
+| 5   | Retention is a published policy nothing enforces                         | ✅ **Resolved** — nightly since 2026-08-21 (`0029`, fixed by `0057`, Supabase era); live: `Lifecycle::cron` runs `Retention::run` daily (CAP-054) |
+| 6   | Three RPCs callable from nowhere                                         | ✅ Resolved 2026-08-30 (Supabase era). All three had callers — `rate_support_case` was the last, from `/app/help` (CAP-079; live: `Support::rate`) |
+| 7   | Health and uptime figures are seeded, not measured                       | ✅ **Resolved** in the Supabase era — `pg_cron` probed every five minutes, unattended (CAP-078). This row read 🟡 after the capability went 🟢; corrected 2026-10-21. **Since the cutover nothing probes and CAP-078 is 🔴** (2026-11-09) |
 | 8   | Eleven console screens show demonstration figures                        | ✅ Resolved 2026-08-30. `adminOverviewDemo.ts` is deleted; every console figure is measured or reads "Not sampled" (CAP-077)                                                                                                                               |
-| 9   | An orphan `incident_events` table in production                          | ✅ **Resolved** — dropped by `0028`                                                                                                                                                                                                                        |
-| 10  | Public repo, `main` unprotected                                          | 🟡 Four checks are now required — `verify`, `e2e`, `db-tests` and `e2e-authenticated` (GAP-003 closed 2026-08-30, CAP-097). `enforce_admins` remains off by the owner's decision. This row still said the last two were not required; corrected 2026-09-02 |
+| 9   | An orphan `incident_events` table in production                          | ✅ **Resolved** — dropped by `0028` (Supabase era) |
+| 10  | Public repo, `main` unprotected                                          | 🟡 Four checks were required — `verify`, `e2e`, `db-tests` and `e2e-authenticated` (GAP-003 closed 2026-08-30, CAP-097); a GitHub setting, `NOT VERIFIED` on 2026-11-09. `enforce_admins` remains off by the owner's decision. This row still said the last two were not required; corrected 2026-09-02 |
 | 11  | Support cases have no way in                                             | ✅ **Resolved** — `/app/help` opens one and the requester sees their own thread (CAP-080). Email ingress is a separate gap (GAP-035); corrected 2026-10-21                                                                                                 |
 | 12  | The public status page                                                   | ⚫ Correctly deferred (GAP-024)                                                                                                                                                                                                                            |
 
 **Settled, recorded so it is not re-opened:** every write to the platform tables goes through
-a `SECURITY DEFINER` function with table grants revoked, so reference numbers, resolution
+the PHP API, which is the only database client (Supabase era: a `SECURITY DEFINER` function with table grants revoked), so reference numbers, resolution
 notes and audit rows cannot be skipped by a client. The marketing site carries no invented
 traction, testimonials or logos.
 
@@ -1342,7 +1370,7 @@ is ours and live since 2026-08-29.
 
 Three features were built from written specs, since merged here: Stripe billing (`0050`,
 `0058`), admin-assisted organisation creation (`0052`) and admin billing real data
-(`2e1b924`). Their rationale now lives in the migration headers, which are the durable
+(`2e1b924`) (Supabase era; the migration numbers are the retired Postgres ones). Their rationale now lives in the migration headers, which are the durable
 record — each explains what it does to existing rows and why. The separate plan and spec
 plan and spec files were deleted on 2026-08-29: all three specs still read
 "pending implementation plan" for features that had shipped, and all 99 of their task
@@ -1351,7 +1379,7 @@ checkboxes were unticked against code that was already on `main`.
 **Two deliberate loose ends.** Applied migrations are frozen, so four of them still name
 `docs/audit01.md` (deleted 2026-08-04) in comments, and `0050_stripe_billing.sql` writes a
 **column comment into production** that cites one of the deleted spec files. Editing an
-applied migration risks a checksum mismatch on `supabase db push` for a comment nobody
+applied migration risks a checksum mismatch on the legacy `supabase db push` for a comment nobody
 executes, and correcting the column comment would mean a migration that auto-applies to a
 database with no backups. Both are recorded here instead of chased.
 

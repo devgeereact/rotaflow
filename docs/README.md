@@ -22,19 +22,19 @@ here wins, and the other should link to it rather than restate it.
 | GEE OS routing: mode, workflows, specialists, sources of truth                       | `.agent/PROJECT.yml`                                                             |
 | MCP position: what may be read, what needs authority                                 | `.agent/MCP-PROFILE.yml`                                                         |
 | Capability status, gaps, bugs, priorities. The plan of record                        | `docs/SAAS.md`                                                                   |
-| The Phase 2 list (what is deliberately later)                                        | `CLAUDE.md`, "Scope discipline"; each item has a ⚫ row in `docs/SAAS.md`        |
+| The later (product phase 2) list: what is deliberately later                         | `CLAUDE.md`, "Scope discipline"; each item has a ⚫ row in `docs/SAAS.md`        |
 | Coding, tenancy and secret rules in full                                             | `docs/RULES.md`                                                                  |
 | Product scope, roles, phases, success metrics, event taxonomy                        | `docs/PRODUCT-SPEC.md`                                                           |
 | Topology, folder layout, routing, state, offline behaviour, hook contracts           | `docs/ARCHITECTURE.md`                                                           |
-| Tables, RLS, grants, triggers, indexes, migration policy                             | `docs/DATA-MODEL.md`                                                             |
-| Edge Function and RPC contracts: auth model, inputs, outputs                         | `docs/API-SPEC.md`                                                               |
+| Tables, migrations, tenancy and access checks, indexes, migration policy             | `docs/DATA-MODEL.md`                                                             |
+| The PHP API: auth model, routes, inputs, outputs                                     | `docs/API-SPEC.md`                                                               |
 | Backup, residency, retention, erasure, incident response, privacy data map           | `docs/SECURITY.md`                                                               |
 | Tokens, components, motion, layout, brand and voice                                  | `docs/DESIGN-SYSTEM.md`                                                          |
 | Which screens are built and which match their design; the design-match loop prompt   | `docs/UX-SPEC.md`                                                                |
 | Accessibility rules and what the published statement claims                          | `docs/ACCESSIBILITY.md`                                                          |
-| Notification outbox, channels, cron jobs, web push                                   | `docs/NOTIFICATIONS-SPEC.md`                                                     |
-| Deploy, rollback, recovery, alert owners                                             | `docs/DEPLOYMENT.md`                                                             |
-| Cutover to cPanel + Clerk: runbook, data move, table map                             | `docs/CUTOVER.md`                                                                |
+| Notification outbox, Dispatcher, channels, cron jobs, web push                       | `docs/NOTIFICATIONS-SPEC.md`                                                     |
+| Release, rollback, recovery, backups, alert owners                                   | `docs/DEPLOYMENT.md`                                                             |
+| Cutover to cPanel + Clerk: runbook, data move, table map. DONE 2026-11-01; kept as history | `docs/CUTOVER.md`                                                                |
 | Design references (PNG mockups, two HTML references, review screenshots)             | `docs/design/`                                                                   |
 | How a QA audit is run; CI jobs and scheduled workflows (one table)                   | `qa/README.md`                                                                   |
 | Dated functional audit, console repair passes and design reviews                     | `qa/FUNCTIONAL-AUDIT.md`                                                         |
@@ -44,14 +44,39 @@ here wins, and the other should link to it rather than restate it.
 | What changed, per merged pull request                                                | `CHANGELOG.md`                                                                   |
 | Limitations a customer can see today                                                 | `KNOWN-ISSUES.md`                                                                |
 | Open work, owner actions and the approved 2026 decisions                             | `docs/SAAS.md` (the work queue at the top)                                       |
-| The SiteRelay merge: target product, role model, data model, module list, cut list   | `docs/MERGE-TARGET.md`                                                           |
-| The SiteRelay merge: slice order, per-module plan, risks, test strategy               | `docs/RESTRUCTURE-PLAN.md`                                                       |
-| Each Postgres policy and its PHP check and test (the merge's proof nothing was lost)  | `docs/RLS-TO-PHP.md`                                                             |
-| Dated audit record: what each slice changed, the evidence, and what is not tested     | `docs/AUDIT.md`                                                                  |
+| The SiteRelay merge: target product, role model, data model, module list, cut list (finished plan, archived) | `docs/MERGE-TARGET.md`                                                           |
+| The SiteRelay merge: slice order, per-module plan, risks, test strategy (finished plan, archived) | `docs/RESTRUCTURE-PLAN.md`                                                       |
+| Each retired Postgres policy and its PHP check and test (finished plan, archived)     | `docs/RLS-TO-PHP.md`                                                             |
+| Dated audit record: what each slice changed, the evidence, and what is not tested (the order is stated at the top of the file) | `docs/AUDIT.md`                                                                  |
 
 `docs/ACCOUNTS.md` also exists on the owner's machine. It is gitignored on purpose,
 because it holds a live production credential and this repository is public. It is
 never cited, copied or committed.
+
+## Archive
+
+Four plans are finished. They stay at their current paths, because backend
+migrations, scripts and source files cite them, and each is replaced by a live
+document:
+
+- `docs/MERGE-TARGET.md`: the target for absorbing SiteRelay into RotaFlow (30
+  October 2026). Carried out by the release recorded in `docs/AUDIT.md` on 2026-11-01.
+  Replaced by `docs/ARCHITECTURE.md` and `docs/DATA-MODEL.md`.
+- `docs/RESTRUCTURE-PLAN.md`: the slice order and per-module plan for that merge.
+  Finished with it on 2026-11-01. Replaced by `docs/ARCHITECTURE.md` and
+  `docs/API-SPEC.md`.
+- `docs/RLS-TO-PHP.md`: the map from each retired Postgres policy to its PHP check.
+  Its migrations still cite it. The live proof is the access sweep suite,
+  `backend/tests/suites/099-access-sweep.php`, with the tenancy rules in
+  `docs/DATA-MODEL.md`.
+- `docs/CUTOVER.md`: the runbook that moved rotaflow.space from Supabase to cPanel
+  and MariaDB with Clerk. Done on 2026-11-01. Replaced by `docs/DEPLOYMENT.md`.
+
+## Project conventions that differ from the owner's global defaults
+
+- **`CHANGELOG.md` stays at the repository root.** The global rules name both the root
+  and `docs/` for it. This project's index, routing contract and checker read the
+  root file (`.agent/PROJECT.yml`, `scripts/check-docs-impact.mjs`).
 
 ## Doc-sync rule
 
@@ -68,15 +93,23 @@ changed:
 
 - **CI's `Docs impact` step** (`scripts/check-docs-impact.mjs`) fails a pull request
   that changes code without touching a root `*.md`, `docs/` or `qa/` and carries no
-  `Docs: no impact` line.
+  `Docs: no impact` line. It does not yet list `backend/` among the code paths
+  (`CODE_PATTERNS`), so a change to the PHP API alone is not caught; adding it is a
+  follow-up code change that needs the owner's approval. The `Stop` hook below shares
+  that gap.
 - **The Claude Code `Stop` hook** (`scripts/hooks/docs-sync.mjs`, registered in
   `.claude/settings.json`) raises the same question once before a session ends.
   Codex has no equivalent; for Codex the `AGENTS.md` rule is the whole of it.
-- **`npm run check:docs`** (`scripts/check-doc-counts.mjs`) compares counts written
-  into prose with the tree, checks the CI job count, Edge Function count and Node
-  version where prose states them, and fails on a relative link or backticked
-  `docs/` or `qa/` path that does not exist.
-- **`scripts/plan-drift-audit.mjs`** reads the register against the code once a week.
+- **`pnpm run check:docs`** (`scripts/check-doc-counts.mjs`) compares counts written
+  into prose with the tree, checks the CI job count and the Node version where prose
+  states them, and fails on a relative link or backticked `docs/` or `qa/` path that
+  does not exist. It also checks a migration count and a count of the legacy Edge
+  Functions, both taken from the legacy `supabase/` folder, so those two numbers
+  describe the retired tree until the script is repointed; that is a follow-up code
+  change that needs the owner's approval.
+- **`scripts/plan-drift-audit.mjs`** reads the register against the code once a
+  week, from `.github/workflows/plan-drift-audit.yml` (Mondays). Whether the
+  workflow is running is `NOT VERIFIED` (owner action O14 in `docs/SAAS.md`).
 
 ## How GEE OS is applied
 
@@ -124,16 +157,15 @@ have made the second copy the one that drifts.
 
 The GEE Loop is `GROUND → ROUTE → CONTRACT → INSPECT → PLAN → ACT → PROVE →
 SYNCHRONISE → LEARN → CONTINUE OR CLOSE`. Its depth scales with risk, and in a
-repository whose migrations apply to a live database on merge, the scale is not
-theoretical:
+repository with one live database, the scale is not theoretical:
 
 | The work                                     | Required depth                                                                                 |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | Answering a question, reading code           | Ground, inspect, prove the sources, close. No edits.                                           |
 | A component, a style, a piece of copy        | Full loop, checks focused on the changed screen                                                |
-| Anything touching `src/services` or an RPC   | Full loop, plus the adjacent behaviour that shares the service                                 |
-| A migration, an RLS policy, a grant          | Full loop, plus impact analysis, plus pgTAP; Docker is not optional                            |
-| A deploy, a Supabase secret, a Stripe change | Full loop, explicit approval, rollback stated before the change, then post-change verification |
+| Anything touching `src/services` or an API route | Full loop, plus the adjacent behaviour that shares the service                             |
+| A migration or an access check               | Full loop, plus impact analysis, plus the PHP suites against a scratch MariaDB                 |
+| A deploy, a server secret, a Stripe change   | Full loop, explicit approval, rollback stated before the change, then post-change verification |
 
 The one rule that carries most of the value: **discussion, review and diagnosis
 do not authorise edits.** Being asked what is wrong with something is not being
@@ -175,7 +207,7 @@ Evidence:     the checks that must pass, and what "done" looks like
 ```
 
 The authority line is the point. "Fix the failing test" authorises a local edit;
-it does not authorise deploying, editing a Supabase secret, or applying a
+it does not authorise deploying, editing a server secret, or applying a
 migration to production, and none of those become authorised because the task
 turned out to be harder than expected.
 
@@ -253,7 +285,7 @@ contract says so explicitly.
 
 Nothing in the adoption is harness-specific, and that was a constraint on the
 design rather than a happy accident. The gates are npm scripts. The register is a
-file. The guardrails are enforced by RLS, by the function behind each RPC and by
+file. The guardrails are enforced by the API's access checks, the PHP suites and
 CI, none of which knows or cares which agent wrote the code. The task contract is
 a document either harness can read and write.
 

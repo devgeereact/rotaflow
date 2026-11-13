@@ -6,7 +6,10 @@ owns its status, and when that row closes, the entry here is removed in the same
 pull request. Internal defects with no customer-visible effect stay in the
 register alone.
 
-Checked against the code and the register on 11 October 2026.
+Checked against the code and the register on 11 October 2026. Re-checked against the
+code on 9 November 2026, after the move to the PHP API and Clerk: Working offline
+(the offline queue), the calendar subscription link, Accounts and security, demo
+requests and Product scope. The other entries still carry the 11 October check.
 
 ## Working offline
 
@@ -54,21 +57,28 @@ Checked against the code and the register on 11 October 2026.
 - **The working-time rules on Settings → Policies warn, they do not block.** A
   manager can still save a rota that breaks minimum rest, maximum weekly hours or
   maximum consecutive days.
-- **A calendar subscription link never expires** until it is revoked, and the feed
-  is not rate-limited. Treat the link as a password. (GAP-052)
+- **A calendar subscription link stays valid until it is revoked**, or until it has
+  gone 90 days without being fetched (`backend/src/Mod/CalendarFeed.php`). The feed
+  has no limit of its own beyond the 300 requests a minute per address that the API
+  puts on every public route (`backend/src/Api.php`). Treat the link as a password.
+  (GAP-052)
 
 ## Accounts and security
 
-- **Two-factor sign-in is new and an organisation cannot require it.** Once you
-  have enrolled an authenticator app, signing in asks for its 6-digit code before
-  anything opens. There are no backup codes yet: if you lose the device, sign out
-  and contact support to have the old factor removed. An organisation cannot make
-  two-factor sign-in compulsory for its staff. (CAP-049, GAP-017)
-- **No CAPTCHA, and no check against known leaked passwords**, on sign-up and
-  sign-in. (GAP-033, GAP-034)
-- **Supabase Auth settings are not being monitored.** The weekly check that compares
-  them with the expected baseline has failed since 14 September 2026, so a change to
-  sign-in settings would not be noticed automatically. (GAP-036)
+- **An organisation cannot require two-factor sign-in for its staff.** Sign-in is
+  Clerk's email code (`backend/src/Jwt.php` verifies the token). The PHP API has no
+  authenticator-app enrolment and no organisation switch to make it compulsory:
+  `backend/src/DataMove/Map.php` records the old `require_mfa` setting as "two-step
+  sign-in is set in Clerk". Whether two-step sign-in is switched on for people is a
+  Clerk dashboard setting: `NOT VERIFIED` from the repository. (CAP-049, GAP-017)
+- **Bot protection and a check against known leaked passwords at sign-up and
+  sign-in** are Clerk dashboard settings, not repository code: `NOT VERIFIED`.
+  (GAP-033, GAP-034)
+- **Nothing watches Clerk's sign-in settings.** The only auth-settings check,
+  `.github/workflows/auth-config.yml`, was written for the retired Supabase project,
+  and no file under `.github/workflows/` or `scripts/` compares Clerk's settings with
+  a baseline (`git grep -il clerk -- .github scripts` finds none that does), so a
+  change to sign-in settings would not be noticed automatically. (GAP-036)
 
 ## Billing
 
@@ -95,13 +105,14 @@ Checked against the code and the register on 11 October 2026.
 ## Product scope
 
 - **No public API, outbound webhooks, payroll integrations, SSO or SCIM, or
-  per-tenant branding.** These are Phase 2. (CAP-065, CAP-066, CAP-067, CAP-068,
+  per-tenant branding.** These are later (product phase 2). (CAP-065, CAP-066, CAP-067, CAP-068,
   CAP-032)
 - **No SMS notifications.** In-app, email and web push only. (`docs/SAAS.md` §9)
 - **Demo requests are answered by email.** The contact form records that you would
   like a demo and we reply to arrange a time; there is no online booking calendar.
-  Until the form's server function is deployed, sending shows our support address
-  instead of a confirmation. (CAP-126)
+  If the enquiry cannot be sent (a network failure, for example) the form shows our
+  support address instead of a confirmation (`src/pages/ContactPage.tsx`).
+  (CAP-126)
 - **No live payment has completed end to end yet.** Stripe Checkout and the Billing
   Portal are built and test-mode behaviour is proven, but no real charge is on
   record. (CAP-036)

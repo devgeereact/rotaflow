@@ -4,14 +4,22 @@
 > **`docs/SAAS.md` says what it actually does** — per capability, with evidence, and
 > including the ones this file has claimed in the wrong direction. Where the two
 > disagree, the register wins.
+>
+> **Technology references.** The product scope and requirements below are unchanged. The technology
+> claims were re-checked against the code on 9 November 2026: the live stack is the PHP 8.4 API in
+> `backend/` on MariaDB, Clerk sign-in and a static React front end (`docs/ARCHITECTURE.md`,
+> `docs/DATA-MODEL.md`, `docs/API-SPEC.md`). A four-digit number such as `0107` is a migration of the
+> Supabase era (`supabase/migrations`), kept as the record of when a feature shipped; the live schema is
+> `backend/migrations`. The previous text is at the tag: `git show
+> live-supabase-2026-11-01:docs/PRODUCT-SPEC.md`.
 
 ## 1. Overview
 
 RotaFlow is a **multi-tenant, offline-first workforce scheduling PWA**. Organisations
 build and communicate staff rotas in minutes; staff get a modern mobile experience
-that works with no signal and syncs when connectivity returns. It runs entirely as a
-static bundle (installable, offline-capable, instantly responsive) with all dynamic
-behaviour offloaded to Supabase and other managed services.
+that works with no signal and syncs when connectivity returns. The front end is a
+static bundle (installable, offline-capable, instantly responsive); all dynamic
+behaviour is in a PHP API on the same host (`backend/`) and the managed services it calls (Clerk, Stripe, OpenRouter, Sentry).
 
 **Problem it solves:** rota management is still done in spreadsheets, WhatsApp groups
 and paper. Managers waste hours rebuilding schedules; staff never know their shifts;
@@ -38,26 +46,41 @@ with minimal industry-specific customisation.
 | Offline       | Staff can open the app and see their shifts with **no** network — **not met**: `docs/ARCHITECTURE.md#offline-and-pwa` §2 classes the rota view, my shifts and clock history as network required. What ships is queued writes, not cached reads |
 | Sync          | Offline actions (clock-in, leave request) reconcile on reconnect                                                                                                                                                                               |
 | Reliability   | 100% of unhandled errors captured in Sentry                                                                                                                                                                                                    |
-| Tenant safety | Zero cross-tenant data access (enforced by RLS on every table)                                                                                                                                                                                 |
+| Tenant safety | Zero cross-tenant data access (enforced by an access check in the PHP API on every organisation route, `Scope::membership` in `backend/src/Scope.php`, and exercised by `backend/tests/suites/099-access-sweep.php`)                                                                                                                                                                                 |
 
-## 4. Roles & permissions (drives PRD + Supabase RLS)
+## 4. Roles & permissions (enforced in the PHP API)
 
 | Role                   | Scope                    | Can do                                                                                                                                                                                                                                 |
 | ---------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Super Admin**        | Platform                 | Tenant management, subscription/billing oversight, support, audit logs, feature flags, GDPR tools. _(Shipped: 18 console screens under `/admin`, gated by `RequirePlatformAdmin` with four routes narrowed further by platform role.)_ |
+| **Super Admin**        | Platform                 | Tenant management, subscription/billing oversight, support, audit logs, feature flags, GDPR tools. _(Shipped: 19 console screens under `/admin`, gated by `RequirePlatformAdmin` with 15 of those screens also wrapped in `RequirePlatformRole`; counted in `src/App.tsx` on 9 November 2026.)_ |
 | **Organisation Owner** | One org                  | Invite managers, manage subscription, locations, departments, roles, company settings, policies, org-wide reports.                                                                                                                     |
 | **Manager**            | Org / assigned locations | Build & publish rotas, assign shifts, approve leave & overtime, review clock-ins, approve swaps, manage availability, export payroll/timesheets, send announcements.                                                                   |
 | **Staff**              | Self                     | View rota, receive notifications, clock in/out, request leave & overtime, request/accept shift swaps, set availability, view hours, download rota, manage emergency contact, calendar sync.                                            |
 
-All permissions are enforced by **Supabase RLS predicates** scoped by `org_id` and
-role membership, never in the client alone.
+All permissions are enforced by **access checks in the PHP API**, scoped by organisation id and the role
+read from the database on every request, never in the client alone: `Scope::membership()` in
+`backend/src/Scope.php` (a non-member gets 404; a platform support session gets a manager's reach, never an
+owner's), and the platform roles in `backend/src/Mod/Console.php`. The organisation roles are `owner`,
+`manager` and `staff`; the platform roles are `platform_owner`, `platform_admin`, `platform_support` and
+`platform_finance` (Super Admin is a platform role, not a fourth organisation role).
+
+**The cells above were checked on 9 November 2026** against the handler guards recorded in the "Access" line of
+each module in `docs/API-SPEC.md` (read from the handlers) and the modules themselves. Differences from the table:
+inviting a **manager** needs a *real* owner or manager (a delegate or a support session cannot create one), and
+staff invitations need an owner or manager (`backend/src/Mod/Invites.php`); "manage subscription" and "company
+settings" are the owner only (`Billing.php`, `OrgSettings.php`); role changes and ownership transfer are the real
+owner only (`Orgs.php`). The Super Admin cells map onto four platform roles with different reach (finance reads no
+people or tenant data in the module header, though `Console.php` lets finance read the organisation summary, a
+difference recorded in `docs/API-SPEC.md`). **NOT VERIFIED:** "org-wide reports" and "download rota" are built in the
+browser from the same list routes (and a file made on the device), so they have no guard of their own; each report's
+reach is the reach of the routes it reads.
 
 ## 5. Feature set (full platform, phased)
 
 ### Phase 1. Core scheduling loop
 
 1. **Multi-tenant foundation**. Organisations, locations, departments; every record
-   `org_id`-scoped with RLS isolation; role-based memberships.
+   `org_id`-scoped and checked in the PHP API; role-based memberships.
 2. **Staff management**. Profiles (photo, job title, department, skills, contract
    type, working hours, holiday allowance, emergency contact, documents, payroll ID).
 3. **Rota builder**. Weekly/fortnightly/monthly grid, drag-and-drop,
@@ -73,9 +96,9 @@ role membership, never in the client alone.
    Weekend, On-Call, Bank, Training, etc.).
 5. **Staff mobile rota view**. Installable PWA, offline-first, calendar month/week/day
    views, ICS calendar **file download** and a **subscription feed** — a per-person
-   tokenised URL served by an Edge Function (`0099`). The old note here said a
+   tokenised URL served by the PHP API (`GET /ics`, `backend/src/Mod/CalendarFeed.php`; an Edge Function, `0099`, in the Supabase era). The old note here said a
    subscription was impossible because "a static PWA cannot serve one", which was
-   true of the PWA and forgot the Edge Functions the rest of the product runs on.
+   true of the PWA and forgot the server side the rest of the product runs on.
 6. **Availability**. Staff submit available/unavailable/preferred/recurring; managers
    schedule around it.
 7. **Leave**. Request, approve/reject, entitlement tracking, calendar conflicts.
@@ -96,13 +119,14 @@ role membership, never in the client alone.
     cost (`0104`); CSV payroll export (no Excel writer in the dependency tree);
     per-employee/department/location rota export; **CSV import** of a staff list.
 13. **Offline + background sync**. View rota, clock in/out, request leave, read
-    announcements offline; reconcile on reconnect.
+    announcements offline; reconcile on reconnect. (Offline *reads* are not met today: see the Offline row in section 3; queued writes are.)
 14. **GDPR essentials**. Audit logging, data export and anonymisation. **No consent
     capture exists** — nothing records or stores a consent decision, and that is a
     decision rather than an omission: consent is the wrong lawful basis for
     employment data, and a checkbox would create a right to withdraw that an
-    employer cannot honour (`docs/SAAS.md` CAP-058). The organisation export covers
-    33 tables and names the seven it deliberately leaves out.
+    employer cannot honour (`docs/SAAS.md` CAP-058). The organisation export lists 36 names,
+    reads 22 of them from API list routes, names nine it deliberately leaves out and lists
+    14 as not yet available from the API (`src/services/orgLifecycleService.ts`; `docs/SECURITY.md` section 4).
 
 ### Phase 2. Intelligence and enterprise
 
@@ -119,16 +143,18 @@ Phase 2 any more.
 - Advanced analytics (utilisation, coverage gaps). **Labour cost shipped early**
   (`0104`) — it needed a rate table, not a forecast, and a rota approved without a
   cost is approved against the wrong question.
-- **Shipped early:** documents with expiry **automation** — expiry is stored and surfaced as a rota-review insight (`src/lib/rotaInsights.ts`). Scheduled reminders run every 15 minutes via `pg_cron` and `notification_outbox` (`0093_scheduled_alerts.sql`), notifying owners and managers of missed clock-ins and expiring documents. (DBS, Right to Work, visas, certificates).
+- **Shipped early:** documents with expiry **automation**: expiry is stored and surfaced as a rota-review insight (`src/lib/rotaInsights.ts`). Reminders are sent by the PHP cron job (`backend/bin/cron.php`, every five minutes on the live host): `Compliance::cron` (`backend/src/Mod/Compliance.php`, gated to once in 15 minutes) sends each stage once, 30, 14 and 7 days before an approved document expires and the day after, to the person and to the organisation's owners and managers; `Notifications::scheduledAlerts` (`backend/src/Mod/Notifications.php`) tells owners and managers when nobody has clocked in 30 minutes after a shift started. Both go through `notification_outbox`. (In the Supabase era this was `pg_cron`, `0093`.) (DBS, Right to Work, visas, certificates).
 - SSO, custom per-tenant branding, open API, advanced compliance.
-- **Shipped early: subscription billing**. Stripe Checkout + Billing Portal shipped `0050`
-  (`create-checkout-session`, `create-portal-session`, `stripe-webhook` — see
-  `docs/API-SPEC.md`, "Billing functions"): plan gating, invoice sync, dunning-triggered
-  suspension all wired to real `subscriptions`/`invoices` tables, and every
-  plan (Starter/Professional/Business/Enterprise) has a real Stripe price
-  configured — checkout is not gated on any plan. What's not yet done: no
-  real completed charge has been run through it end-to-end (verified
-  2026-08-20 that the code path is correctly wired; see
+- **Shipped early: subscription billing**. Stripe Checkout and the Billing Portal, with a
+  signature-checked webhook, are PHP routes now (`backend/src/Mod/Billing.php`,
+  `backend/src/Mod/StripeWebhook.php`, `backend/src/StripeClient.php`; `docs/API-SPEC.md`, the Billing and
+  StripeWebhook sections), where they were Edge Functions (`0050`) in the Supabase era. Plan gating, invoice
+  sync and a 14-day grace period after a failed payment are wired to the `subscriptions` and `invoices` tables
+  (`backend/src/Billing.php`). Checkout takes Starter, Professional or Business; Enterprise is by arrangement
+  (`docs/API-SPEC.md`). Whether each plan has a Stripe price configured on the live account, and whether the
+  server is in Stripe test or live mode, are `NOT VERIFIED` (Stripe dashboard and server configuration).
+  What's not yet done: no real completed charge has been run through it end-to-end (verified
+  2026-08-20 that the code path was correctly wired, in the Supabase era; see
   `qa/FUNCTIONAL-AUDIT.md`). Apple Pay / Google Pay / PayPal remain unbuilt.
 - **Trial terms (owner decision D2, `0154`).** Every new organisation gets a
   30-day free trial with Professional limits (five sites, 60 staff) and no card.
@@ -139,21 +165,25 @@ Phase 2 any more.
   in, see and export everything, and staff can still clock in, clock out and
   request leave, but nobody can create or publish a rota, add or change shifts,
   or invite anyone, and plan features such as the AI assistant stop, until a plan
-  is chosen. The database enforces it (SQLSTATE `BILL1`); the in-app banner and
+  is chosen. The API enforces it (HTTP 402 `billing_read_only`, `backend/src/Billing.php`; SQLSTATE `BILL1` in the Supabase era); the in-app banner and
   Settings, Billing explain it.
 
 ## 6. Non-functional requirements
 
-- **Static-first:** zero server runtime; dynamic behaviour is client-side or offloaded
-  to Supabase (Auth/DB/RLS, Edge Functions, `pg_cron` + `pg_net`), ImageKit,
-  Sentry and Stripe. Inngest is fully retired (`0087`) — no function, no key.
-- **Multi-tenant:** single Supabase project; `org_id` on every table; RLS tenant
-  isolation is the last line of defence.
+- **Static front end, PHP API:** the front end is a static bundle; dynamic behaviour is in the PHP 8.4
+  API on the same cPanel host (`backend/`), with a cPanel cron job, the notification outbox and `Dispatcher`
+  for background work (`docs/NOTIFICATIONS-SPEC.md`), and the managed services Clerk, Stripe, OpenRouter and
+  Sentry. Supabase, ImageKit and Inngest are retired (Inngest in `0087`, Supabase at the cutover).
+- **Multi-tenant:** one MariaDB database; `org_id` on every tenant table; the isolation is an access check in
+  PHP on every organisation route (`Scope::membership`). Row-level security is retired, so that check is the
+  last line of defence (`docs/DATA-MODEL.md` section 5).
 - **Type-safe:** TypeScript strict, no implicit `any`.
 - **Portable UI:** plain Tailwind 4 utility classes and typed hooks, so a future Expo
   shell could reuse the hooks. NativeWind is not a dependency today.
-- **Secure:** only write-scoped / RLS-guarded keys reach the browser; SMTP, payment
-  and signing secrets live only in Edge Functions.
+- **Secure:** only public values (`VITE_*`) reach the browser; SMTP, payment, signing and AI keys live
+  only in the API's private configuration outside every web root (`backend/private/config.example.php`).
+  Limits of the host (request time, memory, upload size) are `NOT VERIFIED` (hosting configuration); the
+  API's own limits are a rate limiter per user and per address and a body cap per route (`backend/src/Api.php`).
 - **Accessible:** WCAG AA contrast, 44px touch targets, visible focus rings; never
   convey shift state by colour alone.
 - **Region/compliance:** UK-first (GDPR / UK GDPR terminology); PII handled with care.
@@ -170,7 +200,7 @@ Phase 2 any more.
   not yet exercised with a real completed payment).
 - SMS notifications (schema + channel seam reserved; **not** wired up yet).
 - Payroll integrations, SSO, open API (all Phase 2). **AI scheduling shipped early** —
-  `supabase/functions/ai-rota-assistant` plus two deterministic tabs; see
+  `backend/src/Mod/AiAssistant.php` (an Edge Function in the Supabase era) plus two deterministic tabs; see
   `docs/ARCHITECTURE.md` §9. Auto-fill, forecasting and burnout detection remain Phase 2.
 - Native app-store submission (the Expo bridge is a later milestone).
 
@@ -216,16 +246,24 @@ implied.
 | Staff adoption         | **Needs new capture**                | Nothing records "viewed the published schedule" as a distinct event. `invites.accepted_at` gives invited→joined; view is a genuine gap.                                                                                                                                                                                                                                              |
 | Attendance reliability | **Computable now, with a caveat**    | `clock_events.synced`, `clock_events.event_at` (when it happened on-device) vs `clock_events.created_at` (when the row landed server-side) approximates time-to-sync — the gap between the two for a previously-`synced = false` row. This is a proxy, not an instrumented sync-duration field; stated as such rather than presented as exact.                                       |
 | Workflow completion    | **Computable now**                   | `leave_requests`/`shift_swaps`/`overtime_requests` all carry `created_at` and `reviewed_at`. Completion time is the gap; verified present on all three tables, not assumed.                                                                                                                                                                                                          |
-| AI quality             | **Partially computable**             | Acceptance/drop counts and the requester are real, written by `ai-rota-assistant` on every completed request (`audit_logs`, action `ai_assistant.rota_suggestions_generated`). Manager-edit-before-save and an explicit usefulness rating are not captured — the audit row records what the model produced and what passed verification, not what the manager did with it afterward. |
+| AI quality             | **Partially computable**             | Acceptance/drop counts and the requester are real, written by `backend/src/Mod/AiAssistant.php` on every completed request (`audit_logs`, action `ai_assistant.rota_suggestions_generated`). Manager-edit-before-save and an explicit usefulness rating are not captured — the audit row records what the model produced and what passed verification, not what the manager did with it afterward. |
 | Accessibility          | **Computable now**                   | The `e2e` CI job's axe output is a real automated violation count per run, already gating merges. Manual keyboard/screen-reader pass rate is a human UAT process (P0 #5 of the transformation plan), not something to automate.                                                                                                                                                      |
 | Performance            | **Needs new capture**                | No Web Vitals collection exists client-side. p75 LCP/INP/CLS need a reporting mechanism (e.g. the `web-vitals` library posting to Sentry or a dedicated table) that does not exist yet.                                                                                                                                                                                              |
-| Satisfaction/retention | **Partially computable**             | `support_cases.csat` is real (written by the support flow). NPS/interviews are a human process. 30/60/90-day active-org retention is computable from `organisations.last_activity_at` (maintained by `touch_org_activity()`, 0023) once there is enough history to measure against.                                                                                                  |
+| Satisfaction/retention | **Partially computable**             | `support_cases.csat` is real (written by the support flow). NPS/interviews are a human process. 30/60/90-day active-org retention was computable from `organisations.last_activity_at` (maintained by `touch_org_activity()`, 0023, in the Supabase era); that column and function do not exist in MariaDB, so the row is `NOT VERIFIED` until a replacement signal is chosen.                                                                                                  |
 | Commercial             | **Out of scope for instrumentation** | Conversion, willingness-to-pay, support cost per org are pricing and sales-process outputs, not client-side events.                                                                                                                                                                                                                                                                  |
 
 ### The queries were run, not just proposed
 
 Every row marked "computable now" was actually run against the live
 demo/seed dataset (13 August 2026), not just checked for schema presence.
+
+> [Note, 9 November 2026. Those queries were written for the retired Supabase-era Postgres schema and have
+> **not been re-run against MariaDB** (`NOT VERIFIED`). The table and column names in the metrics table above
+> were compared with `backend/migrations`: they exist, except `organisations.last_activity_at` and
+> `touch_org_activity()`, which do not (the nearest signal is `users.last_seen_at`, written at most every 300
+> seconds by `backend/src/Users.php`). `git grep -n 'track(' -- src` prints nothing, so the front end emits no
+> product events at all: the table names tables and columns, not emitted events, and there is no event
+> taxonomy to compare. `NOT VERIFIED` that the "computable now" rows still compute anything useful.]
 
 > ⚠️ **That dataset no longer exists.** It was torn down on 2026-08-14 and every seed
 > script was deleted in `#120`. Production now holds **zero organisations, one auth
@@ -265,7 +303,7 @@ or worse, a broken product.
 > ⚠️ **Everything in this section is evidence from a dataset that no longer
 > exists, and it cannot be reproduced.** The demo dataset these queries ran
 > against was destroyed on 14 August 2026, and the seed scripts that built it
-> (`supabase/seed/*.sql`) were deleted on 19 August. Production today holds
+> (`supabase/seed/*.sql`, Supabase era) were deleted on 19 August. Production today holds
 > **zero organisations and zero clock events**. The numbers below are kept
 > because the _shapes_ they revealed are still true — the independent-timestamp
 > bug, the `created_at`-minus-`event_at` proxy measuring seed generation rather
@@ -299,12 +337,12 @@ metrics already have their data is exactly the premature-dashboard mistake
 1. Query the six already-computable rows and confirm the numbers look
    sane against the live demo/seed data before writing a single new event.
 2. Add the AI-suggestion-outcome capture (edited/used/discarded) as a small
-   extension of the existing audit write in `ai-rota-assistant`, since that
-   code path and its service-role audit client already exist.
+   extension of the existing audit write in `backend/src/Mod/AiAssistant.php` (its `audit()` method),
+   since that code path already exists.
 3. Decide whether rota-session-start and schedule-view events are worth a
    first-party `product_events` table (same pattern as `audit_logs`,
-   `incidents`, `support_cases` — org-scoped, RLS-guarded, stored in the
-   same Supabase project rather than shipped to a third-party analytics
+   `incidents`, `support_cases` — org-scoped, access-checked in PHP, stored in the
+   same MariaDB database rather than shipped to a third-party analytics
    vendor) or deferred until there is a design partner asking for the
    number. Either way, this is a schema decision — a migration — not
    something to apply ad hoc outside the normal review path.

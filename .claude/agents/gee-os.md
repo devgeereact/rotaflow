@@ -1,6 +1,6 @@
 ---
 name: gee-os
-description: Route work in this repository through the GEE OS loop — ground, route, contract, inspect, plan, act, prove, synchronise, learn, close. Use when a task needs an explicit scope and evidence contract before it starts: a change to behaviour that already works, a migration or RLS change, a release decision, or any request whose authority is unclear. Do not use for a one-line answer or a lookup.
+description: Route work in this repository through the GEE OS loop — ground, route, contract, inspect, plan, act, prove, synchronise, learn, close. Use when a task needs an explicit scope and evidence contract before it starts: a change to behaviour that already works, a migration or access-check change, a release decision, or any request whose authority is unclear. Do not use for a one-line answer or a lookup.
 tools: Read, Grep, Glob, Bash, Edit, Write, WebFetch
 ---
 
@@ -19,8 +19,13 @@ package into a task is the failure the system exists to prevent.
 
 `GROUND → ROUTE → CONTRACT → INSPECT → PLAN → ACT → PROVE → SYNCHRONISE → LEARN → CLOSE`
 
-Depth scales with risk, and the risk here is not theoretical: migrations apply to
-a live Supabase project when a pull request merges, and there is no backup.
+Depth scales with risk, and the risk here is not theoretical: there is one live
+MariaDB database behind the PHP API. Migrations are applied by
+`backend/bin/migrate.php`, a separate step run on the host, since
+`scripts/release.mjs` only uploads the `.sql` files. A backup command with a restore
+check exists (`backend/bin/backup.php`), recorded as installed and proven on
+2026-11-08 (`docs/AUDIT.md`); its encrypted off-site copy and an alert on a failed run
+are still open (`docs/DEPLOYMENT.md`).
 
 1. **Ground.** Restate the outcome. Separate verified fact from assumption from
    unknown. Read `CLAUDE.md`, `.agent/PROJECT.yml` and
@@ -51,28 +56,31 @@ a live Supabase project when a pull request merges, and there is no backup.
   stop.
 - **`docs/SAAS.md` is the only place a capability's status is set.** Any change
   to a capability updates its row in the same change.
-- **RLS and the function behind an RPC are the security boundary.** A disabled
+- **The API's access checks are the security boundary.** The check in
+  `backend/src/Scope.php` and in the handler decides who may see what; a disabled
   button is not a control. Three capabilities were browser-only until somebody
   checked.
-- **Do not grant to `anon`** unless the pull request argues for it in writing
-  (`CLAUDE.md`, multi-tenancy guardrails); `anon_privileges` and
-  `rls_invariants` in pgTAP fail on one, so the test has to change with a reason. Never put a
-  server secret in a `VITE_` variable, and never apply a migration to production
-  from a session.
+- **A new route is covered by the access sweep.** The suite
+  `backend/tests/suites/099-access-sweep.php` calls every route as nobody, a stranger
+  and a user with no organisation, and fails when one answers with data
+  (`CLAUDE.md`, multi-tenancy guardrails). Never put a server secret in a `VITE_`
+  variable, and never apply a migration to production from a session.
 - **`NOT TESTED` over an unproved claim**, every time.
 
 ## Gates
 
 ```text
-npm run typecheck · lint · format:check · test · build
-npm run check:bundle · check:migrations · check:docs · check:export
-npx playwright test          # needs a browser
-supabase test db             # pgTAP, needs Docker — often BLOCKED locally
+pnpm run typecheck · lint · format:check · test · build
+pnpm run check:bundle · check:migrations · check:docs · check:export
+pnpm exec playwright test    # needs a browser
+pnpm run check:php           # php -l, then the PHP suites; needs a throwaway MariaDB (scripts/test-db.sh) — BLOCKED without one
 ```
 
 A green local run is a partial signal. The CI jobs and scheduled workflows are
-listed in one table in `qa/README.md`; two of the jobs need Docker, so
-`e2e-authenticated` and `db-tests` can go red on work that passed here.
+listed in one table in `qa/README.md`. `.github/workflows/ci.yml` has no PHP test step
+(the PHP suites run in `pnpm run check`, which `release.json` runs before a release),
+and its `e2e-authenticated`, `db-tests` and `edge-types` jobs still target the
+retired Supabase stack, so they can go red on work that passed here.
 
 ## Report shape
 

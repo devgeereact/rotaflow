@@ -1,951 +1,406 @@
-# Supabase PostgreSQL Schema & Security. RotaFlow
+# MariaDB data model. RotaFlow
 
-The canonical, runnable source is `supabase/migrations/`. `0001_init.sql` ships the
-built-in `profiles` + `app_settings` and conventions; **`0002_rotaflow.sql`** adds the
-RotaFlow domain; **`0003_fix_organisations_select_rls.sql`** fixes an org-creation
-RLS bootstrap bug (see §5); **`0004_rotas_draft_unique.sql`** adds partial unique
-indexes so concurrent callers can't create duplicate draft rotas; **`0005_narrow_organisations_select_rls.sql`**
-closes the permanent creator-read bypass `0003` left open (see §5). Apply via the
-Supabase SQL editor or `supabase db push`. This intro only narrates the earliest
-migrations; §3 and §4 below cover every table through the current
-`00NN_*.sql` file — re-read those rather than this paragraph for anything past `0005`.
+The live schema is the files `backend/migrations/001-foundation.sql` to `backend/migrations/020-timesheet-reopenings.sql`: 19 migration files, 69 tables, on MariaDB behind the PHP API.
+This document is read from those files and from `backend/src`; where it says a rule is "in PHP" the module is named.
+It replaces the earlier description of the retired Postgres schema, which is kept in git (section 10).
 
-RotaFlow is **multi-tenant on a single database**: every domain table carries an
-`org_id`, and Row Level Security isolates tenants. RLS is the last line of defence. The client also scopes every query, but the database guarantees no cross-tenant leak.
+RotaFlow is **multi-tenant on one database**: every domain table carries an `org_id` and every request is checked
+against the caller's membership in PHP (`backend/src/Scope.php`). Row-level security is retired with the old stack (MariaDB has none), so the database
+is a second line of defence only through composite foreign keys, unique keys, CHECK constraints and four triggers
+(section 4). The first line is the PHP check (section 5).
 
-## 1. Tenancy & roles model
+## 1. Overview
 
-```text
-auth.users ──1:1──> public.profiles
-                        │  (is_platform_admin flag = Super Admin)
-                        ▼
-                  public.memberships ──> role: owner | manager | staff
-                        │  (user_id, org_id, role, status)
-                        ▼
-                  public.organisations  (the tenant root)
-                        ├── locations ── departments
-                        ├── staff_profiles (may exist before an auth user; user_id nullable)
-                        ├── shift_types
-                        ├── rotas ── shifts
-                        ├── availability · leave_requests · overtime_requests · shift_swaps
-                        ├── clock_events · timesheets
-                        ├── emergency_contacts · documents
-                        ├── announcements · notifications
-                        ├── subscriptions (billing seam)
-                        └── audit_logs
+### Engine and connection
+
+- **Engine and character set.** Every `CREATE TABLE` in `backend/migrations` ends `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`.
+  The connection string comes from private configuration outside the web root; `backend/private/config.example.php`
+  shows the shape (a `mysql:` DSN with `charset=utf8mb4`, user and password).
+- **Connection settings.** `backend/src/Db.php` opens PDO with exceptions on errors, associative fetches and real
+  prepared statements (`ATTR_EMULATE_PREPARES` off), then runs `SET time_zone = '+00:00'` and
+  `sql_mode = 'STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION'`. Strict mode is why an ENUM column refuses a value outside its list.
+- **Server version.** A comment in `scripts/datamove-test.sh` states that the live host runs MariaDB 11.4.13. Nothing in the
+  repository proves the version today: `NOT VERIFIED` (server state). The local test database is a throwaway server started by `scripts/test-db.sh`.
+- **Identifiers and time.** Ids are `CHAR(36)` UUID v4 strings generated in PHP (`Db::uuid`). Three log tables use a
+  `BIGINT UNSIGNED` auto-increment id instead: `audit_logs`, `notification_deliveries`, `retention_runs`. All times are UTC (`DATETIME`;
+  `DATETIME(3)` on clock events and corrections). Booleans are `TINYINT(1)`. JSON columns are `JSON` with a `JSON_VALID` CHECK where the migration adds one.
+
+### Counts, and the commands that give them
+
+```bash
+ls backend/migrations | wc -l      # 19 files, numbered 001 to 020 (there is no 012)
+grep -hoE 'CREATE TABLE( IF NOT EXISTS)? `?[a-z_0-9]+' backend/migrations/*.sql | sed -E 's/.* `?//' | sort -u | wc -l   # 69
 ```
 
-- **Super Admin** = `profiles.is_platform_admin = true` (platform-wide; not an org
-  membership).
-- **Owner / Manager / Staff** = a row in `memberships` for that `org_id`.
-- A person can belong to multiple organisations (each with its own role).
-- **There is no location-scope column on `memberships`.** A manager's site scope is
-  inferred through `departments.location_id`; nothing narrows a membership to a site.
-
-## 2. Built-in tables (from `0001_init.sql`)
-
-### `profiles`
-
-| Column       | Type          | Notes                                   |
-| ------------ | ------------- | --------------------------------------- |
-| `id`         | `uuid` PK     | FK → `auth.users.id`, cascade on delete |
-| `email`      | `text`        | unique, not null                        |
-| `full_name`  | `text`        | nullable                                |
-| `avatar_url` | `text`        | nullable (often an ImageKit URL)        |
-| `created_at` | `timestamptz` | default `now()`                         |
-| `updated_at` | `timestamptz` | default `now()`, bumped by trigger      |
-
-`0002` adds **`is_platform_admin boolean not null default false`** (Super Admin flag).
-`0015` turns it into a derived mirror — see §4 below; nothing may write it directly.
-
-### `app_settings`
-
-Per-user preferences (`theme`, `notifications_enabled`). Unchanged. `theme` values
-`dark`/`light`. The app defaults to **light** and never reads
-`prefers-color-scheme` — a brand decision, see `src/context/ThemeContext.tsx`.
-`notifications_enabled` is read on the send path by
-`supabase/functions/send-notification` — a person who switches it off is dropped
-before any channel runs. An **absent row means the column default (`true`)**, never
-"opted out"; do not infer consent from a missing row.
-
-`0163` adds three text columns, each with a check constraint and a default that is
-the behaviour before it: `time_format` (`24h` | `12h`, read by `src/lib/format.ts`
-through `usePersonalPreferences`), `week_start` (`monday` | `sunday`, read by My
-rota only: rota periods stay Monday-keyed, see GAP-116) and `digest_frequency`
-(`immediate` | `daily` | `weekly`, stored and read by nothing yet, because no
-digest job exists). No new policy or grant: `app_settings_all_own` and the 0056
-table grants cover the columns. Tested by
-`supabase/tests/database/personal_preferences.test.sql`.
-
-## 3. RotaFlow tables (from `0002_rotaflow.sql`)
-
-Every table below has `id uuid PK`, `org_id uuid` (FK → `organisations`, except
-`organisations` itself), `created_at`, `updated_at`, RLS enabled, and a
-`set_updated_at()` trigger.
-
-| Table                     | Key columns                                                                                                                                                                                                                                                                                                                                                                                                                | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `organisations`           | `name`, `slug` (unique), `plan`, `settings jsonb`, `created_by`, `status` (`active`\|`suspended`\|`archived`, `0017`), `suspended_at?`, `support_access_allowed` (default `false` since `0153`; was `true` from `0017`, and rows created before `0153` kept their value), `is_demo` (default `false`, `0035`), `trial_ends_at` (default thirty days after creation, `0154`; `plan` defaults to `professional` from `0154`) | Tenant root. `status` moves only via `set_org_status()` (§6). `support_access_allowed` is the customer's consent, enforced by `request_support_access()` (§4) and re-checked on every read by `has_support_access()` (`0143`). A new organisation starts without it (plan decision D8): support asks in the case thread and the owner turns it on. `is_demo` survives as a column only: the seed scripts it gated were deleted with the UI badge in `#120`, so nothing reads or writes it outside the generated types.                                                                                                                                                                                                                                                         |
-| `memberships`             | `org_id`, `user_id`→profiles, `role` (`owner`\|`manager`\|`staff`), `status`                                                                                                                                                                                                                                                                                                                                               | Who belongs to an org and as what.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `locations`               | `org_id`, `name`, `address`, `latitude`, `longitude`, `timezone`, `geofence_radius_m`, `location_type?`, `status` (`setup`\|`active`\|`maintenance`\|`inactive`, default `setup`, `0045`)                                                                                                                                                                                                                                  | Sites; clock-in geofencing.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `departments`             | `org_id`, `location_id?`, `name`                                                                                                                                                                                                                                                                                                                                                                                           | Kitchen, Nursing, Reception…                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `staff_profiles`          | `org_id`, `user_id?`, `email?` (`0053`), `first_name`, `last_name`, `job_title`, `department_id?`, `contract_type`, `weekly_hours`, `holiday_allowance`, `skills text[]`, `payroll_id`, `start_date`, `phone`, `photo_url`, `photo_path?` (`0162`), `active`                                                                                                                                                               | Employee record. `email` (`0053`) exists only to auto-link `user_id` to the real login once matched by a trigger or `accept_invite()`, in whichever order the HR record and the invite happen — before `0053` nothing ever set `user_id`, so a published rota was invisible to every real invited staff member.                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `shift_types`             | `org_id`, `name`, `colour`, `default_start`, `default_end`, `is_paid`, `category`                                                                                                                                                                                                                                                                                                                                          | Morning/Late/Night/On-Call…                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `rotas`                   | `org_id`, `location_id`, `name`, `period_start`, `period_end`, `status` (`draft`\|`published`\|`archived`), `published_at`, `published_by`, `supersedes_rota_id`, `archived_at`, `created_by`                                                                                                                                                                                                                              | A schedule for a period/location. See §6a for the lifecycle — `0061` made it server-enforced.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `shifts`                  | `org_id`, `rota_id?`, `location_id`, `department_id?`, `staff_profile_id?`, `shift_type_id?`, `starts_at`, `ends_at`, `break_minutes`, `status` (`open`\|`assigned`\|`confirmed`\|`cancelled`), `colour`, `notes`                                                                                                                                                                                                          | The atomic scheduled unit. `staff_profile_id` null = open shift.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `availability`            | `org_id`, `staff_profile_id`, `weekday?`, `date?`, `start_time`, `end_time`, `status` (`available`\|`unavailable`\|`preferred`), `recurring`                                                                                                                                                                                                                                                                               | Recurring or one-off availability.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `leave_requests`          | `org_id`, `staff_profile_id`, `type`, `start_date`, `end_date`, `status` (`pending`\|`approved`\|`rejected`\|`cancelled`), `reason`, `reviewed_by?`, `reviewed_at?`                                                                                                                                                                                                                                                        | Holiday/sick/unpaid requests. One person holds **one live booking per day**: `leave_requests_no_live_overlap` (`0152`) is a GiST exclusion constraint refusing a second `pending`-or-`approved` request that shares a date with one they already hold, whatever its type. A `rejected` or `cancelled` request blocks nothing. Violations arrive as `23P01`.                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `overtime_requests`       | `org_id`, `staff_profile_id`, `date`, `hours`, `status`, `note`                                                                                                                                                                                                                                                                                                                                                            | Staff offer / manager allocate overtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `shift_swaps`             | `org_id`, `shift_id`, `requested_by`, `target_staff_profile_id?`, `status` (`pending`\|`accepted`\|`approved`\|`rejected`\|`cancelled`), `note`                                                                                                                                                                                                                                                                            | Swap workflow.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `clock_events`            | `org_id`, `staff_profile_id`, `shift_id?`, `type` (`in`\|`out`\|`break_start`\|`break_end`), `event_at`, `event_at_reported?` (`0068`), `latitude?`, `longitude?`, `accuracy?`, `method` (`gps`\|`qr`\|`manual`), `location_name?`, `synced`                                                                                                                                                                               | Attendance; offline-created then synced. `event_at_reported` records what the device claimed when `clock_events_guard_event_at` overrode it; **null means `event_at` is exactly what was submitted**, which is the normal case.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `timesheets`              | `org_id`, `staff_profile_id`, `period_start`, `period_end`, `total_minutes`, `status`                                                                                                                                                                                                                                                                                                                                      | Summarised hours for payroll export.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `emergency_contacts`      | `org_id`, `staff_profile_id`, `name`, `relationship`, `phone`, `secondary_phone?` (`medical_notes` dropped by `0164`, GAP-058)                                                                                                                                                                                                                                                                                             | Per-employee.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `documents`               | `org_id`, `staff_profile_id`, `type`, `name`, `storage_path?` (private bucket, `0159`) or `file_url?` (legacy link), `issued_at?`, `expires_at?`                                                                                                                                                                                                                                                                           | Contracts, DBS, RTW, visas; expiry surfaced in Phase 2.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `announcements`           | `org_id`, `author_user_id`, `scope` (`org`\|`location`\|`department`), `location_id?`, `department_id?`, `title`, `body`, `urgent`, `published_at`                                                                                                                                                                                                                                                                         | Communication centre.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `notifications`           | `org_id`, `user_id`, `type`, `title`, `body`, `channel` (`push`\|`email`\|`sms`), `read_at?`                                                                                                                                                                                                                                                                                                                               | In-app + delivery record. **`sms` is a reserved channel value, not delivered in V1.**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `subscriptions`           | `org_id`, `plan` (`starter`\|`professional`\|`business`\|`enterprise`), `status`, `provider`, `provider_ref?`, `stripe_customer_id?`, `price_pence?`, `started_at`, `current_period_end?`, `canceled_at?`                                                                                                                                                                                                                  | Billing seam, now wired to Stripe (`0050_stripe_billing.sql`, `supabase/functions/stripe-webhook`). `plans.stripe_price_id` maps each tier to its Stripe Price. `price_pence` overrides the plan's list price only where a deal was struck; MRR/churn reconstruction (`src/lib/revenue.ts`) sums `coalesce(price_pence, plan price)` over rows the arithmetic selects. `canceled_at` is set the moment cancellation is _requested_ (Stripe's Customer Portal defaults to cancel-at-period-end), not when it takes effect — it is **not** immutable, and can be cleared back to `null` if the customer un-cancels before period end. Only `status = 'canceled'` means a subscription has actually, fully ended; MRR/churn code gates on `status`, never on `canceled_at` alone. |
-| `audit_logs`              | `org_id`, `actor_user_id?`, `action`, `entity_type`, `entity_id?`, `metadata jsonb`, `created_at`                                                                                                                                                                                                                                                                                                                          | GDPR + compliance trail (append-only).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `invoices`                | `org_id`, `number` (unique), `period_start/end`, `amount_pence`, `tax_pence`, `currency`, `status` (`draft`\|`open`\|`paid`\|`past_due`\|`refunded`\|`void`), `issued_on`, `due_on`, `paid_at?`, `failure_reason?`, `provider?`, `provider_ref?` (`0023`), `hosted_invoice_url?`, `invoice_pdf?` (Stripe hosts only, `0156`)                                                                                               | One org's billing history. Read by the org's own owner (they're the customer) and platform finance; written only by the RPCs that issue/mark them and by `stripe-webhook`. The owner's Billing screen lists the last 12 with their Stripe links (§4.14).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `minimum_cover_rules`     | `org_id`, `location_id`, `weekday` (0=Sunday..6=Saturday, matching `availability.weekday`), `min_staff` (`0036`)                                                                                                                                                                                                                                                                                                           | Per-site, per-weekday staffing minimum. A standing policy, not a schedule. `src/lib/rotaInsights.ts` computes the gap for display; `publish_rota` also enforces it server-side (`0080_enforce_minimum_cover.sql`), refusing to publish an understaffed rota.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `announcement_reads`      | `org_id`, `announcement_id`, `staff_profile_id`, `read_at` (`0046`)                                                                                                                                                                                                                                                                                                                                                        | Read receipts for `announcements` — an org-shared fact ("who has seen this"), not a personal inbox item, so every member of the org can read every receipt for their org.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `invites`                 | `org_id`, `email`, `role`, `token`, `expires_at`, `accepted_at?`, `revoked_at?` (`0006`)                                                                                                                                                                                                                                                                                                                                   | One-time join links. `create_invite()` returns the token, and `supabase/functions/send-invite` emails it — wired from `src/services/inviteService.ts` and from both platform-console paths (`0058`, `0084`; `docs/SAAS.md` GAP-005 closed 2026-08-30). The send is best effort on top of a durable invitation: a refused send is reported and the copyable link stays, so the manual path remains a fallback rather than the only one. `accept_invite()` links the new `auth.users` row to a pre-existing `staff_profiles` row by email (`0053`).                                                                                                                                                                                                                              |
-| `push_subscriptions`      | `user_id`, `endpoint`, `p256dh`, `auth_key` (`0009`)                                                                                                                                                                                                                                                                                                                                                                       | Web Push endpoints. **User-scoped, not org-scoped — the one domain table with no `org_id`**, because a browser subscription belongs to a person, not a tenant. `send-notification` prunes 404/410 endpoints on send.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `org_smtp_settings`       | `org_id` PK, `smtp_host`, `smtp_port`, `smtp_user`, `smtp_pass`, `from_email`, `from_name?`, `verified_at?` (`0010`)                                                                                                                                                                                                                                                                                                       | Per-org SMTP so mail leaves the organisation's own server. `smtp_pass` is excluded from the column-level SELECT grant for `authenticated`, so it can never come back through the client; read `org_smtp_settings_safe` instead. `verified_at` is written **only** by a successful `test-smtp` send — "saved" and "known to work" are different claims.                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `notification_deliveries` | `org_id`, `user_id`, `channel` (`in_app`\|`email`\|`push`), `status` (`sent`\|`failed`\|`skipped`\|`expired`), `event_type`, `detail?` (`0067`)                                                                                                                                                                                                                                                                            | Was this person told, on which channel, and did it land. One row per recipient per channel per notification — `send-notification` computed this and discarded it until `0067`. Written only by that function (service_role); there is no client write policy. A manager or owner reads their org's rows and a person reads their own; `anon` is refused by the GRANT before RLS is consulted. **`sent` means the provider accepted it, not that a human saw it.** Retention is 12 months, set by `0092` and enforced by the nightly job; this line said "no retention policy yet — see GAP-027" for a week after that shipped.                                                                                                                                                 |
-| `notification_outbox`     | `org_id`, `event_name`, `payload jsonb`, `status` (`pending`\|`sent`\|`failed`\|`abandoned`), `attempts`, `request_id?`, `last_error?`, `dispatched_at?` (`0069`)                                                                                                                                                                                                                                                          | Notifications the database knows are owed, written in the same transaction as the event that caused them — so a closed browser tab cannot lose one. `rotas_enqueue_publish_notification` fills it on a rota publish, and since `0087` `leave_requests_enqueue_reviewed`, `shift_swaps_enqueue_reviewed` and `announcements_enqueue_published` fill it on the other three events the product notifies about — nothing is dispatched from the browser any more; `dispatch_notification_outbox()` drains it on a pg_cron tick via `pg_net`, reconciling each response before retrying. Owners and managers read their own org's queue; no client write policy. Secrets for the drain live in `vault`, never in a migration.                                                       |
-
-## 4. Platform-level tables (from `0015`+)
-
-Unlike §3, these aren't tenant data — they're the platform console's own
-tables. Most carry no `org_id` at all (`platform_admins`, `feature_flags`,
-`plans`, …); the few that do (`support_cases`, `integration_sync_runs`, the
-announcement/incident fan-out tables) are administered by platform staff, not
-by a tenant's own owner. Nearly every table below has **no insert/update/
-delete policy at all** — every mutation goes through a `security definer` RPC
-(`grant_platform_role`, `request_support_access`, `log_gdpr_request`, …) so
-validation — bounds checks, required justifications, the last-owner guard —
-can't be bypassed by writing to the table directly. Exceptions are called out
-per subsection below.
-
-### 4.1 Administration (`0015`, `0018`–`0020`)
-
-| Table                     | Key columns                                                                                                                                                                                            | Purpose                                                                                                                                                                                                                                                                                       |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `platform_admins`         | `user_id` PK, `role` (`platform_owner`\|`platform_admin`\|`platform_support`\|`platform_finance`), `granted_by/at`, `revoked_by/at`, `note`                                                            | Source of truth for _which kind_ of platform administrator someone is. `profiles.is_platform_admin` is a trigger-maintained mirror of "any non-revoked row exists" — `UPDATE` on that column is revoked from `authenticated` entirely, so nothing can desync it.                              |
-| `platform_settings`       | singleton (`id boolean primary key default true`), `platform_name`, `support_email`, `platform_url`, `default_timezone`, `registration_enabled`, `maintenance_mode`, `maintenance_message`             | Deployment-wide config, one row, seeded on migration. `maintenance_mode` is a banner, not a kill switch — nothing in a static PWA can refuse to serve itself, so it doesn't gate anything server-side.                                                                                        |
-| `support_access_sessions` | `org_id`, `admin_user_id`, `reason` (≥15 chars), `case_ref`, `scope` (`read`\|`read_write`), `granted_at`, `expires_at`, `revoked_at/by`                                                               | Time-boxed, justified record of platform staff accessing a tenant. Since `0028_support_access_gate.sql` this **is** the access grant, not just a note about one — see §5's "Platform-admin access is session-gated" — 15 minutes to 24 hours per session, one open session per admin per org. |
-| `gdpr_requests`           | `org_id?`, `subject_email`, `kind` (`access`\|`portability`\|`rectification`\|`erasure`\|`restriction`\|`objection`), `status`, `received_on`, `due_on`, `extended_to?`, `closed_at?`, `outcome_note?` | UK GDPR Article 15–22 request register. `due_on` is computed server-side as `received_on + 1 month` (Article 12(3)) — never client-supplied. Closing a request (`completed`/`refused`) requires `outcome_note`, enforced by both a CHECK and the RPC.                                         |
-
-### 4.2 Incidents (`0021`; `0033` cleaned up a duplicate)
-
-| Table              | Key columns                                                                                                                                                                                                                                                         | Purpose                                                                                                                                                                                                                                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `incidents`        | `reference` (unique, e.g. `INC-0142`), `title`, `impact`, `severity` (`critical`\|`high`\|`medium`\|`low`), `status` (`investigating`\|`identified`\|`monitoring`\|`resolved`), `service`, `started_at`, `detected_at?`, `resolved_at?`, `resolution?`, `is_public` | Distinct from `audit_logs` on purpose: an audit row is written once and never changes, an incident is edited repeatedly while open. A resolved incident must have both `resolved_at` and `resolution` (CHECK). `is_public` is reserved for a future status page — no policy grants `anon` access today, so setting it changes nothing yet. |
-| `incident_updates` | `incident_id`, `author_id?`, `status`, `body`                                                                                                                                                                                                                       | The timeline entries on one incident.                                                                                                                                                                                                                                                                                                      |
-
-Platform staff only, for now — see the header of `0021` for why. `0033` found and
-dropped a second, undeclared `platform_incidents`/`incident_events` implementation
-that had been written directly to production outside the migration set (turned up by
-diffing generated types against migrations) — empty, unreferenced by any code, and a
-reminder to re-run that diff before any future release.
-
-### 4.3 Feature flags (`0022`, entitlements split out in `0030`)
-
-| Table                  | Key columns                                                                                                                 | Purpose                                                                                                                                                                                                                                 |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `feature_flags`        | `key` PK (`^[a-z][a-z0-9_]{2,63}$`), `name`, `enabled`, `rollout` (0–100), `environment`, `critical`, `target_plans text[]` | A disabled flag is off for everyone regardless of `rollout`. `flag_enabled_for_org()` hashes `key` + `org_id` so a staged rollout is stable per organisation across renders — raising 10%→20% only ever _adds_ orgs, never removes one. |
-| `feature_flag_targets` | `flag_key`, `org_id` (composite PK)                                                                                         | Orgs explicitly opted in ahead of the rollout percentage (pilots).                                                                                                                                                                      |
-| `feature_flag_changes` | `flag_key`, `actor_id?`, `actor_name?`, `field`, `before_value?`, `after_value?`                                            | Before/after history in a shape the flag screen reads directly, alongside (not instead of) the immutable `audit_logs` entry for the same change.                                                                                        |
-
-`0030` drew a line this table can't enforce on its own: what a customer pays for
-belongs on `plans` (§4.4), not here, and four of the six rows `0022` created were
-entitlements wearing a flag's clothes. Those were moved and marked retired rather
-than deleted, since `feature_flag_changes` still references them.
-
-`0090` finished the job. `beta_integrations` was described here as a genuine
-dark-launch flag "the application now checks before rendering"; it checked nothing,
-and what it described — unreleased payroll and HR connectors — does not exist, so it
-is retired too. **`ai_rota_assistant` is the only live flag**, and the AI Edge
-Function honours it alongside the plan entitlement.
-
-### 4.4 Commercials (`0023`; Stripe columns in `0050`)
-
-| Table   | Key columns                                                                                                                                                               | Purpose                                                                                                                                                                                                                                                                                                                   |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plans` | `code` PK (`starter`\|`professional`\|`business`\|`enterprise`), `name`, `monthly_price_pence`, `currency`, `seat_limit?`, `location_limit?`, `stripe_price_id?` (`0050`) | The price list. `subscriptions.price_pence` (§3) overrides it only where a deal was struck and is `null` otherwise — MRR is `coalesce(subscription.price_pence, plan.monthly_price_pence)` summed over active subscriptions, a definition anyone can check. Readable by any signed-in user (the upgrade screen needs it). |
-
-`invoices` — one org's billing history — lives in §3 alongside `subscriptions`,
-since an org's own owner reads their own invoices; it isn't platform-staff-only
-like the tables on this page.
-
-### 4.5 Support desk (`0024`)
-
-| Table                   | Key columns                                                                                                                                                                                                                     | Purpose                                                                                                                                                                                                                                                                                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `support_cases`         | `reference` (unique), `org_id?`, `requester_id?`, `requester_email`, `category`, `priority`, `status` (`open`\|`pending`\|`on_hold`\|`resolved`\|`closed`), `assigned_to?`, `first_response_at?`, `resolved_at?`, `csat` (1–5)? | `org_id`/`requester_id` are nullable — a case can arrive from a prospect or someone emailing from a personal address, before any tenant is known. `first_response_at` is stamped once, by the function posting the first public reply from a platform agent, so "median first response" has one definition nobody can compute differently. |
-| `support_case_messages` | `case_id`, `author_id?`, `author_name?`, `author_side` (`customer`\|`platform`), `body`, `is_internal`                                                                                                                          | `author_side` is set by the RPC from the caller's platform role, never from an argument — a customer cannot post as staff. `is_internal` notes are excluded by the read policy itself, not hidden client-side.                                                                                                                             |
-
-Read: the requester sees their own case (even if not an org member); platform staff
-see everything. `internal` messages never reach a tenant reader regardless.
-
-### 4.6 Announcements (`0025`)
-
-Platform-to-tenant broadcast — distinct from `notifications` (one user, one org) and
-tenant `announcements` (§3, one org's own noticeboard). Neither could say "tell every
-org on Business and above about Tuesday's maintenance window".
-
-| Table                              | Key columns                                                                                                                                                                                        | Purpose                                                                                                                                           |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `platform_announcements`           | `title`, `body`, `kind` (`maintenance`\|`incident`\|`product`\|`billing`\|`policy`), `audience` (`all`\|`plans`\|`organisations`), `channel`, `status` (`draft`\|`scheduled`\|`sent`\|`cancelled`) | The message.                                                                                                                                      |
-| `platform_announcement_deliveries` | `announcement_id`, `org_id`, `sent_at?`, `read_at?`, `failed_at?`, `failure_reason?`                                                                                                               | One row per recipient org, so "Sent" and "Read" are counts over real rows rather than a counter column that could drift on a half-failed fan-out. |
-| `platform_announcement_optouts`    | `org_id` PK, `opted_out_by?`                                                                                                                                                                       | Orgs that opted out of broadcasts entirely.                                                                                                       |
-
-Nothing here sends email or push — fan-out writes delivery rows; turning those into a
-real notification is an Edge Function's job (needs the service role and a provider).
-`sent_at` on the delivery row is stamped by whatever actually sent it, so an unsent
-row reads as unsent rather than assumed delivered.
-
-### 4.7 Integrations (`0026`; every connector marked planned in `0073`)
-
-| Table                    | Key columns                                                                                                                                                                                    | Purpose                                                                                                                                                                                                                                                                                                                                                 |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `integration_connectors` | `key` PK, `name`, `category` (`payroll`\|`hr`\|`calendar`\|`communication`\|`accounting`\|`identity`), `status` (`planned`\|`operational`\|`degraded`\|`down`\|`beta`\|`retired`), `available` | The catalogue — what can be connected, and the connector's own health (distinct from any one tenant's connection failing). **`planned` (`0073`) means the connector does not exist yet**, and every row currently carries it with `available = false`; anything else asserts running code, so do not set one until there is an Edge Function behind it. |
-| `org_integrations`       | `org_id`, `connector_key`, `status` (`connected`\|`paused`\|`error`\|`disconnected`), `credentials_ref?`, `last_sync_at?`, `last_error?`                                                       | One tenant's connection. `credentials_ref` **names** a secret held by an Edge Function or the provider — no token, key or password is stored in this schema.                                                                                                                                                                                            |
-| `integration_sync_runs`  | `org_integration_id`, `connector_key`, `org_id`, `started_at`, `finished_at?`, `duration_ms?`, `outcome` (`running`\|`success`\|`partial`\|`failed`), `records`, `error?`                      | One sync attempt. "Organisations connected" and failure counts are sums over this table, never columns on the catalogue, so they can't drift from the rows they summarise. **Has never had a writer** — no Edge Function syncs anything yet, which is why every connector is `planned`.                                                                 |
-
-**Plus a view.** `integration_connector_stats` (`0026`, `security_invoker`) joins the three
-tables above into the row `/admin/integrations` renders: `key`, `name`, `category`, `status`,
-`available`, `orgs_connected`, `runs_24h`, `failed_24h`, `success_rate_7d`,
-`median_duration_ms`, `last_sync_at`. It is one of the three views in `public` and, like the
-other two, invoker-rights — so a caller sees the aggregate of exactly the rows their own RLS
-lets them see, not the platform total. Since `0073` marked every connector `planned`, every
-count it returns is zero, and that is correct rather than broken.
-
-### 4.8 Platform configuration, health & retention (`0027`, `0029`)
-
-| Table                     | Key columns                                                                                                                       | Purpose                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `platform_ip_allowlist`   | `cidr` (unique, `inet`/`cidr` type — Postgres validates the range), `label`                                                       | Console-access IP allowlist.                                                                                                                                                                                                                                                                                                                                                       |
-| `retention_policies`      | `data_type` PK, `label`, `retain_months?` (null = indefinite), `enforced`                                                         | The schedule. `0027` created it with `enforced = false` on five of six rows — a promise, not a control — until `0029` added `enforce_retention()` + a nightly `pg_cron` job, which flips `enforced = true` because it now is. `audit_logs` keeps `retain_months = null` (indefinite) permanently; that's the exemption, enforced by the job skipping `null` rather than by memory. |
-| `retention_runs`          | `ran_at`, `dry_run`, `data_type`, `rows_removed`, `cutoff?`, `error?`                                                             | One row per nightly run (or dry run) of `enforce_retention()`.                                                                                                                                                                                                                                                                                                                     |
-| `platform_health_samples` | `service`, `status` (`operational`\|`degraded`\|`down`), `latency_ms?`, `source` (`console`\|`scheduled`\|`manual`), `checked_at` | Point-in-time reachability probes. `source` is kept distinct because a browser in London and a cron in `eu-west-2` measure different things — averaging them silently would produce a number someone eventually depends on.                                                                                                                                                        |
-| `background_jobs`         | `queue`, `job_key`, `status` (`queued`\|`running`\|`succeeded`\|`failed`\|`cancelled`), `attempts`, `org_id?`, `payload jsonb`    | Generic job-queue bookkeeping for whatever schedules through it.                                                                                                                                                                                                                                                                                                                   |
-
-**Two more tables live here that no role but `service_role` can touch**, added after this
-section was last written and absent from it until 2026-08-31:
-
-| Table                    | Key columns                                                      | Purpose                                                                                       |
-| ------------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `platform_health_probes` | `request_id` (the `pg_net` id), `service`, `sent_at`, `classify` | `0076`/`0079`. One row per in-flight probe, so the reply can be matched back to what asked it |
-| `rate_limit_events`      | `id`, `bucket`, `subject`, `created_at`                          | `0085`. The shared limiter's ledger — one row per counted attempt, per bucket and subject     |
-
-Both have **RLS enabled and zero policies**, and grants to `service_role` alone. That is not
-an oversight and it is not the RLS-without-a-policy hazard `rls_invariants.test.sql` fails on:
-that test asks whether a table any client role can _reach_ has a policy, and no client role
-can reach these. `anon` and `authenticated` hold nothing on either, so RLS-on-no-policy is a
-second closed door behind a locked one.
-
-`rate_limit_events` in particular must stay unreadable. It records who attempted what and
-when, keyed by user id or IP, across every limited action — an audit trail of failed
-attempts that would tell one tenant about another.
-
-Deleted-tenant data (the thirty-day grace on a removed organisation and everything
-cascading from it) is deliberately **not** on this schedule — a different and more
-dangerous operation than ageing out old shifts, left manual until someone decides who
-may trigger it.
-
-### 4.9 What 2026-08-31 added (`0099`–`0110`)
-
-Twelve migrations in one day, six of them new tables. Recorded here rather
-than left to `docs/SAAS.md`, because this file is what a session is told to
-read before touching the schema, and a reference that stops at `0098` is a
-reference that will be trusted and be wrong.
-
-| Table                    | Key columns                                                                                              | Purpose and the decision inside it                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ------------------------ | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `calendar_feed_tokens`   | `token` PK, `org_id`, `staff_profile_id`, `last_used_at?`, `revoked_at?` (`0099`)                        | A subscribable ICS feed. The token **is** the credential — a calendar client cannot present a header — so it reads one person's shifts and nothing else, and a partial unique index enforces one live token per person. `calendar_feed_shifts()` is granted to `service_role` alone. Since `0158` a token unread for 90 days returns nothing and is revoked on its next read, and reads are limited to 120 an hour per staff record (bucket `calendar_feed` in `rate_limit_events`). |
-| `staff_pay_rates`        | `org_id`, `staff_profile_id`, `hourly_rate_pence`, `effective_from`, unique per `(staff, date)` (`0104`) | **Not a column on `staff_profiles`**: that table's select policy is `is_org_member`, so a rate there would publish everybody's pay to every colleague. A history rather than a value, because overwriting a rate rewrites what last quarter cost. `labour_cost()` returns money without handing out the rates it used.                                                                                                                                                               |
-| `staff_locations`        | `(staff_profile_id, location_id)` PK, `org_id` (`0105`)                                                  | Somebody who works more than one site. A site used to be inherited from the department, so everybody had exactly one by construction. Nothing recorded falls back to the department; explicit sites stop that fallback, so it cannot grant a site nobody assigned. A trigger refuses a row whose `org_id` disagrees with either parent.                                                                                                                                              |
-| `role_delegations`       | `org_id`, `from_user_id`, `to_user_id`, `starts_at`, `ends_at`, `revoked_at?` (`0106`)                   | Cover while somebody is away. **Enforced inside `has_org_role`**, so every managerial policy honours it at once. Confers `manager` and never `owner`, and cannot be chained: `delegate_role` reads the caller's own membership rather than `has_org_role`, which now returns true for a delegate.                                                                                                                                                                                    |
-| `notification_templates` | `org_id?` (null = platform default), `key`, `channel`, `subject`, `body` (`0108`)                        | What a notification says. A row rather than code, because Edge Functions do not deploy on merge. `render_notification()` substitutes `{{placeholders}}` in **two passes**, so a value containing `{{…}}` cannot rewrite the message around it.                                                                                                                                                                                                                                       |
-| `support_sla_targets`    | `priority` PK, `first_response_minutes`, `resolution_minutes` (`0110`)                                   | What support promises. Rows rather than constants, so the promise changes without a deploy and is readable by anybody it is made to.                                                                                                                                                                                                                                                                                                                                                 |
-
-Columns added to existing tables:
-
-| Table               | Columns                                               | Why                                                                                                                                                                                         |
-| ------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `subscriptions`     | `past_due_since`, `grace_until` (`0098`)              | A failed payment now has a date somebody can act on. Set by trigger, and a **second** failed payment does not restart the clock — otherwise a weekly retry is never at risk.                |
-| `leave_requests`    | `starts_half`, `ends_half` (`0109`)                   | Half days. Two booleans rather than a portion enum whose values mean different things at the two ends of a range. `leave_days()` never returns zero.                                        |
-| `support_cases`     | `first_response_due_at`, `resolution_due_at` (`0110`) | Computed from when the case ARRIVED, so escalating a late case cannot reset its clock and make a breach disappear.                                                                          |
-| `platform_settings` | `require_mfa` now **enforced** (`0102`)               | It existed from `0027`, defaulted true, and was checked by nothing. `is_platform_admin()` now requires an `aal2` session when it is on; `0102` set it false because that was what was true. |
-
-New functions worth knowing before writing a query: `my_sessions()` /
-`revoke_my_other_sessions()` (`0100`), `my_mfa_status()` /
-`set_platform_mfa_required()` (`0102`), `open_shifts()` / `claim_open_shift()`
-(`0103`), `labour_cost()` / `current_pay_rates()` (`0104`),
-`staff_at_location()` (`0105`), `delegate_role()` / `revoke_delegation()`
-(`0106`), `repeat_rota_weeks()` (`0107`), `render_notification()` (`0108`),
-`leave_days()` (`0109`), `support_sla_state()` (`0110`), and later
-`request_my_data()` / `my_data_requests()` (`0160`), a person's own UK GDPR
-requests in the `gdpr_requests` register.
-
-**Two predicates changed behaviour**, which matters more than any new table:
-`is_platform_admin()` gained an MFA condition (`0102`) and `has_org_role()`
-gained delegation (`0106`). Every policy in this schema calls one of those, so
-both changes are schema-wide by design — see §5.
-
-### 4.11 What 2026-09-06 added (`0127`–`0129`)
-
-The workforce pass. Both migrations move a rule out of a screen and into the
-schema, because in both cases the screen's version could be raced or bypassed.
-
-| Table                     | Key columns                                                                                                                                                       | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `job_titles`              | `org_id`, `name`, `name_normalised` (generated), `colour?`, `active`, unique `(org_id, name_normalised)`, partial unique `(org_id, colour) where active` (`0127`) | The organisation's catalogue of occupations. `name_normalised` is **generated**, so the comparison form cannot drift from the display name the way a trigger-maintained copy would. `colour` is a palette id from `src/lib/jobTitlePalette.ts`, CHECK-constrained to the twelve, and carries no authority — a title called "Owner" is a description of work; `memberships.role` is the only thing that decides anything. Archiving releases the colour. Writes are gated by `can_manage_job_titles`. |
-| `clock_event_corrections` | `org_id`, `clock_event_id`, `staff_profile_id`, `actor_user_id?`, `actor_name?`, `reason`, `before_value` jsonb, `after_value` jsonb (`0128`)                     | Append-only history of every manual change to a clock event. `authenticated` holds SELECT and nothing else — the write privileges the image's default ACL grants are explicitly revoked, because TRUNCATE is not subject to RLS and an append-only table one statement from empty is not append-only. Written only by `correct_clock_event`.                                                                                                                                                         |
-
-Columns added to existing tables:
-
-| Table            | Columns                               | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ---------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `staff_profiles` | `job_title_id` (`0127`)               | The catalogue entry, authoritative. The free-text `job_title` stays live and is kept in step by the application, so a client bundle still in a service-worker cache keeps rendering a title it cannot resolve. **Retire the text column only when** no read of `job_title` remains in `src/` and no cached bundle older than that release can still be running. A trigger refuses a title belonging to another organisation — the foreign key alone would accept one. |
-| `invites`        | `last_sent_at`, `send_error` (`0129`) | Whether the join email actually left, and why it did not. Both were previously known only to the toast the manager saw, so after a reload a delivered invitation and one the SMTP server refused were both simply "pending" — and they need opposite actions. Written **only** by `record_invite_send`: `0118` narrowed the client's UPDATE on `invites` to `revoked_at`, so a direct write would fail with 42501 at the screen, which is GAP-061 exactly.            |
-| `timesheets`     | `recalculation_required_at` (`0128`)  | Set when a correction lands inside an `approved` or `exported` period. `total_minutes` is **not** touched: `0124` made it the snapshot of what a person signed off, and a trigger that moved it afterwards would rewrite that decision without anybody deciding anything. The manager re-approves through `approve_timesheets`, which increments `version`.                                                                                                           |
-
-**One function was withdrawn rather than added.** `0128` drops the
-`clock_events_update` policy and revokes `UPDATE` on `clock_events` from
-`authenticated`. The capability is preserved through `correct_clock_event`,
-which applies the same owner/manager check the policy did; what changes is that
-a correction can no longer be made without a reason, an author and the previous
-value. Leaving both paths open would have made the audited one optional, and an
-optional audit trail records only the corrections nobody minded being seen.
-
-### 4.10 What 2026-09-05 added (`0123`–`0126`)
-
-Four migrations from the reliability repairs. Every one of them exists because
-an operation could report success while leaving the records wrong, so what
-matters here is less the shape than the guarantee.
-
-| Table            | Key columns                                                                                                               | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `billing_events` | `(provider, mode, event_id)` unique, `event_type`, `org_id?`, `event_created_at?`, `processed_at?`, `deliveries` (`0125`) | The receipt for every Stripe webhook delivery. `processed_at` is set only after the event's effects commit, so a null value means "received, not applied" and a retry may safely finish it. `mode` is in the key because test and live events arrive at one URL. RLS on, granted to `service_role` only — no screen reads it, and one tenant reading another's delivery history would be a disclosure with no upside. Excluded from the organisation export with a reason. |
-
-Columns added to existing tables:
-
-| Table         | Columns                                                                    | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| ------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `shift_swaps` | `applied_at`, `applied_shift_id`, `applied_from_staff_profile_id` (`0123`) | Immutable evidence that a swap moved its shift. An approved swap used to be a **reusable command**: replaying it reverted whatever legitimate transfer had happened since. `applied_at is null` in the update predicate is what makes a concurrent second application lose rather than both succeed. Backfilled from `audit_logs`, which is the only append-only record of what the old two-step path actually did; a swap with no `rota.shift_reassigned` event is left null rather than assumed. |
-| `timesheets`  | `approved_by`, `approved_at`, `version` (`0124`)                           | A sign-off that records neither who made it nor when is not a sign-off. `version` increments on re-approval, so a period revisited after a clock correction is visibly a second decision rather than looking like the first one always said this.                                                                                                                                                                                                                                                  |
-| `invites`     | `department_id`, `location_id` (`0126`)                                    | Where the person was invited to work, applied to their staff record at acceptance. Both validated against the inviting org **inside** `create_invite` — it is SECURITY DEFINER, so RLS is not standing behind it and a foreign key alone would accept another tenant's id.                                                                                                                                                                                                                         |
-
-**One new unique index, and it is the point of `0124`.**
-`timesheets_period_unique (org_id, staff_profile_id, period_start, period_end)`.
-The table had carried no such key since `0002`, and the client compensated with
-a read-then-insert-or-update that two managers could interleave: both read "no
-row yet", both inserted, and payroll read whichever came back first. The
-migration refuses to create the index while conflicts exist and raises with the
-query to review them — it does not pick a winner, because choosing between two
-disagreeing payroll totals by `updated_at` is a decision about somebody's pay.
-`public.timesheet_approval_conflicts` is that review view, and empty is the only
-correct state.
-
-New functions:
-
-- `decide_shift_swap(uuid, text)` (`0123`) — the whole swap decision in one
-  transaction: lock, authorise from `auth.uid()`, record, verify the shift is
-  still the requester's and its rota not archived, move it, spend the swap,
-  audit. Replaces the client's approve-then-reassign pair, which could leave an
-  approved swap whose shift never moved _and_ a notification saying it had.
-- `apply_swap_reassignment(uuid)` (`0123`, hardened) — kept for a cached client
-  bundle, now carrying the same guards and refusing a second application.
-- `approve_timesheets(uuid, date, date, jsonb)` (`0124`) — one statement for a
-  whole batch, so a failure on person seventeen rolls back the first sixteen.
-  Staff ids are joined against the org rather than trusted from the payload.
-- `claim_billing_event` / `complete_billing_event` / `fail_billing_event`
-  (`0125`) — `service_role` only.
-- `create_invite` gained a five-argument form (`0126`). **The three-argument
-  form is dropped**, and had to be: a defaulted five-argument overload makes
-  every three-argument call ambiguous, which is an error on every invitation
-  rather than a compatible overload. The client and this migration must ship
-  together — see GAP-074.
-
-**Two error-code families to expect.** `SWAP4`–`SWAP9` are swap refusals that
-change nothing and are meant to be shown to the manager, not reported as
-faults; `TS001`–`TS003` are timesheet guards, and `TS001` is the migration
-refusing to add its unique key while duplicates exist.
-
-### 4.12 Trial, then a plan or read-only (`0154`)
-
-Owner decision D2. There is no free tier.
-
-- **`organisations.trial_ends_at`** is set by its column default to thirty days
-  after creation, and `plan` defaults to `professional`, so a new organisation
-  trials on Professional limits with no card. The browser holds no grant on
-  either column. Existing organisations were given thirty days from the
-  migration, and those with no entitling subscription moved to Professional
-  limits. `subscriptions.trial_ends_at` (`0023`) now means a **Stripe** trial's
-  end, written by the webhook.
-- **`org_billing_state(org)`** (server-only) computes the state from the clock
-  on every call: `active`, `trialing` (a Stripe trial), `grace` (past due
-  inside `grace_until`), `trial` (the organisation's own trial) or
-  `read_only`. **`org_is_read_only(org)`** is that state equal to
-  `read_only`. **`my_org_billing_state(org)`** is the members-only reader the
-  browser calls; managers need it and `subscriptions` is owner-only.
-- **Read-only is enforced by BEFORE triggers** (`enforce_org_not_read_only`):
-  INSERT and UPDATE on `rotas` and `shifts`, INSERT on `invites`. They raise
-  SQLSTATE **`BILL1`** with a message meant to be shown. They apply to
-  `authenticated` requests only; `service_role`, `pg_cron` (no JWT) and
-  platform administrators pass. Clock events, timesheets, leave, every read
-  and export, and DELETE are not blocked, so staff keep working and nothing is
-  lost. `org_has_feature` and `my_feature_access` grant no plan feature while
-  read-only.
-- **`sync_org_plan_from_subscription`** (`0120`) no longer falls back to
-  `starter`. Not entitled but inside the organisation's trial gives
-  `professional`; otherwise the column is left as it was, because the state,
-  not the plan column, says the organisation is read-only.
-
-### 4.13 Website enquiries (`0155`)
-
-| Table       | Key columns                                                                                                                                                                                                                                                                | Purpose                                                                                                                                                                                                                     |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `enquiries` | `name`, `work_email`, `organisation`, `team_size?` (`1-25`\|`26-100`\|`101-500`\|`500+`), `sector?`, `message` (10 to 5000 characters), `wants_demo`, `marketing_consent` (default false), `status` (`new`\|`replied`\|`demo_booked`\|`closed`), `ip_hash?`, `user_agent?` | One message from the public contact form at `/contact`. Read and triaged in the console's Enquiries inbox (`/admin/enquiries`). Every length and enum is a CHECK, so the table holds the rule as well as the Edge Function. |
-
-**A deliberate exception to "every domain table carries `org_id`".** The
-sender is a prospect, not a member of any organisation, so there is no tenant to
-scope the row to. Inventing one would put prospects' personal data inside a
-boundary a tenant owner can read. It is platform data, guarded like the other
-tables in this section:
-
-- RLS on. `anon` holds **nothing**, and there is no anon INSERT policy. The only
-  writer is `receive_enquiry(...)`, `security definer`, executable by
-  `service_role` alone, called by the `public-enquiry` Edge Function
-  (`docs/API-SPEC.md`). It applies two rate limits through `consume_rate_limit`
-  (`enquiry_ip`, 5 an hour per hashed address; `enquiry_all`, 100 an hour in
-  total) in the same transaction as the insert.
-- `authenticated` holds SELECT on every column except `ip_hash` and
-  `user_agent`, and UPDATE on `status` only. `enquiries_select` and
-  `enquiries_update` are both `is_platform_operational()` (owner, admin or
-  support, with the `0102` MFA gate), so finance and every tenant user read
-  nothing.
-- `ip_hash` is an HMAC-SHA256 of the client address keyed by a server secret,
-  never the address.
-- Kept 24 months from arrival, whatever the status, by the nightly retention
-  job (`enquiries` row in `retention_policies`). The same branch removes the
-  form's `rate_limit_events` rows after a day.
-- Not in the organisation export or the subject-access export: it has neither
-  an `org_id` nor a user key, so `check:export` does not ask for it. A request
-  from a prospect about their own enquiry is handled through the GDPR register
-  by hand (`docs/SECURITY.md`).
-
-`supabase/tests/database/enquiries.test.sql` asserts the privileges, the
-column withholding, the rate limit and who reads what.
-
-### 4.14 An invoice has its documents (`0156`)
-
-`invoices` gains two nullable columns, `hosted_invoice_url` (Stripe's hosted
-invoice page) and `invoice_pdf` (the PDF). `stripe-webhook` writes them on
-`invoice.paid` and `invoice.payment_failed` (`docs/API-SPEC.md`). Both are null
-on a manually issued invoice (`issue_invoice` has no Stripe document) and on a
-row written before `0156` until Stripe sends another event for it.
-
-- **Only Stripe's hosts.** Each column is CHECKed to
-  `^https://(invoice|pay)\.stripe\.com/` with no whitespace and at most 2048
-  characters, so a stored link cannot become an open redirect. The hosts are
-  the ones Stripe's Invoice object reference and its hosted invoice page guide
-  show (read 2026-10-12). The webhook drops a non-matching URL before writing,
-  so the constraint is the second line, not the only one.
-- **Who reads them is unchanged.** `invoices_select` (`0023`) admits the
-  organisation's owners and the platform billing roles; a manager or member of
-  staff reads no invoice row at all. No grant changed.
-- **The links expire.** Stripe expires a hosted invoice URL 30 days after the
-  due date, never more than 120 days. A stored link to an older invoice opens
-  Stripe's "expired" page; the Billing screen says so and points at the Billing
-  Portal, which lists every invoice. Refreshing a link on demand is a follow-up
-  (GAP-129 in `docs/SAAS.md`).
-
-`supabase/tests/database/invoice_documents.test.sql` asserts who reads the
-rows and links, and that a non-Stripe, plain-http, userinfo or look-alike host
-is refused.
-
-### 4.15 A document is kept privately (`0159`)
-
-Staff documents are uploaded to a private Storage bucket, `staff-documents`
-(10 MiB, PDF, JPEG, PNG, WebP or HEIC), at `<org_id>/<staff_profile_id>/<file>`.
-
-- **One file per row.** `documents.storage_path` is new and `file_url` is now
-  nullable; `documents_has_one_file` requires exactly one of them. A row from
-  before `0159` keeps its pasted link and still opens; the app writes no new
-  links. `documents_storage_path_is_its_own` holds the path to the row's own
-  organisation and person folder, and `storage_path` is unique.
-- **Who uses an object.** Three policies on `storage.objects` (select, insert,
-  delete; no update, so an upload never overwrites) call
-  `staff_document_path_allowed(name)`: the person in the second path segment, or
-  an owner or manager of the organisation in the first. That mirrors
-  `documents_select` and `documents_write`. The app opens a file through a signed
-  URL that expires after 60 seconds (`src/lib/documentFiles.ts`).
-- **Deletion reaches the file.** Postgres cannot remove a Storage object in a
-  supported way, so triggers queue it in `storage_deletions` in the same
-  transaction as the delete: a deleted `documents` row queues its object (this
-  covers the app, `anonymize_staff_member` and every cascade), a deleted
-  `staff_profiles` row queues the person's folder, and a deleted organisation
-  queues the tenant's folder. `dispatch_storage_deletions()` posts each row to the
-  `purge-storage` Edge Function every five minutes and reconciles the response a
-  tick later, as the notification outbox does; a finished row is kept 30 days as
-  evidence. `storage_deletions` has RLS on, no policy and no grant to any browser
-  role; its `org_id` has no foreign key so a row outlives the organisation it
-  names.
-
-`supabase/tests/database/private_documents.test.sql` asserts the bucket is
-private, who may use a path, that the queue is server-only, the two constraints,
-and that each kind of delete queues its file or folder.
-
-**Staff photos (`0162`).** The same layout in a sibling private bucket,
-`staff-photos` (2 MiB; JPEG, PNG or WebP), with one difference in who reads it:
-
-- `staff_profiles.photo_path` holds `<org_id>/<staff_profile_id>/<file>`. A row
-  holds a legacy `photo_url` or a path, never both (`staff_profiles_one_photo`),
-  and the path must be the row's own folder. The column is granted to
-  `authenticated` and appended to `staff_profiles_visible`, as `photo_url` is.
-- `staff_photo_path_readable(name)` lets **any member** of the organisation read
-  an object, because colleagues see each other's pictures on the rota; insert and
-  delete reuse `staff_document_path_allowed`, so only the person or an owner or
-  manager can change one. The app shows it through a signed URL that lasts an
-  hour (`src/lib/staffPhoto.ts`, `StaffAvatar`).
-- Replacing or clearing `photo_path` queues the old object
-  (`photo_removed`). Deleting a person or an organisation queues both buckets'
-  folders, and `anonymize_staff_member` clears the path and queues both of the
-  person's folders (`person_erased`), since that row survives an erasure.
-
-**Logins owed to an erasure (`0162`).** `set_gdpr_request_status` closing an
-`erasure` case as `completed` writes the subject's `auth.users` id to
-`account_deletions` (server-only like `storage_deletions`, no foreign key so the
-row outlives the account, kept a year once done). It refuses to close the case
-while the subject is the last owner of an organisation or holds a live platform
-role. `dispatch_account_deletions()` posts each row to the `delete-account` Edge
-Function every five minutes. `supabase/tests/database/erasure_tail.test.sql`
-covers both halves, including deleting the user the way the Admin API does.
-
-### 4.16 Compliance (MariaDB `backend/migrations/015-compliance.sql`, R2 slice S10)
-
-The first R2 table set, in the new MariaDB schema (the PHP API, `docs/MERGE-TARGET.md`). Rules are PHP checks
-(`backend/src/Mod/Compliance.php`), mapped in `docs/RLS-TO-PHP.md` (S10).
-
-- **`document_types`**: per organisation; `name` (unique among active types, checked under an organisation row
-  lock), `description`, `requires_expiry`, `default_validity_months` (1 to 120; fills a missing expiry from the
-  issue date), `required` (every active staff record must hold an approved, in-date document of this type to be
-  cleared to work), `preset_key` (one of the UK examples), `status` active or archived (never deleted), `version`
-  for optimistic edits, `created_by`. At most 100 active.
-- **`documents`**: RotaFlow's existing table (`0002`, `0159`) in MariaDB for the first time. Kept columns, same
-  names: `type` (free text; for a new row the type's name), `name`, `file_url` (a moved pasted link), `storage_path`
-  (the private store, `<org>/<staff>/<file>`, unique), `issued_at`, `expires_at`. Added: `document_type_id`
-  (null only on a row moved from before types), `mime` (from the bytes), `status`
-  (`uploaded`, `awaiting_review`, `approved`, `rejected`, `withdrawn`, `superseded`; **defaults to `approved`**, so
-  a row moved from Postgres stays valid), `rejection_reason`, `uploaded_by`, `submitted_at`, `reviewed_by`,
-  `reviewed_at`, `superseded_by` (the approved row that replaced this one), `version`. Checks: exactly one of
-  `file_url` and `storage_path`; the path sits in the row's own organisation and person folder; expiry not before
-  issue. Composite foreign keys keep the staff record and the type inside the organisation. "Expired" is never
-  stored: it is computed from `expires_at` in the organisation's timezone (valid through the expiry date).
-  A moved row whose free-text `type` equals a type's name counts for that type.
-- **`document_reminders`**: one row per (document, stage) ever sent; stages `d30`, `d14`, `d7`, `expired`. The
-  primary key is what makes the reminder job once-only.
-- **Flag**: `feature_flags.staff_documents` is seeded **off**; the screens show only where the platform turns it on.
-- **Deletion**: erasing a person deletes their document rows (and reminders) and queues their folder in both
-  buckets; deleting an organisation clears `documents` before `staff_profiles` (`Lifecycle::CLEAR_FIRST`, because
-  `documents_type` restricts). Withdrawn and replaced rows, and their files, are kept as history until then.
-- **Not copied from SiteRelay**: `document_type_sites`, `member_documents`, `member_profiles` (RotaFlow has staff
-  records, emergency contacts and this `documents` table).
-
-### 4.17 Scheduling (MariaDB `backend/migrations/016-scheduling.sql`, R2 slice S11)
-
-No new tables. The rules are PHP (`backend/src/SchedulingRules.php`, `backend/src/Mod/Scheduling.php`) and the
-same rules in the browser (`src/lib/schedulingRules.ts`).
-
-- **Settings keys** (in `organisations.settings`, already written by Settings, Policies through
-  `POST /orgs/{o}/settings`): `min_rest_hours` (0 to 24; default 11 when unset; 0 turns the rest warning off) and
-  `max_weekly_hours` (1 to 168; default 48). Read by the publish preview, the pattern generator and the assign
-  dialog. `max_consecutive_days` stays a browser-only warning in the rota assistant, as before.
-- **Flag**: `feature_flags.scheduling_tools` is seeded **off**. Off, the two new routes answer 403 `feature_off` and
-  publishing and leave decisions behave exactly as before.
-
-### 4.18 Cover (MariaDB `backend/migrations/017-cover.sql`, R2 slice S12)
-
-Ported from SiteRelay's `030-cover` and re-made for staff records. Every table carries `org_id` with composite foreign
-keys to `shifts (org_id, id)` and `staff_profiles (org_id, id)` (cascade), user columns `SET NULL`. `open_shift_id`
-equals `shift_id` while the record is open and is NULL once closed (a CHECK keeps it so), so a unique key allows at
-most one open absence report and one open cover request per shift. Rules: `backend/src/CoverRules.php` and
-`backend/src/Mod/Cover.php`; the same rules in the browser in `src/lib/coverRules.ts`.
-
-- **`cover_absences`**: `shift_id`, `staff_profile_id`, `reason` (3 to 500 characters), `status` (`open`,
-  `covered`, `dismissed`, `withdrawn`), `open_shift_id`, `resolved_by`, `created_at`, `resolved_at`.
-- **`cover_requests`**: `shift_id`, `absence_id`, `absent_staff_profile_id` (who was taken off), `status` (`open`,
-  `filled`, `cancelled`), `open_shift_id`, `note`, `respond_by`, `offered_count`, `filled_staff_profile_id`,
-  `created_by`, `closed_by`, `close_reason` (`filled`, `cancelled`, `shift_started`, `shift_cancelled`,
-  `filled_elsewhere`), `created_at`, `closed_at`.
-- **`cover_applications`**: one row per person per shift (unique `org_id, shift_id, staff_profile_id`; applying again
-  reuses it), `cover_request_id`, `status` (`pending`, `withdrawn`, `approved`, `rejected`), `note` (300),
-  `decided_by`, `decided_at`.
-- **`shift_swaps`** (altered, additive): `shift_fingerprint` (SHA-256 of the shift's times, site, holder, status and
-  rota when the swap was raised; recorded on every new swap, never returned, read only while the flag is on) and
-  `void_reason` (`shift_changed`, `shift_started`; set only when the cover module cancels a stale swap).
-- **Flag**: `feature_flags.cover_tools` is seeded **off**.
-- **Two-way swaps** (`backend/migrations/019-two-way-swaps.sql`, S12d, owner decision 31 Oct 2026; additive):
-  `shift_swaps.take_shift_id` (the colleague's shift asked for in return; same-organisation foreign key to
-  `shifts (org_id, id)`, cascade, as `shift_id`; index `shift_swaps_take`) and `shift_swaps.take_fingerprint` (that
-  shift's S12 fingerprint when raised; never returned). Both NULL on a one-way swap. Flag
-  `feature_flags.two_way_swaps`, seeded **off**, and it works only with `cover_tools` on too.
-- **Deletion**: erasing a person replaces their absence reasons with `(removed)` and clears their application notes
-  (the records stay with the rota history); deleting a shift or organisation cascades. Not in the organisation export
-  yet (the PHP export is not built; S10's documents are in the same position).
-- **Not copied from SiteRelay**: its `shift_swaps` table (RotaFlow's own swaps stay, with the columns above; its
-  two-way `take_shift_id` idea was ported onto them in S12d) and its published-shift projection (`published_shifts`).
-
-### 4.19 Timesheets (MariaDB `backend/migrations/018-timesheets.sql`, R2 slice S13)
-
-No new tables. Lines and flags are computed on read from `shifts` and `clock_events`
-(`backend/src/TimesheetRules.php`); the approved figure stays `timesheets.total_minutes`, one row per person per
-period, as in S5.
-
-- **Setting**: `organisations.settings.timesheet_tolerance_minutes`, a whole number 0 to 120, default 10 when unset
-  or not a whole number. Late, early finish and overtime are flagged only beyond it. Written by Settings, Policies.
-  `breaks_are_paid` (already there) decides whether the scheduled break is deducted from both sides.
-- **Flag**: `feature_flags.timesheet_tools` is seeded **off**.
-- **Statuses**: `GET timesheets/export` reads `approved` and `exported` periods and changes neither. Since the S13
-  follow-ups (owner decision 31 Oct 2026), `POST timesheets/export` moves the included `approved` periods to
-  `exported`, and with the flag on an `exported` period is final: approval and submission refuse it (409
-  `already_exported`) until an owner reopens it (`exported` -> `approved`, `version` + 1, with a reason).
-- **`timesheet_reopenings`** (`backend/migrations/020-timesheet-reopenings.sql`, additive): one row per owner reopening
-  of an exported period: `timesheet_id` (cascade with the period), `actor_user_id`, `reason` (3 to 500 characters,
-  kept here rather than in the audit log), `from_status`, `to_status`, `version_after`, `created_at`. Deleting the
-  period or the organisation cascades. Not in the organisation export yet (the PHP export is not built).
-- **Not copied from SiteRelay**: `ts_approvals` and `ts_events` (its per-line approve, adjust and unlock model):
-  RotaFlow's period approvals, clock corrections (`clock_event_corrections`) and the recalculation flag cover it.
-
-## 5. Row Level Security
-
-RLS is **enabled on every table**. Policies use `security definer` helper functions
-(the core four from `0002`; `has_platform_role` from `0015`; `has_support_access`
-from `0028`, which also redefined the first two) so membership checks don't recurse:
-
-| Function                                              | Returns | Meaning                                                                                                                                         |
-| ----------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `public.is_platform_admin()`                          | bool    | current user is a Super Admin                                                                                                                   |
-| `public.is_org_member(org uuid)`                      | bool    | current user belongs to `org` (any role), **or** holds a read support session (`0028`)                                                          |
-| `public.has_org_role(org uuid, roles text[])`         | bool    | current user's role in `org` ∈ `roles`, **or** holds a `read_write` support session (`0028`)                                                    |
-| `public.my_staff_profile_id(org uuid)`                | uuid    | the caller's own `staff_profiles.id` in `org`                                                                                                   |
-| `public.has_support_access(org uuid, write boolean?)` | bool    | this admin holds an unrevoked, unexpired `support_access_sessions` row for `org` (`0028`); `write` additionally requires `scope = 'read_write'` |
-| `public.has_platform_role(roles text[])`              | bool    | current user holds one of these `platform_admins.role` values (`0015`)                                                                          |
-
-**A write policy on a hot table is one policy per command, never `FOR ALL`.** A
-`FOR ALL` policy's USING clause is also a SELECT policy, and permissive policies are
-OR-ed, so a read pays its predicate on every scanned row. On `shifts` and `rotas`
-that was one `has_org_role` call per row, OFFSET-skipped rows included, and it made
-five months of shifts twelve times slower than it needed to be. `0161` split both
-into INSERT, UPDATE and DELETE policies, and the bulk reads of `clock_events`
-(`0136`), `shifts` (`0137`) and `rotas` (`0161`) use the set-returning helpers
-`my_member_org_ids()`, `my_managed_org_ids()` and `my_readable_rota_ids()`, which
-the planner evaluates once as hashed SubPlans.
-
-### 5a. Grants — the outer envelope (`0056`, narrowed by `0075`)
-
-RLS decides which rows; GRANT decides whether the role reaches the table at all.
-`0056` made the grants explicit so the migration set is reconstructible, and
-recorded them exactly as the hosted project had them. `0075` narrows `anon`,
-which `0056` deliberately left for a reviewed migration of its own.
-
-**`anon` now holds nothing in `public`** except `usage` on the schema and
-`execute` on `preview_invite` — the one thing the logged-out app calls, so
-`/invite/:token` can render who invited someone before they have an account.
-It also loses `execute` on the six security predicates and every other callable
-function, so `/rest/v1/rpc/` answers nothing to an anonymous caller.
-
-Three things worth knowing, each verified against the live catalogue rather than
-inferred from the migration files:
-
-- **The CRUD grants really were inert.** Every policy in `public` requires one
-  of the identity predicates above; no table has RLS disabled; no RLS-enabled
-  table lacks a policy; and all three views are `security_invoker = true`. An
-  anon session could already read no row.
-- **`TRUNCATE` was not inert.** The hosted default ACL grants `arwdDxtm`, not
-  the CRUD set `0056` documented, and **RLS does not filter TRUNCATE**. It was
-  unreachable only because `anon` is `NOLOGIN` and PostgREST never issues the
-  statement — a property of a component we do not control. `0075` removes it
-  from `anon` entirely and from `authenticated` too, along with `REFERENCES`
-  and `TRIGGER`.
-- **`0056`'s claim that "a new table gets no privileges" was false here.**
-  It holds for a fresh Postgres built from these migrations; on the hosted
-  project `pg_default_acl` grants `anon=arwdDxtm` on every table created in
-  `public`, so the next migration to add a table would have undone the revoke.
-  `0075` alters the default privileges for `anon` only. `authenticated` and
-  `service_role` keep theirs deliberately: a new table that is dead on arrival
-  for `authenticated` turns a forgotten GRANT into a silent 401 in a feature
-  nobody had reason to suspect.
-
-Fifteen `returns trigger` functions still carry PUBLIC EXECUTE and are left
-alone: Postgres refuses to call a trigger function directly, so the grant
-confers nothing.
-
-> ⚠️ **The default ACL keeps `authenticated`, so a new function is callable by
-> every signed-in user unless you say otherwise — and `revoke … from public,
-anon` does NOT say otherwise.** `announcement_audience` (`0087`) shipped with
-> exactly that mistake and needed `0088` to close it: revoking the two roles
-> named left the grant that was never named. A SECURITY DEFINER helper whose
-> callers do its authorisation for it must be revoked from `authenticated`
-> explicitly, and the revoke is worth an assertion, because nothing about the
-> migration's text shows the grant that is still there.
-
-Baseline policy shape:
-
-| Scope                                                                                                                    | Read                                                                                                       | Write                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Shared scheduling data (`organisations`, `locations`, `departments`, `shift_types`, `rotas`, `shifts`, `announcements`)  | `is_org_member(org_id)`                                                                                    | `has_org_role(org_id, ['owner','manager'])`                              |
-| Personal data (`availability`, `leave_requests`, `overtime_requests`, `clock_events`, `emergency_contacts`, `documents`) | own row (`staff_profile_id = my_staff_profile_id(org_id)`) **or** manager/owner in org                     | staff may write their **own** rows; managers/owners may write any in org |
-| `memberships`                                                                                                            | `is_org_member(org_id)`                                                                                    | `has_org_role(org_id, ['owner'])` (owners manage the team)               |
-| `notifications`                                                                                                          | `user_id = auth.uid()`                                                                                     | insert by service/Edge Function; user updates `read_at` on own rows      |
-| `subscriptions`, `invoices`, `audit_logs`                                                                                | `has_org_role(org_id, ['owner'])` (+ platform roles: `invoices` finance, `audit_logs` all)                 | Edge Functions / owners only                                             |
-| Platform tables (`incidents`, `feature_flags`, `plans`, `support_cases`, `platform_settings`, …)                         | own `is_platform_admin()`/`has_platform_role()` policy per table (§4) — **not** gated by a support session | SECURITY DEFINER RPCs only                                               |
-
-There is **no** blanket public-read policy. Unauthenticated requests return nothing.
-These policies are a solid, working baseline. Tighten per feature as flows land.
-
-**Platform-admin access to tenant data is session-gated, not standing** (`0028_support_access_gate.sql`).
-Every tenant policy above resolves through `is_org_member()`/`has_org_role()`, and since `0028`
-those no longer treat `is_platform_admin()` as sufficient on its own — a platform administrator
-reads a tenant only while `has_support_access(org, false)` is true (an open `support_access_sessions`
-row, per §4), and writes only with `has_support_access(org, true)` (`scope = 'read_write'`). Before
-`0028` the two functions ended `or public.is_platform_admin()`, so every platform administrator could
-read and write every organisation's rotas, staff records, clock events and leave at any time, with no
-grant and no expiry — `support_access_sessions` (`0019`) recorded a reason but nothing consulted it.
-Without an open session, `AdminOrganisationDetailPage`'s Users/Locations/Data tabs return nothing for
-a platform administrator, by design — the screen says so rather than rendering an empty table. Platform
-tables (`incidents`, `feature_flags`, `plans`, `platform_settings`, and the rest of §4) deliberately do
-**not** route through these two functions and keep their own `is_platform_admin()`/`has_platform_role()`
-policies — running the business doesn't require an open session on a tenant. Aggregate sizing
-(`platform_tenant_counts()`, §6) is the one exception that reads past this gate: it's SECURITY DEFINER,
-gated on `is_platform_admin()` directly, and returns counts only, never a row — a support session isn't
-needed to know an organisation has 248 staff, only to know who they are.
-
-**`organisations` read is a deliberate exception** to the table above:
-`is_org_member(id) OR (created_by = auth.uid() AND no membership row exists yet for
-that org)` (`0003_fix_organisations_select_rls.sql`, narrowed by
-`0005_narrow_organisations_select_rls.sql`). Without the `created_by` clause,
-`insert(...).select().single()` fails RLS for the very first org a user creates. Postgres checks the new row against the SELECT policy for `RETURNING` _before_ the
-`on_org_created` trigger has inserted their membership row, so `is_org_member` alone
-can't see it yet. `0003`'s original fix left that clause unconditional, which let the
-creator read the org forever, even after their membership was removed or suspended.
-`0005` scopes it to the genuine bootstrap window only. The instant `on_org_created`
-inserts the owner's membership row (same transaction), the `not exists` check flips
-and only `is_org_member()` governs access, same as every other tenant table.
+- **19 migrations, 69 tables.** There is no 012 file (the numbering skips from 011 to 013); `020-timesheet-reopenings.sql`
+  is the last file and adds one table, `timesheet_reopenings`. `schema_migrations` is created by `backend/bin/migrate.php`
+  itself and is not among the 69.
+- **Tenant columns.** Of the 69 tables, 48 carry an `org_id` column (five of those allow it to be NULL) and 21 do not. The 21 are the tenant
+  root `organisations`, per-person tables (such as `users` and `app_settings`) and platform-wide tables (such as `incidents` and `feature_flags`); the `org_id` column of
+  the table in section 3 says which is which.
+- **Legacy tree.** `supabase/migrations` (164 files) is the retired Postgres schema. It is kept only as the source of the
+  data move until a later phase removes it (until Phase 6). Two checks still read it, not `backend/migrations`: `scripts/check-migration-safety.mjs`
+  (`pnpm run check:migrations`) and `scripts/check-export-coverage.mjs` (`pnpm run check:export`).
+
+## 2. Tenancy and roles
+
+```text
+users ──< memberships >── organisations (the tenant root)
+  │            role: owner | manager | staff        status: invited | active | suspended
+  └── platform_admins   (a platform role, separate from any membership)
+
+organisations
+  ├── locations ── departments ── job_titles
+  ├── staff_profiles ── staff_locations · staff_pay_rates · emergency_contacts · availability · documents
+  ├── shift_types · rotas ── shifts · minimum_cover_rules
+  ├── clock_events (+ corrections) · leave_requests · overtime_requests · shift_swaps · timesheets
+  ├── cover_absences · cover_requests · cover_applications
+  ├── announcements · notifications · notification_outbox · notification_templates
+  ├── invites · role_delegations · subscriptions · invoices · support_access_sessions
+  └── audit_logs   (carries org_id, deliberately has no foreign key to organisations)
+```
+
+- **A row belongs to an organisation through `org_id`.** The tables with and without it are marked in section 3.
+  Where a migration links two tenant tables it uses a **composite foreign key** on (`org_id`, `id`), so the database refuses a row that
+  points into another organisation (`backend/migrations/002-identity.sql` header). Section 4 lists the single-column exceptions; some id
+  columns carry no foreign key at all (for example `invites.department_id`, added by `backend/migrations/004-people-places.sql`).
+- **Roles in an organisation** are the `memberships.role` ENUM: `owner`, `manager`, `staff`
+  (`backend/migrations/002-identity.sql`). A person can hold a membership in several organisations. No column narrows a membership to a site.
+- **Platform roles** are the `platform_admins.role` ENUM: `platform_owner`, `platform_admin`, `platform_support`, `platform_finance`
+  (`backend/migrations/002-identity.sql`); a revoked row is kept with `revoked_at`. A platform role is held separately from any membership; `Scope::platformRole` reads it (`backend/src/Scope.php`).
+- **Support access.** A platform administrator enters a customer organisation only through a `support_access_sessions` row
+  (`backend/migrations/009-platform-access.sql`). `Scope::membership` lets them in as a `support` member with a manager's reach and never an owner's,
+  only while the session is not revoked and not expired, the organisation still has `support_access_allowed` on, and the person's platform role is
+  owner, admin or support (not finance). A `read` session refuses every write.
+- **Delegation.** A staff member with a live `role_delegations` row (inside its window, lender still an active owner or manager) has an
+  effective role of manager, never owner (`Scope::hasLiveDelegation`, `Scope::requireReal` for acts a delegate must not perform).
+- **Organisation status.** `Scope::membership` ignores an archived organisation, and `Scope::requireWritable` refuses writes while an
+  organisation is not `active` (suspended).
+- **Creating an organisation.** `Ctx` carries `orgCreation`: `invite_only` (default; only a platform administrator creates one, by inviting the first
+  owner) or `open` (`backend/src/Ctx.php`). The setting is the private configuration key `org_creation` (`backend/private/config.example.php`, read in `backend/public/api/index.php`; enforced in `backend/src/Mod/Orgs.php`, which lets a platform owner or admin through); its live value is `NOT VERIFIED`.
+- **What a non-member sees.** An unknown or malformed organisation id, and a signed-in person who is not a member, get **404**, so ids cannot be
+  probed; a member with the wrong role gets **403** (`backend/src/Scope.php`).
+- **Row-level security is retired.** MariaDB has none. The former policies are mapped to PHP checks, with the test that proves each, in
+  `docs/RLS-TO-PHP.md` (the record of the retired policies; its own status line currently reads PARTIAL). The live guard is the PHP check plus the access sweep suite (section 5).
+
+## 3. Table inventory
+
+All 69 tables, in migration order. **Written by** names the classes whose SQL inserts, updates or deletes the table, found with a search of
+`backend/src` and `backend/bin` (a class `Mod\Staff` is `backend/src/Mod/Staff.php`; a class without `Mod\` such as `Dispatcher` is `backend/src/Dispatcher.php`).
+Retention and organisation deletion also delete rows in several tables; they are described in sections 4 and 6. **Purpose** is taken from the migration comments and
+column names. The `org_id` column reads `yes` (NOT NULL), `nullable`, `root` (the tenant root itself) or `no`.
+
+### `backend/migrations/001-foundation.sql`
+
+Abuse control only.
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `rate_limits` | Fixed-window request counters behind `RateLimiter` (`hit(name, subject, limit, windowSeconds)`). | no | PK (`bucket`, `window_start`); index on `window_start`. | `RateLimiter` |
+
+### `backend/migrations/002-identity.sql`
+
+Identity and tenancy. Row-level security is retired; every read and write is a PHP check (`backend/src/Scope.php`) and composite (`org_id`, `id`) keys make a cross-organisation reference impossible in the database.
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `users` | A person. `clerk_user_id` stays NULL until first sign-in, when a verified email that matches links it (`Users`). Replaces the retired auth user and profile pair. | no | Unique `clerk_user_id`; unique `email`. | `backend/bin/grant-platform-owner.php`, `Mod\Account`, `Mod\Gdpr`, `Users` |
+| `organisations` | The tenant root: name, slug, `plan`, `status` (`active`, `suspended`, `archived`), `support_access_allowed`, `trial_ends_at`, `settings` JSON. Migration 004 adds `onboarding_completed_at`; 008 adds `industry`, `country`, `timezone`, `contact_email`, `contact_phone`, `suspended_reason`. | root | Unique `slug`; CHECK `settings` is valid JSON; `created_by` to `users` SET NULL. | `Billing`, `Mod\Account`, `Mod\Console`, `Mod\Lifecycle`, `Mod\OrgSettings`, `Mod\Orgs`, `Mod\Platform` |
+| `memberships` | Who belongs to which organisation, as `owner`, `manager` or `staff`. `status` is `invited`, `active` or `suspended`; `Scope::membership` honours only `active`. | yes | Unique (`org_id`, `user_id`); unique (`org_id`, `id`); cascade from organisation and user. | `Mod\Invites`, `Mod\Orgs` |
+| `invites` | One-time join links; only the SHA-256 of the token is stored. Migration 004 adds `department_id` and `location_id` (plain columns, no foreign key). | yes | Unique `token_hash`; generated `pending_email` makes unique (`org_id`, `pending_email`) mean one pending invite per email per organisation. | `Mod\Invites`, `Mod\Platform` |
+| `platform_admins` | Platform staff: `platform_owner`, `platform_admin`, `platform_support`, `platform_finance`. A revoked row is kept with `revoked_at`. | no | PK `user_id`; cascade from `users`. | `backend/bin/grant-platform-owner.php`, `Mod\Console` |
+| `role_delegations` | Temporary manager cover lent by one person to another. Confers manager, never owner, and cannot be passed on. | yes | Index (`org_id`, `to_user_id`, `revoked_at`, `ends_at`); cascades from organisation and both users. | `Mod\Orgs` |
+| `audit_logs` | The append-only trail: actor, `action`, entity, JSON `metadata`, `severity` (`info`, `warning`, `critical`), `visibility` (`org`, `platform_only`), IP. The organisation name is copied onto each row. | nullable | No foreign key to `organisations`, on purpose. Update and delete refused by two triggers (`003-audit-immutable.sql`). `BIGINT` auto-increment id; CHECK `metadata` is valid JSON. | `Audit` |
+
+### `backend/migrations/003-audit-immutable.sql`
+
+No tables. Two triggers make `audit_logs` append-only; the migration user needs the TRIGGER privilege.
+
+### `backend/migrations/004-people-places.sql`
+
+People and places. Also adds `organisations.onboarding_completed_at` and `invites.department_id`, `invites.location_id`. Parent deletes are RESTRICT because MariaDB cannot SET NULL one column of a composite key; the API clears the references first.
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `locations` | Sites, with address, coordinates, time zone (default `Europe/London`), `geofence_radius_m` (default 150), `location_type`, `status` (`setup`, `active`, `maintenance`, `inactive`). | yes | Unique (`org_id`, `id`); cascade from organisation. | `Mod\Places` |
+| `departments` | A department, optionally at a site. | yes | Composite FK to `locations` RESTRICT; unique (`org_id`, `id`). | `Mod\Places` |
+| `job_titles` | The organisation's catalogue of occupations, each with a palette colour. | yes | Generated `name_normalised` unique per organisation; generated `active_colour` unique per organisation, so two active titles cannot share a colour; CHECK colour is one of twelve palette names. | `Mod\Staff` |
+| `staff_profiles` | The employee record. `user_id` stays NULL until that person signs in (`email` links it). Colleagues cannot read `payroll_id`, `start_date`, `phone`, `email` or `holiday_allowance`: that is a column rule in `Mod\Staff`, because MariaDB has no column grants here (migration comment). | yes | Unique (`org_id`, `user_id`); unique (`org_id`, `payroll_id`); composite FKs to `departments` and `job_titles` RESTRICT; `user_id` SET NULL; `skills` JSON array. | `Mod\Gdpr`, `Mod\Photos`, `Mod\Places`, `Mod\Staff` |
+| `staff_locations` | Extra sites for a person who works more than one; none recorded falls back to the department's site. | yes | PK (`staff_profile_id`, `location_id`); composite FKs cascade. | `Mod\Staff` |
+| `staff_pay_rates` | Pay-rate history (`hourly_rate_pence` from `effective_from`), a history rather than a value. | yes | Unique (`staff_profile_id`, `effective_from`); composite FK to `staff_profiles` cascade. | `Mod\Staff` |
+| `emergency_contacts` | Emergency contacts for a staff record. | yes | Composite FK to `staff_profiles` cascade. | `Mod\Gdpr`, `Mod\Staff` |
+| `app_settings` | Per-user preferences: `theme` (`dark`, `light`; column default `dark`), `time_format`, `week_start`, `digest_frequency`, and (migration 007) `notifications_enabled`. An absent row reads as enabled (`Dispatcher`). | no | PK `user_id`; cascade from `users`. | `Mod\Account` |
+
+### `backend/migrations/005-rota.sql`
+
+The rota. Times are UTC `DATETIME`. A published or archived rota is immutable, enforced in `backend/src/Mod/Rotas.php` and `backend/src/Mod/Shifts.php`, not in the database.
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `shift_types` | Shift kinds: name, colour, default start and end, `is_paid`, `category`. | yes | Unique (`org_id`, `id`); cascade from organisation. | `Mod\Planning` |
+| `rotas` | A schedule for a period and optional site: `draft`, `published`, `archived`. An amendment is a draft with `supersedes_rota_id`. | yes | Generated `site_key`, `is_draft`, `is_published` feed unique keys `rotas_one_draft` and `rotas_one_published` (one draft and one published rota per organisation, site and period); CHECK `period_end >= period_start`; CHECK `site_key` matches `location_id`; composite FK to `locations` RESTRICT. | `Mod\Rotas` |
+| `shifts` | The scheduled unit. `rota_id` may be NULL: a loose shift (open shift, ad hoc cover) belongs to no rota. `status` is `open`, `assigned`, `confirmed` or `cancelled`. | yes | CHECK `ends_at > starts_at`; composite FKs to rotas, locations, departments, staff_profiles and shift_types, all RESTRICT; indexes by rota, organisation and staff with `starts_at`. | `Mod\Cover`, `Mod\Rotas`, `Mod\Scheduling`, `Mod\Shifts`, `Mod\Swaps` |
+| `availability` | A weekday pattern (0 = Sunday to 6 = Saturday) or one date, with `status` `available`, `unavailable` or `preferred`. | yes | CHECK `weekday` between 0 and 6; composite FK to `staff_profiles` cascade. | `Mod\Planning` |
+| `minimum_cover_rules` | One site's staffing minimum for one weekday; publishing a rota refuses a future day that falls short (migration comment). | yes | Unique (`location_id`, `weekday`); CHECK `weekday` between 0 and 6; composite FK to `locations` cascade. | `Mod\Planning` |
+
+### `backend/migrations/006-time-and-requests.sql`
+
+Time and requests. Also creates two triggers that make `clock_event_corrections` append-only. `client_event_id` is minted by the device before the first attempt; a replay answers 200 with `already_applied`.
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `clock_events` | Attendance: `in`, `out`, `break_start`, `break_end`, with `method` (`gps`, `qr`, `manual`) and optional coordinates. `event_at_reported` keeps what the device claimed when it differs. `DATETIME(3)` times. | yes | Unique `client_event_id` (a replayed offline write finds its earlier row); `shift_id` to `shifts(id)` is a single-column link, SET NULL; composite FK to `staff_profiles` cascade. | `Mod\Clock` |
+| `clock_event_corrections` | A correction to a clock event: before and after values, who changed it and why. | yes | Append-only by two triggers (`006-time-and-requests.sql`); CHECK `reason` is 3 to 500 characters; migration 013 adds a composite cascade FK to `clock_events` so retention and organisation deletion remove corrections with their event. | `Mod\Clock` |
+| `leave_requests` | Leave: `type` (default `holiday`), dates, `starts_half`, `ends_half`, `status` (`pending`, `approved`, `rejected`, `cancelled`), review fields, `client_event_id`. | yes | Unique `client_event_id`; CHECK `end_date >= start_date`. No overlap constraint exists: `Mod\Leave` checks under a row lock on the person's staff record. | `Mod\Leave` |
+| `overtime_requests` | Overtime: `date`, `hours`, `status`, `note`, review fields. | yes | CHECK `hours > 0`; composite FK to `staff_profiles` cascade. | `Mod\Leave` |
+| `shift_swaps` | A swap offers a shift to a named colleague or the open board; approving moves the shift. Migration 017 adds `shift_fingerprint` and `void_reason`; 019 adds `take_shift_id` and `take_fingerprint` for two-way swaps. | yes | Unique `client_event_id`; composite FKs to `shifts` (cascade), requester (cascade) and target (RESTRICT); `shift_swaps_take_shift` cascade from `take_shift_id` (019). | `Mod\Swaps` |
+| `timesheets` | One decision per person per period: `total_minutes`, `status` (`open`, `submitted`, `approved`, `exported`), `version`, `recalculation_required_at`. | yes | Unique (`org_id`, `staff_profile_id`, `period_start`, `period_end`); CHECK `period_end >= period_start`. | `Mod\Clock`, `Mod\Timesheets` |
+
+### `backend/migrations/007-communication.sql`
+
+Communication. Also adds `app_settings.notifications_enabled`.
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `notifications` | The in-app inbox and delivery record: `type`, `title`, `body`, `channel`, `read_at`. `type` is `VARCHAR(40)` with no CHECK or ENUM, so it is free text; `channel` is an ENUM that includes a reserved `sms` value (no SMS sender exists in `backend/src`). | yes | Index (`user_id`, `org_id`, `created_at`); cascade from organisation and user. | `Dispatcher`, `Mod\Notifications` |
+| `notification_outbox` | Notifications owed, written in the same transaction as the event. `status` `pending`, `sending`, `sent`, `failed`, `abandoned`; `attempts`, `next_attempt_at`, `claimed_at`. | yes | Unique `dedupe_key` (a scheduled alert is once-only); index (`status`, `next_attempt_at`); CHECK `payload` is valid JSON. | `Dispatcher`, `Notify` |
+| `notification_deliveries` | Per recipient and channel: did it go (`sent`, `failed`, `skipped`, `expired`). | yes | `BIGINT` auto-increment id; index (`org_id`, `created_at`). | `Dispatcher` |
+| `notification_templates` | Wording overrides: an organisation row wins over a platform row (`org_id` NULL, `org_key` `-`), which wins over the built-in default. | nullable | Unique (`org_key`, `key`, `channel`); CHECK `org_key` matches `org_id`. | `Mod\Templates` |
+| `announcements` | Messages from managers: `scope` (`org`, `location`, `department`), `title`, `body`, `urgent`, `published_at`. | yes | `location_id` and `department_id` are single-column links, SET NULL; author SET NULL. | `Mod\Announcements` |
+| `announcement_reads` | Read receipts per staff record. | yes | PK (`announcement_id`, `staff_profile_id`); composite FKs cascade. | `Mod\Announcements` |
+| `push_subscriptions` | One row per browser device for web push; uniqueness is on the endpoint hash. | no | Unique `endpoint_hash`; cascade from `users`. | `Dispatcher`, `Mod\Notifications` |
+| `org_smtp_settings` | An organisation's own mail account. The password is stored encrypted (`smtp_pass_enc`, AES-256-GCM with a key in private config, per the migration comment) and never returned. | yes | PK `org_id`; cascade from organisation. | `Mod\OrgSettings` |
+| `calendar_feed_tokens` | Calendar feed tokens; only the SHA-256 of a token is stored. A person has one live token. | yes | Unique `token_hash`; composite FK to `staff_profiles` cascade. | `Mod\CalendarFeed`, `Mod\Gdpr` |
+
+### `backend/migrations/008-billing.sql`
+
+Billing. Also adds six `organisations` columns (`industry`, `country`, `timezone`, `contact_email`, `contact_phone`, `suspended_reason`) and seeds the four `plans` rows. Stripe stays in test mode until the owner switches it (private config `stripe.mode`).
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `plans` | The price list: `monthly_price_pence`, `seat_limit`, `location_limit` (NULL = unlimited), `features` JSON, Stripe price ids. Four rows are seeded by this migration. | no | PK `code`; CHECK `features` is valid JSON. | none in PHP: seeded by `008-billing.sql` and read by `Billing` and `Flags`; the data move carries Stripe price ids over (`DataMove\Map`) |
+| `subscriptions` | One subscription per organisation: `plan`, `status` (`trialing`, `active`, `past_due`, `canceled`), `stripe_mode` (`test`, `live`), period and grace dates. | yes | Unique `org_id`; index on `provider_ref`; cascade from organisation. | `Billing` |
+| `invoices` | An organisation's billing history: amounts in pence, `status`, dates, Stripe references and hosted-invoice links. | yes | Unique `number`; CHECKs: period and due order, `paid` needs `paid_at`, `refunded` needs `refunded_at`, document links must be Stripe hosts. | `Mod\StripeWebhook` |
+| `billing_events` | The Stripe event ledger that makes a webhook idempotent; `processed_at` NULL means not yet done. | nullable | Unique (`provider`, `mode`, `event_id`); `org_id` SET NULL. | `Mod\StripeWebhook` |
+
+### `backend/migrations/009-platform-access.sql`
+
+Platform access. Seeds the single `platform_settings` row.
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `platform_settings` | A single row of platform configuration (name, support email, URL, default time zone, `registration_enabled`, `maintenance_mode`). Seeded. | no | CHECK `id = 1`. | `Mod\Console` |
+| `support_access_sessions` | Platform staff entering a customer's data: `reason`, `case_ref`, `scope` (`read`, `read_write`), `expires_at`, `revoked_at`. `Scope` re-reads it on every request. | yes | CHECKs: `reason` at least 15 characters, `case_ref` at least 3, expiry after grant; `admin_user_id` RESTRICT; index (`admin_user_id`, `org_id`, `revoked_at`, `expires_at`). | `Mod\Console`, `Mod\Gdpr` |
+
+### `backend/migrations/010-support-desk.sql`
+
+Support desk. Seeds `support_counter` and the four SLA targets.
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `support_counter` | A single counter row for support case references (seeded at 4119, so the first is CASE-4120 per the migration comment). | no | CHECK `id = 1`. | `Mod\Support` |
+| `support_sla_targets` | Response and resolution promises in wall-clock minutes by priority. Four rows are seeded. | no | PK `priority`; CHECK resolution is not shorter than first response. | `Mod\Support` |
+| `support_cases` | A support case: `reference`, requester, `category`, `priority`, `status`, SLA due times, `csat`. `org_id` is SET NULL when an organisation is deleted: the case outlives the tenant. | nullable | Unique `reference`; CHECKs: resolved or closed needs `resolved_at`, `csat` 1 to 5, non-empty subject, email contains `@`. | `Mod\Support` |
+| `support_case_messages` | Messages on a case; `author_side` `customer` or `platform`, `is_internal`. | no | Cascade from `support_cases`; CHECK non-empty body. | `Mod\Support` |
+
+### `backend/migrations/011-platform-ops.sql`
+
+Platform operations. Seeds `incident_counter`, the flag `ai_rota_assistant` and its first change-log row. Retired flags and the platform MFA switch are not carried over (the migration points to `docs/RLS-TO-PHP.md`).
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `incident_counter` | A single counter row for incident references (seeded at 137). | no | CHECK `id = 1`. | `Mod\Incidents` |
+| `incidents` | The platform status record: `severity`, `status` (`investigating`, `identified`, `monitoring`, `resolved`), `service`, times, `resolution`. | no | Unique `reference`; CHECKs: a resolved incident must have `resolved_at` and a non-empty `resolution`, an open one must have neither; resolved and detected not before start. | `Mod\Incidents` |
+| `incident_updates` | The timeline entries on one incident. | no | Cascade from `incidents`; CHECK non-empty body. | `Mod\Incidents` |
+| `feature_flags` | Platform feature switches: `enabled`, `rollout` 0 to 100, `critical`, `target_plans` JSON, retirement fields. Flags exist by migration only (no create endpoint). Seeded by 011 (`ai_rota_assistant`, on), 015 (`staff_documents`), 016 (`scheduling_tools`), 017 (`cover_tools`), 018 (`timesheet_tools`), 019 (`two_way_swaps`); all but the first are seeded off. | no | PK `flag_key`; CHECKs: key pattern, rollout 0 to 100, `target_plans` valid JSON. | `Mod\FeatureFlags` |
+| `feature_flag_targets` | Organisations a flag is switched on for (pilots). | yes | PK (`flag_key`, `org_id`); `flag_key` link to `feature_flags` is single-column, cascade. | `Mod\FeatureFlags` |
+| `feature_flag_changes` | Change log for flags: field, before and after, actor. | no | Cascade from `feature_flags`. | `Mod\FeatureFlags` |
+| `enquiries` | Website enquiries; platform-wide on purpose (a prospect belongs to no organisation). The raw address is never kept, only a keyed hash (`ip_hash`). | no | CHECKs on name, email, organisation, message length and `ip_hash` shape; indexes by status and age. | `Mod\Enquiries` |
+
+### `backend/migrations/013-data-lifecycle.sql`
+
+Data lifecycle. Deleting an organisation has no table: it is one transaction in `backend/src/Mod/Lifecycle.php`. Seeds eight `retention_policies` rows and adds a cascade foreign key from `clock_event_corrections` to `clock_events`.
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `gdpr_requests` | The data-subject request register: `kind` (access, portability, rectification, erasure, restriction, objection), `status`, `received_on`, `due_on`, `extended_to`, outcome. | nullable | CHECKs: due not before receipt, extension later than due, a completed or refused request needs `closed_at` and `outcome_note`; `org_id` SET NULL. | `Mod\Gdpr` |
+| `account_deletions` | A login owed to a completed erasure; holds the Clerk id because the local row goes first. | no | No foreign key to `users`, so the row outlives the account; `gdpr_request_id` SET NULL. | `Mod\Gdpr` |
+| `storage_deletions` | A stored file or folder owed a delete (`bucket` `staff-documents` or `staff-photos`, `reason`, `status`, `attempts`). Queued by PHP in the transaction that removes the row. | yes | No foreign key to `organisations`, on purpose; index (`status`, `created_at`). | `Mod\Gdpr`, `Mod\Lifecycle`, `Mod\Photos` |
+| `retention_policies` | Retention rules by `data_type` (`retain_months`, `enforced`). Eight rows are seeded. | no | PK `data_type`; CHECK `retain_months` is NULL or positive. | none in PHP: seeded by `013-data-lifecycle.sql`; read by `Retention` and `Mod\Lifecycle` |
+| `retention_runs` | One row per retention run per data type: rows removed, cutoff, error. | no | `BIGINT` auto-increment id; index on `ran_at`. | `Retention` |
+
+### `backend/migrations/014-platform-comms.sql`
+
+Platform announcements and invoice credits.
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `platform_announcements` | The platform telling organisations something: `kind`, `audience` (`all`, `plans`), `status` (`draft`, `scheduled`, `sent`, `cancelled`), `scheduled_for`. | no | CHECKs: a scheduled row needs `scheduled_for`, a sent row needs `sent_at`, a plans audience needs at least one plan. | `Mod\PlatformAnnouncements` |
+| `platform_announcement_deliveries` | One delivery row per organisation per announcement; people are addressed through the notification outbox. | yes | Unique (`announcement_id`, `org_id`); `outbox_id` to `notification_outbox` SET NULL. | `Mod\PlatformAnnouncements` |
+| `platform_announcement_optouts` | An organisation that does not want product, billing and policy announcements; maintenance and incident notices ignore it. | yes | PK `org_id`; cascade from organisation. | `Mod\PlatformAnnouncements` |
+| `invoice_credits` | A credit recorded against an invoice, in the invoice's currency; it changes nothing else. | yes | Unique (`invoice_id`, `idempotency_key`); CHECKs: amount positive, currency three capitals, reason at least 10 characters; composite FK to `invoices` cascade. | `Mod\PlatformBilling` |
+
+### `backend/migrations/015-compliance.sql`
+
+Compliance. Seeds the flag `staff_documents` (off).
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `document_types` | Per-organisation document types: `requires_expiry`, `default_validity_months`, `required`, `preset_key`, `status` (`active`, `archived`), `version`. | yes | CHECK `default_validity_months` between 1 and 120; unique (`org_id`, `id`). | `Mod\Compliance` |
+| `documents` | Staff documents with review: `status` (`uploaded`, `awaiting_review`, `approved`, `rejected`, `withdrawn`, `superseded`; default `approved`), `storage_path` or a legacy `file_url`, `expires_at`, `superseded_by`. | yes | Unique `storage_path`; CHECKs: exactly one of `file_url` and `storage_path`, the path starts with the row's own `org_id/staff_profile_id/`, expiry not before issue; composite FK to `document_types` RESTRICT. | `Mod\Compliance`, `Mod\Gdpr` |
+| `document_reminders` | One row per (document, reminder stage) ever sent. | yes | PK (`document_id`, `stage`) makes reminders once-only across cron runs; composite FK to `documents` cascade. | `Mod\Compliance` |
+
+### `backend/migrations/016-scheduling.sql`
+
+No tables. Seeds the flag `scheduling_tools` (off). Its two limits are existing organisation settings (`min_rest_hours`, `max_weekly_hours` in `organisations.settings`; 11 and 48 apply when unset, per the migration comment).
+
+### `backend/migrations/017-cover.sql`
+
+Cover. Also adds `shift_swaps.shift_fingerprint` and `shift_swaps.void_reason`, and seeds the flag `cover_tools` (off).
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `cover_absences` | An absence report on a shift. | yes | `open_shift_id` equals `shift_id` while open and NULL once closed (CHECK), so unique (`org_id`, `open_shift_id`) allows one open report per shift; composite cascades. | `Mod\Cover`, `Mod\Gdpr` |
+| `cover_requests` | A request to cover a shift: `status` (`open`, `filled`, `cancelled`), `respond_by`, who filled it, `close_reason`. | yes | Same `open_shift_id` pattern: one open request per shift; composite cascades. | `Mod\Cover` |
+| `cover_applications` | A person's application to cover a shift; applying again after withdrawing reuses the row. | yes | Unique (`org_id`, `shift_id`, `staff_profile_id`); composite cascades. | `Mod\Cover`, `Mod\Gdpr` |
+
+### `backend/migrations/018-timesheets.sql`
+
+No tables. Seeds the flag `timesheet_tools` (off). The tolerance is an organisation setting (`timesheet_tolerance_minutes`, default 10 when unset, per the migration comment).
+
+### `backend/migrations/019-two-way-swaps.sql`
+
+No tables. Adds `shift_swaps.take_shift_id`, `shift_swaps.take_fingerprint`, an index and a same-organisation foreign key, and seeds the flag `two_way_swaps` (off).
+
+### `backend/migrations/020-timesheet-reopenings.sql`
+
+Timesheet reopenings. Additive; used only while the `timesheet_tools` flag is on.
+
+| Table | Purpose | `org_id` | Keys and constraints | Written by |
+| --- | --- | --- | --- | --- |
+| `timesheet_reopenings` | One row per owner reopening of an exported period, with the reason (kept here, not in the audit log). | yes | `timesheet_id` single-column link, cascade; CHECK `reason` is 3 to 500 characters. | `Mod\Timesheets` |
+
+## 4. What the database enforces, and what only PHP enforces
+
+### Triggers
+
+Four triggers exist in `backend/migrations`, and no others (`git grep -n 'CREATE TRIGGER' -- backend/migrations` prints exactly these):
+
+- `audit_logs_no_update` and `audit_logs_no_delete` (`backend/migrations/003-audit-immutable.sql`) refuse any update or delete of `audit_logs`, for every user including the runtime one.
+- `clock_event_corrections_no_update` and `clock_event_corrections_no_delete` (`backend/migrations/006-time-and-requests.sql`) do the same for `clock_event_corrections`.
+
+Foreign-key cascades do not run triggers. `backend/migrations/013-data-lifecycle.sql` therefore adds a cascade from `clock_event_corrections` to `clock_events`, which is the one sanctioned way for retention and organisation deletion to remove corrections; a direct delete is still refused.
+
+### Foreign keys
+
+- **Composite links.** Links between tenant tables are (`org_id`, `id`) foreign keys onto a unique (`org_id`, `id`) key of the parent, `ON DELETE CASCADE` for most children and `RESTRICT` where PHP must clear the children first. The tables that sit on the restricting side, cleared child-first when an organisation is deleted, are listed in `Lifecycle::CLEAR_FIRST` (`backend/src/Mod/Lifecycle.php`: `shift_swaps`, `shifts`, `rotas`, `documents`, `staff_profiles`, `departments`).
+- **Single-column links from a tenant table onto another tenant table.** The database does not tie these to the same organisation, so PHP does: `clock_events.shift_id` (`shifts`), `announcements.location_id` and `announcements.department_id`, `documents.superseded_by`, `platform_announcement_deliveries.outbox_id` and `timesheet_reopenings.timesheet_id`. Found by reading every `FOREIGN KEY` in the migrations on 2026-11-09 (no command is kept for it).
+- **Deliberately no link to `organisations`:** `audit_logs` and `storage_deletions`, so that history and owed file deletions outlive a deleted tenant. `account_deletions` has no link to `users` for the same reason. `support_cases`, `gdpr_requests` and `billing_events` use `ON DELETE SET NULL` on `org_id`.
+- **User references** (author, reviewer, actor) are `ON DELETE SET NULL` where the row must survive its user; several reviewer columns (for example `leave_requests.reviewed_by`) carry no foreign key at all.
+
+### Unique keys that carry a business rule
+
+| Rule | Key |
+| --- | --- |
+| One draft and one published rota per organisation, site and period | `rotas_one_draft`, `rotas_one_published` (generated `is_draft`, `is_published`, `site_key`), `backend/migrations/005-rota.sql` |
+| One pending invitation per email per organisation | `invites_pending` on generated `pending_email`, `backend/migrations/002-identity.sql` |
+| A replayed offline write finds its earlier row | `clock_events_client_event`, `leave_requests_client_event`, `shift_swaps_client_event` (`client_event_id`), `backend/migrations/006-time-and-requests.sql` |
+| A scheduled alert is queued once | `notification_outbox_dedupe` (`dedupe_key`), `backend/migrations/007-communication.sql` |
+| One subscription per organisation; invoice numbers are unique | `subscriptions_org`, `invoices_number`, `backend/migrations/008-billing.sql` |
+| A Stripe event is recorded once per mode | `billing_events_identity` (`provider`, `mode`, `event_id`) |
+| Two active job titles cannot share a name or a colour | `job_titles_name`, `job_titles_colour` (generated columns), `backend/migrations/004-people-places.sql` |
+| One timesheet per person per period | `timesheets_period` (`backend/migrations/006-time-and-requests.sql`); leave overlap is not a key, see below |
+| At most one open absence report and one open cover request per shift; one application per person per shift | `cover_absences_one_open`, `cover_requests_one_open`, `cover_applications_one_each`, `backend/migrations/017-cover.sql` |
+| An expiry reminder is sent once per document and stage | primary key (`document_id`, `stage`) of `document_reminders`, `backend/migrations/015-compliance.sql` |
+| A stored file path belongs to one document | `documents_storage_path` |
+| An announcement reaches an organisation once; a credit is recorded once | `platform_deliveries_once`, `invoice_credits_once`, `backend/migrations/014-platform-comms.sql` |
+
+### CHECK constraints that carry a business rule
+
+Every CHECK is in the migration that creates its table. The ones that carry a rule rather than a format are: time order on shifts, rotas, leave, timesheets, invoices, support sessions and incidents; a `paid` invoice needs `paid_at` and a `refunded` one `refunded_at` (`backend/migrations/008-billing.sql`);
+a resolved incident needs a resolution and an open one has none (`backend/migrations/011-platform-ops.sql`); a completed or refused data-subject request needs `closed_at` and `outcome_note` (`backend/migrations/013-data-lifecycle.sql`);
+a document holds exactly one of `file_url` and `storage_path`, and the path starts with the row's own `org_id/staff_profile_id/` (`backend/migrations/015-compliance.sql`);
+a support session needs a reason of at least 15 characters (`backend/migrations/009-platform-access.sql`); a cover record is open only while `open_shift_id` equals `shift_id` (`backend/migrations/017-cover.sql`);
+an invoice document link must be a Stripe host (`invoices_docs_are_stripe`). ENUM columns carry the status vocabularies, so strict mode refuses any other value. `notifications.type` is the exception: it is free text.
+
+### Rules enforced only in PHP
+
+The database does not express these; the named code does. The pure decision logic is in `*Rules.php` modules that take no database (their headers say so).
+
+| Rule | Where |
+| --- | --- |
+| A published or archived rota is never edited; an amendment is a draft that supersedes it, and publishing it archives the original in the same transaction | `backend/src/Mod/Rotas.php` (header, `publish`), `backend/src/Mod/Shifts.php` (`rota_published`, `rota_archived`) |
+| Publishing refuses a future day below the site's minimum cover | `backend/src/MinimumCover.php`, called from `Rotas::publish` (`cover_below_minimum`) |
+| With the `scheduling_tools` flag on, a double-booked person stops a publish | `backend/src/Mod/Scheduling.php`, `backend/src/SchedulingRules.php` |
+| One person holds one live leave booking per day | `backend/src/Mod/Leave.php`: the check runs under a row lock on the person's staff record and answers `leave_overlap` (the earlier overlap constraint has no MariaDB equivalent, per the `006` header) |
+| Seat and location limits of the plan | `backend/src/Billing.php` (`seat_limit`, `location_limit`) |
+| Stripe signature check and event reconciliation | `backend/src/BillingRules.php` (`verifySignature`) |
+| Document status, expiry and which reminder is due | `backend/src/ComplianceRules.php` (30, 14 and 7 days before expiry, then once the day after) |
+| Cover eligibility, ranking and swap staleness | `backend/src/CoverRules.php` |
+| Timesheet lines, tolerance flags and the payroll CSV | `backend/src/TimesheetRules.php` |
+| Support reference numbers and SLA deadlines | `backend/src/SupportRules.php` |
+| Which `staff_profiles` columns a colleague may read | `backend/src/Mod/Staff.php` (migration comment in `004`); there are no column grants |
+| Which `staff_profiles` columns an erasure clears and which it keeps | `Gdpr::ERASURE_CLEARED` and `Gdpr::ERASURE_RETAINED` in `backend/src/Mod/Gdpr.php`; the suite `backend/tests/suites/190-lifecycle.php` fails when a new column is in neither list |
+| Deleting an organisation | `backend/src/Mod/Lifecycle.php`: one transaction; exact name typed; audit row first; owed file deletions queued; restricting tables cleared child-first; the suite `backend/tests/suites/190-lifecycle.php` fails when a new restricting link is not covered. It takes effect at once; there is no grace period |
+| Retention | `backend/src/Retention.php`: plain deletes by date for six data types; the audit trail is never touched |
+
+The rota lifecycle in one line: `draft`, then `published`, then `archived` when an amendment is published; `unpublish` returns a published rota to `draft` unless an amendment is open (`backend/src/Mod/Rotas.php`).
+
+## 5. Access checks in PHP (no row-level security since the cutover)
+
+- **Every org-scoped handler starts with `Scope::membership`.** The organisation id comes from the URL and is validated as a UUID but never trusted; the role is read from the database
+  (`memberships` joined to `organisations`, active membership, organisation not archived); a non-member gets 404 (`backend/src/Scope.php`).
+  `Scope::require` compares the effective role and answers 403; `Scope::requireReal` uses the real role; `Scope::requireWritable` refuses writes to a suspended organisation and during a `read` support session.
+- **Queries are scoped by `org_id`.** A handler's SQL carries `org_id = ?` with the validated id (for example the rota list in `backend/src/Mod/Rotas.php`), and a staff member who is not a manager is filtered further (staff never read a draft rota).
+- **The database is the second line.** Composite foreign keys (section 4) refuse a cross-organisation reference between two tenant tables, and the append-only triggers protect the trails.
+- **The proof.** `backend/tests/suites/099-access-sweep.php` reads the route table from the modules and calls every route as nobody, as a stranger (a member of a different organisation), as a signed-in person with no organisation and with random ids. Its rules: nothing returns 500, a protected route refuses nobody with 401, an org-scoped route answers a stranger and a non-member with 404 and no data. A new route is covered the day it is added.
+- **The map.** `docs/RLS-TO-PHP.md` lists each retired policy, the PHP check that replaced it and the test.
+- **Not covered by that sweep:** a PHP check that exists but is wrong for one role on one route. That needs a suite that names the route; the per-module suites in `backend/tests/suites` are where such cases live. Any claim that a given route is correct for every role is `NOT VERIFIED`.
 
 ## 6. Automation
 
-**This section is selective, and says so on purpose.** It explains the functions whose
-_behaviour_ a reader has to know before changing something — the ones that are load-bearing
-for tenancy, for the audit trail, or for a boundary. It is **not** a catalogue: there are
-111 `security definer` functions in `public` and roughly half are named here. Do not read an
-absence as "does not exist". The list itself is one query, and a query cannot go stale:
+There is no scheduler inside the database. `backend/bin/cron.php` runs every module that defines `public static function cron`, one run at a time under a lock file; the jobs decide for themselves whether they are due, so the schedule is only a heartbeat. The live host runs it every five minutes (header of `backend/bin/cron.php`; the 2026-11-08 section of `docs/AUDIT.md` records the check).
 
-```sql
-select proname, prosecdef from pg_proc p
-  join pg_namespace n on n.oid = p.pronamespace
- where n.nspname = 'public' order by 1;
-```
+| Module (`backend/src/Mod`) | What its `cron` does | Tables it touches |
+| --- | --- | --- |
+| `Notifications` | queues scheduled alerts, then `Dispatcher::drain` empties the outbox (in-app rows, email, web push; abandoned after five attempts, claims older than ten minutes are reclaimed) | `notification_outbox`, `notifications`, `notification_deliveries`, `push_subscriptions`, `app_settings`, `notification_templates` |
+| `Compliance` | sends expiry reminders for staff documents, at most once in fifteen minutes | `documents`, `document_reminders` |
+| `Cover` | sweeps stale cover records for organisations with the `cover_tools` flag on | `cover_requests`, `cover_applications`, and `shift_swaps` through `Swaps::voidStale` |
+| `Gdpr` | deletes the Clerk login, then the local user, for each owed erasure; prunes finished rows after a year | `account_deletions`, `users`, `support_access_sessions` |
+| `Lifecycle` | removes queued stored files; once a day after 02:15 UTC runs retention | `storage_deletions`, `retention_runs`, and through `Retention` the tables below |
+| `PlatformAnnouncements` | publishes due scheduled announcements and reconciles deliveries | `platform_announcements`, `platform_announcement_deliveries`, `notification_outbox` |
+| `Enquiries` | emails a notice for each new website enquiry, if a notice address is configured | `enquiries` |
 
-Enumerating all of them here was considered and rejected: a hand-maintained list of a
-hundred names is the same shape as every count this repository has had to correct, and the
-one thing it would add over the query is the opportunity to be wrong.
+`Retention` (`backend/src/Retention.php`) deletes by date, in whole calendar months, from these tables for the rules in `retention_policies`: `shifts` and `rotas` (`rota_history`), `clock_events` and `timesheets` (`attendance`), `leave_requests`, resolved `support_cases`, `notification_deliveries` and sent or abandoned `notification_outbox` rows (`notifications`), and `enquiries`.
+The policy row `deleted_tenant` is listed but not enforced (see `backend/migrations/013-data-lifecycle.sql`). Retention periods are the seeded rows of that migration; the live values are database state and `NOT VERIFIED`.
 
-- **`handle_new_user()`** (from `0001`): creates `profiles` + `app_settings` on sign-up.
-- **`set_updated_at()`**: keeps `updated_at` accurate on every table.
-- **Conflict/summary logic** (rota conflict detection, timesheet rollups): computed in
-  the client for V1; heavier/scheduled jobs move to **Supabase Edge Functions +
-  `pg_cron`** (never on cPanel). Inngest was the dispatch path until `0087` and
-  is no longer used: notifications are enqueued by triggers and drained by
-  `pg_cron` + `pg_net`.
-- **`has_support_access(org, write?)`**, and `is_org_member()`/`has_org_role()`
-  redefined to consult it (`0028`, `security definer`): see §5 — a platform
-  administrator reads/writes tenant data only through an open
-  `support_access_sessions` row, not by virtue of the role alone.
-- **`probe_platform_health()`** (`0076`, `security definer`, `pg_cron` every five
-  minutes): writes `platform_health_samples` with `source = 'scheduled'` whether or
-  not anyone is looking — the database directly, Auth and REST over `pg_net`. Records
-  **status only**: `net._http_response` carries no duration, and `created - sent_at`
-  includes the pg_net worker's polling interval, so a latency built from it would be
-  mostly scheduler noise. Prunes the table at 90 days, which nothing else does — it is
-  deliberately not in `retention_policies`, because that register is the
-  customer-facing data-protection one and platform telemetry holds no personal data.
-  `platform_health_summary` therefore answers **two questions from two sources**:
-  uptime from scheduled samples where they exist (`measured_from`), latency from
-  whatever actually timed something (`latency_from`). Averaging a browser round trip
-  with an in-region one is what `0027` warned about.
-- **`enforce_retention(dry_run?)`** (`0029`, `security definer`, `pg_cron` nightly):
-  deletes rows past their `retention_policies.retain_months` window and writes a
-  `retention_runs` row. Skips any policy with `retain_months = null` (indefinite —
-  `audit_logs`) and skips deleted-tenant cascade entirely (§4.8).
-- **`staff_profiles_auto_link_account()`** (`0053`, trigger, `security definer`,
-  before insert/update of `email`/`org_id` on `staff_profiles`): if `email` is set
-  and `user_id` is still null, links it to a matching active membership in the same
-  org. Never overwrites an existing `user_id`.
-- **Client-callable RPCs** (`set_org_status`, the platform count functions, the
-  rate limiters, `rate_support_case`, the entitlement functions, the invite
-  functions) are contracts, so their behaviour is in `docs/API-SPEC.md`, "RPC
-  contracts". **Notification functions and triggers** (`announcement_audience`,
-  `remind_announcement_unread`, the enqueue triggers) are in
-  `docs/NOTIFICATIONS-SPEC.md`. Both moved there on 11 October 2026.
+## 7. Files and indexes
 
-## 6a. Rota lifecycle (`0061`) — Draft, Published, Amended
-
-A published rota is **immutable**. It is what staff have been told, so it is not
-edited in place; it is replaced.
-
-```text
-draft ──publish_rota()──> published ──begin_rota_revision()──> draft (supersedes_rota_id = published.id)
-                              │                                     │
-                              │                                     ├─ publish_rota()  ─> published, and the one it
-                              │                                     │                     supersedes becomes archived
-                              │                                     └─ discard_rota_revision() ─> gone; published unchanged
-                              └── unpublish_rota() ─> draft   (refused while an amendment is open)
-```
-
-Staff read paths filter on `status = 'published'` and need no change: both the
-amendment (`draft`) and the version it replaced (`archived`) fall outside that
-filter, so staff see exactly one version of a week at all times, including
-during an amendment.
-
-Three guards make this true for a direct PostgREST call, not only for the UI —
-the defect being closed (BUG-028) was a rule stated in one screen's copy and
-honoured by no mutation path at all:
-
-- **`shifts_guard_immutable_rota`** — refuses any `insert`/`update`/`delete` of a
-  shift whose rota is `published` (`ROTA1`) or `archived` (`ROTA2`).
-- **`rotas_guard_status_change`** — a rota is born a draft, and `status` moves only
-  inside the functions below, which set a transaction-local
-  `rotaflow.rota_transition` flag. A raw `PATCH` of the column is refused (`ROTA3`).
-- **`rotas_published_unique_location` / `_no_location`** — at most one published
-  rota per org/location/period, the published-side counterpart to `0059`'s draft
-  indexes.
-
-Both guards stand down when `auth.uid()` is null: that is server-side code (the
-nightly retention job, Edge Functions on `service_role`), not an end user.
-
-**The one end-user exception** is `apply_swap_reassignment(swap_id)`. Approving a
-shift swap legitimately changes a published rota — both people agreed and it was
-approved, and staff should see the new name immediately rather than waiting for a
-republish. It is narrowed to one column, checks the same people 0002/0043 allow to
-finalize the swap, sets `rotaflow.shift_transition` to pass the guard, and writes a
-`rota.shift_reassigned` audit event that the previous client-side `updateShift`
-call did not.
-
-Audit coverage is `rota.published`, `rota.republished`, `rota.unpublished`,
-`rota.superseded`, `rota.amendment_started`, `rota.amendment_discarded`,
-`rota.shift_reassigned` and — new in `0061`, closing BUG-035 — **`rota.deleted`**.
-Before this a rota could disappear with no record at all, which made a production
-disappearance impossible to attribute.
-
-## 6b. Deleting an organisation (`0063`)
-
-Nothing could delete a tenant before this — no UI, no console action, no RPC
-(BUG-009). Five database guards refused it, and they surfaced one at a time,
-each failure hiding the next:
-
-| Guard                                                                      | Why it refused                                                                                                                             |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `organisations_audit`, `memberships_audit`, `rotas_audit`, `invites_audit` | each cascade fires an audit trigger that INSERTs an `audit_logs` row referencing the organisation being deleted → `audit_logs_org_id_fkey` |
-| `memberships_keep_one_owner` (`0047`)                                      | refuses to remove the last owner, with no exemption for "the organisation is going too"                                                    |
-
-`delete_organisation(org, confirm_name)` sets a transaction-local
-`rotaflow.org_deleting`; `audit_write` and `memberships_keep_one_owner` stand
-down **for that organisation, in that transaction only**. Every other tenant's
-guards stay armed — which `alter table … disable trigger` would not have
-managed, and which has already gone wrong here once: a script disabled
-`audit_logs_no_update` and never re-enabled it.
-
-Caller must be an owner of the organisation or a platform admin, and must type
-the organisation's name exactly. `organisation_deletion_preview(org)` returns
-the row counts the confirmation dialog shows.
-
-**The cascade is the mechanism, so new tables are covered automatically — and
-that was verified rather than assumed on 2026-08-31.** `0063`'s header says
-the delete "cascades into 32 tables"; production now reports **37** foreign
-keys to `organisations` with `on delete cascade`, and the difference is
-exactly the five tenant tables added that day (`calendar_feed_tokens`,
-`staff_pay_rates`, `staff_locations`, `role_delegations`,
-`notification_templates`). The number in the migration header is immutable and
-now stale; this is where to read the current one.
-
-What that does NOT cover is a table whose foreign key is `on delete set null`
-rather than cascade: those rows SURVIVE the organisation, with `org_id` null.
-Three do, and the difference between them matters:
-
-| Table           | Survives with a null `org_id` because                                                                                                                                                                                                                          |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `audit_logs`    | Deliberate, and stated in `0063`: an audit trail a tenant deletion erases is not an audit trail. The organisation's NAME is copied onto each row so the history stays readable.                                                                                |
-| `gdpr_requests` | Almost certainly right and **not written down anywhere until now**: the evidence that an erasure or access request was handled has to outlive the tenant, or the one record proving compliance disappears with the customer who complained.                    |
-| `support_cases` | Same shape, weaker argument. A closed support history is useful and is not obviously ours to keep. Worth a decision rather than an inheritance — nobody chose this, it came from the column being nullable so a case could arrive before the tenant was known. |
-
-None of them is visible to a tenant afterwards: every policy on those tables
-goes through `is_org_member(org_id)`, which is false for null, so a surviving
-row is reachable only by a platform admin.
-
-The check is one query, and is worth running after adding any table:
-
-```sql
-select child.relname from pg_constraint c
-  join pg_class child on child.oid = c.conrelid
-  join pg_class parent on parent.oid = c.confrelid
- where c.contype = 'f' and parent.relname = 'organisations'
-   and c.confdeltype <> 'c';
-```
-
-What survives, by design: `audit_logs`, `gdpr_requests` and `support_cases` all
-hold `org_id … on delete set null`, and audit rows carry an `org_name`
-snapshot. The `org.deleted` event is written _before_ the delete so it survives
-the same way. Everything else org-scoped (32 cascading tables) goes.
-
-## 6c. Indexes (`0002`, then `0072`)
-
-`0002` gave every table single-column indexes on its foreign keys. Almost every
-list query in `src/services` is shaped `.eq(<scope>, …).order(<time>, desc)`, so
-those served the filter and Postgres sorted the result afterwards. `0072` adds
-the composite that covers both halves, one per query that actually issues it:
-
-| Table               | Index                                                                                                                            | Read it serves                                                                                                                                                           |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `rotas`             | `(org_id, location_id, period_start, period_end)`                                                                                | `listRotasForPeriod` — the only prior cover was 0059's two **partial** unique indexes (`where status = 'draft'`), and this lookup deliberately does not filter on status |
-| `shifts`            | `(org_id, starts_at)`                                                                                                            | `listShiftsForPeriod` — every schedule view                                                                                                                              |
-| `shifts`            | `(rota_id, starts_at)`                                                                                                           | `listShiftsForRotas` — the builder grid                                                                                                                                  |
-| `clock_events`      | `(staff_profile_id, event_at)`                                                                                                   | one person's timesheet                                                                                                                                                   |
-| `clock_events`      | `(org_id, event_at desc)`                                                                                                        | manager review                                                                                                                                                           |
-| `staff_profiles`    | `(org_id, first_name) where active`                                                                                              | `listStaff`, on nearly every screen — partial, so it stays small                                                                                                         |
-| `leave_requests`    | `(org_id, created_at desc)`, `(staff_profile_id, created_at desc)`                                                               | the manager queue and a person's own history                                                                                                                             |
-| `leave_requests`    | `exclude using gist (staff_profile_id, daterange(start_date, end_date, '[]')) where (status in ('pending','approved'))` (`0152`) | one live booking per person per day — a constraint rather than a trigger, because a read-then-write loses the race between two requests submitted at the same moment     |
-| `overtime_requests` | `(org_id, created_at desc)`, `(staff_profile_id, date desc)`                                                                     | same pair; the staff view sorts by the day worked, not the claim date                                                                                                    |
-| `shift_swaps`       | `(org_id, created_at desc)`, `(requested_by)`, `(target_staff_profile_id)`                                                       | the last two are separate rather than composite so the `requested_by OR target` lookup can take a BitmapOr                                                               |
-| `notifications`     | `(user_id, created_at desc)`                                                                                                     | the bell, polled on every page                                                                                                                                           |
-| `audit_logs`        | `(org_id, created_at desc)`                                                                                                      | 0016 indexed the actor and platform views but not the org-scoped one an owner opens                                                                                      |
-| `documents`         | `(org_id, expires_at)`                                                                                                           | expiry reminders                                                                                                                                                         |
-
-The single-column indexes stay — they still serve lookups that do not sort.
-
-⚠️ `0072` uses a plain `CREATE INDEX`, not `CONCURRENTLY`, because the latter
-cannot run inside a transaction and the CLI wraps each migration in one. That is
-safe only because production is effectively empty. **Replaying it against a
-populated database would take a SHARE lock and block writes for the duration —
-build those by hand with `CONCURRENTLY` instead.**
-
-## 7. Generating TypeScript types
-
-Keep `src/types/database.types.ts` in sync once the DB exists:
-
-```bash
-supabase gen types typescript --project-id <ref> --schema public \
-  > src/types/database.types.ts
-```
-
-The Supabase client is `createClient<Database>(…)`, so every query is fully typed.
-`src/types/index.ts` exposes row aliases (`Organisation`, `Shift`, `LeaveRequest`, …). Add them there as tables are generated.
+- **Uploaded files are not in the database.** They are plain files under `<private root>/uploads`, outside every web root, in two buckets (`staff-documents`, `staff-photos`) laid out as `<org id>/<staff profile id>/<file>`, reached only through the API (`backend/src/FileStore.php`).
+  The tables hold only pointers and descriptors: `documents.storage_path` (unique, CHECKed to start with the row's own organisation and person folder), `documents.mime`, and `staff_profiles.photo_path` and `photo_url`. There is no hash or size column.
+  `storage_deletions` queues the file or folder to remove when a row goes (`Mod\Lifecycle`, `Mod\Gdpr`, `Mod\Photos`).
+- **Indexes.** The inventory in section 3 names the unique keys. The other indexes are lookups that lead with `org_id`: for example `shifts_org_start`, `shifts_by_staff`, `clock_events_staff_time`, `leave_requests_status`, `notifications_inbox` (`user_id`, `org_id`, `created_at`), `notification_outbox_due` (`status`, `next_attempt_at`) and `audit_logs_org_created`.
+  Every table that is the target of a composite link has a unique (`org_id`, `id`) key. `grep -n 'KEY' backend/migrations/*.sql` lists the keys; the earlier list of indexes for the retired schema is not carried over.
 
 ## 8. Migration policy
 
-- One numbered file per change (`0002_rotaflow.sql`, `0003_…`). Additive & idempotent
-  (`if not exists`). **Never edit an applied migration**. Add a new one.
-- Every new table: `org_id`, RLS enabled, membership-scoped policies, `set_updated_at`.
+- **Where.** One file per change in `backend/migrations`, named `NNN-name.sql` with a three-digit number; `backend/bin/migrate.php` globs `[0-9][0-9][0-9]-*.sql` and sorts. The last number in use is 020.
+- **Applying.** `php bin/migrate.php [--dry-run]` from `backend/`, run on the host with the migration identity (private `config/migrate.php`; schema rights and the TRIGGER privilege), after the files have been uploaded. It creates `schema_migrations` (`name`, `applied_at`, SHA-256 `checksum`), applies pending files in order, splitting statements with `RotaFlow\Sql::split`, and records each file only after all its statements ran.
+- **The release does not apply migrations.** `scripts/release.mjs` contains no call to the migration runner; `release.json` uploads the `.sql` files to the private app folder. Running `migrate.php` is a separate step. Who runs it, when, and whether any live migration is pending is `NOT VERIFIED` (server state).
+- **Forward only, and never edit an applied file.** There is no down path. A changed checksum on an applied file aborts the run with exit 2 before anything new is applied; a failing statement aborts with exit 3 and writes no log row.
+  MariaDB commits DDL implicitly, so a file that fails halfway leaves its earlier statements in place: write statements that are additive and re-runnable (`IF NOT EXISTS`, `INSERT IGNORE`) so the corrected file can be applied again (header of `backend/bin/migrate.php`).
+- **A new table** takes an `org_id` and composite links as in section 2 and an entry in this document (`docs/RULES.md` states the rule; the migration wins if the two disagree).
+- **Tests.** Every PHP suite starts from a fresh database with every migration applied by the real runner (`backend/tests/lib.php`); `backend/tests/suites/010-migrate.php` tests the statement splitter.
+- **What the gate does not cover.** `pnpm run check:migrations` (`scripts/check-migration-safety.mjs`) scans only `supabase/migrations`, the legacy tree, so nothing automatic checks the safety of `backend/migrations`. Pointing it at the MariaDB tree is a follow-up code change, not made in this phase.
+- No other written policy (review rules, a naming rule beyond the number, a rollback plan) exists in the repository: `NOT VERIFIED`.
+
+## 9. Generated types
+
+`src/types/database.types.ts` is generated from the retired Supabase schema and does not match MariaDB. Comparing its `Tables` names with the 69 tables on 2026-11-09: it lists 61 tables, 7 of which have no MariaDB twin (`background_jobs`, `integration_connectors`, `integration_sync_runs`, `org_integrations`, `platform_health_samples`, `platform_ip_allowlist`, `profiles`) and 15 MariaDB tables are missing from it
+(`rate_limits`, `users`, `notification_outbox`, `billing_events`, `support_counter`, `support_sla_targets`, `incident_counter`, `account_deletions`, `storage_deletions`, `document_types`, `document_reminders`, `cover_absences`, `cover_requests`, `cover_applications`, `timesheet_reopenings`).
+The comparison was a one-off script over the file, not a repository command. Hand-written API types are the target (owner decision 8 November 2026); the types file is a code leftover for a later phase.
+
+## 10. Legacy
+
+The retired Postgres schema, its row-level-security policies, grants, triggers, the pg_cron jobs and the 164-migration history are in the previous version of this document:
+`git show live-supabase-2026-11-01:docs/DATA-MODEL.md`. The retired schema's migration files stay in `supabase/migrations` until Phase 6.

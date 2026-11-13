@@ -35,7 +35,7 @@ because the task turns out to be harder than it looked.
 - Edit local files:
 - Run the app, tests and gates:
 - Call external services:
-- Change production (deploy, Supabase secret, migration):
+- Change production (deploy, server secret, migration):
 - MCP reads permitted:
 - MCP mutations authorised (name each one):
 
@@ -48,16 +48,19 @@ because the task turns out to be harder than it looked.
 ## Evidence
 
 The checks that must pass, chosen before the work rather than after it. For
-anything in this repository that is usually:
+anything in this repository that is usually the list below. A change under `backend/`
+adds `check:php`, whose suites need the scratch MariaDB that `scripts/test-db.sh`
+starts.
 
 ```text
 pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm test
 pnpm run build && pnpm run check:bundle
-pnpm run check:migrations   # if supabase/migrations changed
-pnpm run check:export       # if a tenant table was added
+pnpm run check:php          # if backend/ changed — php -l, then the PHP suites; needs a scratch MariaDB (scripts/test-db.sh)
+pnpm run check:migrations   # reads the legacy supabase/migrations tree only; it does not see backend/migrations
+pnpm run check:export       # reads the legacy supabase/migrations tree to find tenant tables
 pnpm run check:docs         # if a count or a citation moved
 pnpm exec playwright test        # if a screen or a route changed
-supabase test db           # if RLS, a policy or an RPC changed — needs Docker
+# a change under backend/migrations: read the new file by hand (additive, re-runnable), then run check:php
 ```
 
 - Completion conditions:

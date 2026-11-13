@@ -16,7 +16,17 @@ mockup is tracked separately in `docs/UX-SPEC.md#design-match-loop`, which is th
 design-match. A screen can be ✅ here and still not match its mockup visually.
 
 Role note: the real `MembershipRole` is `owner | manager | staff`. "Super Admin" is a
-separate `is_platform_admin` flag, not a fourth role.
+separate platform role (`platform_owner`, `platform_admin`, `platform_support` or `platform_finance`, from
+`GET /me`; `isPlatformAdmin` is `platformRole !== null` in `src/context/OrgContext.tsx`), not a fourth role.
+
+**Technology references, checked 9 November 2026.** This file's route claims were compared with `src/App.tsx`
+(each backticked front-end route resolves, apart from the DEV-only preview routes, the API paths, and the routes the text itself says do not exist) and its technology claims with the code. A
+four-digit number such as `0103` is a migration of the Supabase era (`supabase/migrations`), kept as the record of
+when a screen shipped; the live schema is `backend/migrations` and the live data calls are the PHP routes in
+`docs/API-SPEC.md`. **NOT VERIFIED (not read in this pass):** the behaviour descriptions in the rows of sections 1
+to 7d that the notes below do not mention. They are the 2026 screen audits' statements about what each page does,
+and were not re-read against the pages; only the statements that name a retired technology were changed. The
+previous text is at the tag: `git show live-supabase-2026-11-01:docs/UX-SPEC.md`.
 
 ---
 
@@ -26,8 +36,8 @@ separate `is_platform_admin` flag, not a fourth role.
 | ------ | ----------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ✅     | `marketting.png`              | Marketing home                           | `/`. Hero, product shot, 8-benefit grid, sector cards, "Why teams choose", social-proof slot, CTA banner and a 5-column footer. Full nav: `/features` `/solutions` `/pricing` `/resources` `/about` `/contact`, all routed and asserted by `navigationTargets.test.ts`. **Traction figures and testimonials are deliberately absent**, see below                                                                                                                                                                                                                                                                     |
 | ✅     | ,                             | Features · Solutions · Pricing           | `/features`, `/solutions`, `/pricing`. Pricing states plainly that signup takes no card: the organisation's owner picks a plan afterwards and pays through Stripe checkout, from Settings → Billing (§3)                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ✅     | ,                             | Resources · About · Contact              | `/resources` publishes a built / partial / not-built breakdown of the product. `/contact` posts to the `public-enquiry` Edge Function and says "Thanks, we've got your message. We reply within one working day." only after a 201; any failure shows the support address instead. Fields: name, work email, organisation, team size, sector, message, "I'd like a demo" (ticked by `?demo=1`, which every Book a demo link carries) and an unticked marketing box. The honeypot is off-screen and hidden from assistive technology; Turnstile renders only when `VITE_TURNSTILE_SITE_KEY` is set. See `ContactPage` |
-| ✅     | `signin.png`                  | Sign in. Password, magic link, OAuth     | `/login`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ✅     | ,                             | Resources · About · Contact              | `/resources` publishes a built / partial / not-built breakdown of the product. `/contact` posts to the public `POST /enquiries` route (`backend/src/Mod/Enquiries.php`; the `public-enquiry` Edge Function in the Supabase era) and says "Thanks, we've got your message. We reply within one working day." only after a 201; any failure shows the support address instead. Fields: name, work email, organisation, team size, sector, message, "I'd like a demo" (ticked by `?demo=1`, which every Book a demo link carries) and an unticked marketing box. The honeypot is off-screen and hidden from assistive technology; Turnstile renders only when `VITE_TURNSTILE_SITE_KEY` is set. See `ContactPage` |
+| ✅     | `signin.png`                  | Sign in. Clerk email code (the mockup shows password, magic link and OAuth) | `/login`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ✅     | `signup.png`                  | Sign up. Carries an invite token through | `/signup`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ✅     | `splash-screen.png`           | Cold-start splash                        | `/splash`, also inline while auth resolves                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ✅     | `appboot.png`                 | App boot / "setting up organisation"     | In production this renders **inline** from `ProtectedRoute` while auth/org resolve. It has no production URL. `/appboot` is a design-loop **preview route only**, with fixed props, existing so the state can be screenshotted. The reference's five stages are built (`AppBootScreen`: Secure connection → Loading your data → Setting up organisation → Preparing features → Finalising), each driven by a real signal rather than a timer. Whether it _matches_ the mockup is `docs/UX-SPEC.md#design-match-loop`'s call                                                                                          |
@@ -74,7 +84,7 @@ a tab only to refuse them on arrival read as a broken product. `/app/settings`
 itself lands on the first tab the role can use (`defaultSettingsPath`), so an
 owner lands on Organisation and a manager on Roles. The page title is the tab's
 name with "settings" after it, for example "Organisation settings" (O3). Hiding a
-tab is presentation; RLS remains the boundary.
+tab is presentation; the API's access check (`Scope::membership`) remains the boundary.
 
 Where the reference asks for something the system genuinely cannot do, the
 screen **says so on the screen, with the reason** rather than faking it. That is
@@ -88,10 +98,10 @@ the pattern to follow when extending these.
 | ✅     | `Settingspolicy.png`        | Policies      | Scheduling policies over `organisations.settings`. The reference's ~55-policy engine with per-policy scope/history and live rota validation remains a separate project                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ✅     | `SettingsNotifications.png` | Notifications | Per-category defaults. SMS is shown as unavailable. There is no provider. Templates are stored in `notification_templates` (`0108`), and rendering respects organisation-specific wording where one exists                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ✅     | `SettingsIntegrations.png`  | Integrations  | Per-org SMTP with a real test-send; the verified time is `en-GB` on the organisation's clock. Moved here from top-level `/app/integrations`, which redirects                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ✅     | `Settingsbilling.png`       | Billing       | Reads `subscriptions` and starts Stripe checkout / the hosted Customer Portal (`billingCheckoutService`, over the `create-checkout-session`, `create-portal-session` and `stripe-webhook` Edge Functions). Since `0156` an **Invoices** section lists the owner's last 12 invoices (`listOwnerInvoices`, `BillingInvoices.tsx`): date, number, amount in the invoice's currency, status in words (Paid, Open, Failed, Void, Refunded), and "View" / "Download PDF" links to the stored Stripe documents in a new tab, a table from `sm` up and stacked rows on a phone. Saved cards and the full history stay in Stripe's portal; there is still no usage meter or credits ledger. Since `0154` it also reads `my_org_billing_state` for "Trial, N days left" and the read-only notice |
+| ✅     | `Settingsbilling.png`       | Billing       | Reads `subscriptions` and starts Stripe checkout / the hosted Customer Portal (`billingCheckoutService`, over `POST /orgs/{o}/billing/checkout` and `/billing/portal` and the signed `POST /stripe/webhook`, `backend/src/Mod/Billing.php`; Edge Functions in the Supabase era). Since `0156` an **Invoices** section lists the owner's last 12 invoices (`listOwnerInvoices`, `BillingInvoices.tsx`): date, number, amount in the invoice's currency, status in words (Paid, Open, Failed, Void, Refunded), and "View" / "Download PDF" links to the stored Stripe documents in a new tab, a table from `sm` up and stacked rows on a phone. Saved cards and the full history stay in Stripe's portal; there is still no usage meter or credits ledger. Since `0154` it also reads `GET /orgs/{o}/billing/state` (`my_org_billing_state` in the Supabase era) for "Trial, N days left" and the read-only notice |
 | ✅     | `Settingsaudit.png`         | Audit         | Reads `audit_logs` (`auditService.listAuditLogs`). No longer thin: `audit_write` (0016) plus triggers and RPCs across 0017, 0021-0026, 0030, 0034, 0039-0040 write real events                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
-## 4. My account area-7 designed tabs, all 7 built as tabs, plus Your data
+## 4. My account area-7 designed tabs, 5 built as tabs and 2 now redirecting (since the Clerk cutover), plus Your data
 
 Same layout-route pattern as §3, at `/app/account`, titled "My account" (the one name for it everywhere since 2026-10-11, O5). Every role sees the same tabs. This is a person's own account. API Tokens is routed but not in the tab bar (see its row).
 
@@ -99,12 +109,12 @@ Same layout-route pattern as §3, at `/app/account`, titled "My account" (the on
 | ------ | ---------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ✅     | `ProfileSettings.png`  | Profile            | Name, contact, job title, department, and the notification matrix                                                                                                                                                                                                                                                                                                                         |
 | ✅     | `profileprefrence.png` | Preferences        | Theme and the preferences `app_settings` can actually hold. The reference's ~20 fields exceed the two-column table; the gap is stated on the screen                                                                                                                                                                                                                                       |
-| ✅     | `ProfileSecurity.png`  | Security           | Password change, and TOTP two-factor enrolment since `0102`. Backup codes and trusted devices are still named as not built rather than shown as a "100% secure" ring over checks nothing performs                                                                                                                                                                                         |
-| ✅     | ,                      | Connected Accounts | `/app/account/accounts`. Lists the Supabase identities on this login and links/unlinks the OAuth providers `env.ts` has configured. See `ConnectedAccountsPage`                                                                                                                                                                                                                           |
-| ✅     | ,                      | Sessions           | Lists every device on the account with its user agent, IP and last use, and signs the others out (`my_sessions`, `0100`). It said Supabase exposed no session list; `auth.sessions` always had one and nothing read it                                                                                                                                                                    |
+| ✅     | `ProfileSecurity.png`  | Security           | Hosts Clerk's account screen (`UserProfile`, `src/pages/app/account/SecurityPage.tsx`): sign-in methods, two-step verification, connected accounts and signed-in devices are Clerk's, because RotaFlow keeps no passwords, factors or sessions of its own. In the Supabase era the page had password change and TOTP enrolment (`0102`). Backup codes and trusted devices are still named as not built rather than shown as a "100% secure" ring over checks nothing performs                                                                                                                                                                                         |
+| ✅     | ,                      | Connected Accounts | **Redirects to Security since the Clerk cutover:** `/app/account/accounts` is a `Navigate` to `/app/account/security` in `src/App.tsx`, and connected accounts are managed in Clerk's account screen. The Supabase-era page listed the identities on the login and linked or unlinked OAuth providers. The ✅ is the unchanged Supabase-era status; whether it should now read ❌ is the owner's decision |
+| ✅     | ,                      | Sessions           | **Redirects to Security since the Clerk cutover:** `/app/account/sessions` is a `Navigate` to `/app/account/security`; devices and sessions are Clerk's (the API stores no session, only `users.last_seen_at`). The Supabase-era page listed every device and signed the others out (`my_sessions`, `0100`). The ✅ is the unchanged Supabase-era status; whether it should now read ❌ is the owner's decision |
 | ✅     | ,                      | API Tokens         | Explains there is no public API to hold a token for, and why issuing long-lived JWTs would be a security incident rather than a feature. See `TokensPage`. **Hidden from the tab bar** since 2026-10-11 (`hidden: true` in `PROFILE_TABS`); the route still resolves so a saved link works                                                                                                |
 | ✅     | ,                      | Activity           | Reads `audit_logs` for this user                                                                                                                                                                                                                                                                                                                                                          |
-| ✅     | ,                      | Your data          | `/app/account/data` (GAP-057, 2026-10-21). Files an access, portability, correction or erasure request for the signed-in person in the `0020` register (`request_my_data`, `0160`) and lists their own requests with the deadline that applies. It files a case rather than acting on the spot: the employer's record is checked first. No design reference; laid out as the Sessions tab |
+| ✅     | ,                      | Your data          | `/app/account/data` (GAP-057, 2026-10-21). Files an access, portability, correction or erasure request for the signed-in person in the `gdpr_requests` register (`POST /me/data-requests`, `backend/src/Mod/Gdpr.php`; `request_my_data`, `0160`, in the Supabase era) and lists their own requests with the deadline that applies. It files a case rather than acting on the spot: the employer's record is checked first. No design reference; laid out like the Sessions tab was |
 
 ## 5. Built with no design mockup
 
@@ -113,7 +123,7 @@ Same layout-route pattern as §3, at `/app/account`, titled "My account" (the on
 | ✅     | Team management. Issue/revoke invites                | Settings → Permissions (`/app/settings/permissions`). The _directory_ is a separate screen, `/app/team`                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | ✅     | Overtime. Raise, withdraw, approve                   | `/app/overtime` → `OvertimePage` / `OvertimeView`. Open to every role; the page's Team toggle is what gates the approval queue behind `canApprove`                                                                                                                                                                                                                                                                                                                                                                            |
 | ✅     | Help & support                                       | `/app/help` → `HelpPage`. FAQ, "Contact support" (`openSupportCase`, 0024) landing in the platform console's queue (§11), and "Your requests": the requester's own cases, the non-internal thread, a **reply** into it on any case that is not closed (`reply_to_support_case`, GAP-012) and a 1-5 rating once resolved                                                                                                                                                                                                       |
-| ✅     | Setup checklist. What the organisation still needs   | `/app/setup` (CAP-114), owner and manager. Ten steps, six required and four recommended, each derived from a count read back through RLS rather than a stored flag. Added 2026-10-11 to this table; it had no row here                                                                                                                                                                                                                                                                                                        |
+| ✅     | Setup checklist. What the organisation still needs   | `/app/setup` (CAP-114), owner and manager. Ten steps, six required and four recommended, each derived from a count read back through the API rather than a stored flag. Added 2026-10-11 to this table; it had no row here                                                                                                                                                                                                                                                                                                        |
 | ✅     | Notifications inbox. Read, push opt-in               | `/app/notifications`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ✅     | Account settings                                     | `/app/account/*` (see §4)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ✅     | Forgot / reset password                              | `/forgot-password`, `/reset-password`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -180,7 +190,7 @@ reached via the bell.
 Two long-standing ❌ rows here have been closed and moved:
 
 - **Overtime requests** ship. `/app/overtime` → `OvertimePage` /
-  `OvertimeView` / `overtimeService`, realtime-refreshed, with the approval
+  `OvertimeView` / `overtimeService`, refreshed by polling (`useRealtimeRefresh`, section 10), with the approval
   queue behind `canApprove` (§5, §10).
 - **The Super Admin console** ships, as 18 screens under `/admin` (§11).
 
@@ -235,91 +245,92 @@ existing "Export CSV" (the visible day's rows, built in the browser) and the Pol
 
 ## 8. Tables with no UI
 
-**`platform_health_probes` and `rate_limit_events`. Both correctly so.**
+**The MariaDB tables that no route returns to a screen, found 9 November 2026 by searching `backend/src` for a
+`FROM` or `JOIN` of each of the 69 tables in `backend/migrations` outside the code that writes them.** The method reads
+SQL text, so it finds a table no module ever selects; it cannot find a table a route returns by another name. Five
+tables are never selected by any module, and all five are correct to be so:
 
-`shift_templates`, the entry this section existed for, is gone: `0096` dropped it on
-2026-08-31 rather than building the reader it had been waiting for since `0002`, because
-`shift_types` already carries the name, colour and default times a template would have
-(BUG-051).
+- **`rate_limits`**, the limiter's counters (`backend/src/RateLimiter.php`), keyed by bucket and subject. A screen over
+  it would be a defect: it is who attempted what and when, by user id and address.
+- **`incident_counter` and `support_counter`**, one-row counters that mint the next `INC-` and support reference
+  (`backend/src/Mod/Incidents.php`, `backend/src/Mod/Support.php`).
+- **`notification_deliveries`**, the delivery log `Dispatcher` writes (`backend/src/Dispatcher.php`) and retention removes
+  after 12 months. `/admin/notifications` reads `notifications`, not this table (`Console::notificationActivity`), so no
+  screen shows a delivery attempt. Whether one should is a product question, not a defect.
+- **`timesheet_reopenings`**, the reason and the before and after status written whenever a manager reopens an exported
+  timesheet (`backend/src/Mod/Timesheets.php`). **No route returns these rows**, so a reopening's recorded reason is
+  never shown to anybody. That is a gap, not a design choice.
 
-The two that remain are a different thing, and it is worth saying why rather than
-striking the section. They hold **RLS enabled, zero policies, and grants to
-`service_role` alone** — `platform_health_probes` matches a `pg_net` reply back to the
-probe that asked for it (`0076`), and `rate_limit_events` is the shared limiter's ledger
-of who attempted what and when (`0085`). A screen reading either would be a defect, not a
-feature: the second is an audit trail of failed attempts keyed by user id and IP, and
-exposing it would tell one tenant about another.
+A further group is read only by the cron job or the webhook and has no screen by design: the queues `storage_deletions`,
+`account_deletions` and `notification_outbox`, the reminder ledger `document_reminders` and the webhook ledger
+`billing_events`. `schema_migrations` is created by `backend/bin/migrate.php`, is not one of the 69 and has no reader.
 
-**They were missing from this section, and from `docs/DATA-MODEL.md`, until 2026-08-31** —
-along with the `integration_connector_stats` view. The method recorded below is why: it
-greps `src/` and `supabase/` for `from('<table>')`, which finds every table a _client_
-touches and is blind by construction to one no client role can reach. A tool that can only
-see what is reachable will always report the unreachable as absent. Both are now in
-`docs/DATA-MODEL.md` §4.8 with their grants written down.
+**Tables the older text listed as having no UI, and what reads them now.** `audit_logs` is returned by
+`GET /orgs/{o}/audit` (Settings, Audit; My account, Activity) and `GET /platform/audit` (`/admin/audit`);
+`subscriptions` by `GET /orgs/{o}/billing` and the platform billing routes, and written by the signed
+`POST /stripe/webhook`; `overtime_requests` by `/overtime` behind `/app/overtime` and the reports analytics card.
 
-Do not re-derive this from a memory of the old text: the section named four tables at one
-point, three grew UI, and the fourth was deleted. All four are listed here so the stale
-version cannot be reconstructed:
-
-- **`audit_logs`** is read by `auditService` (Settings → Audit, My account →
-  Activity, and the Leave and Timesheets screens) and, in the console, by
-  `listPlatformAuditLogs` (`/admin/audit`, `/admin` overview),
-  `listOrgAuditLogs` (`/admin/organisations/:organisationId`) and
-  `listUserAuditLogs` (`/admin/users/:userId`). It is written by `audit_write`
-  (0016) and by triggers and RPCs across 0017, 0021-0026, 0030, 0034 and
-  0039-0040, not just 0011's `anonymize_staff_member`.
-- **`subscriptions`** is read by `subscriptionService` (Settings → Billing) and
-  by `platformService` / `platformOrgService` (`/admin/subscriptions`,
-  `/admin/billing`, `/admin/organisations/:id`), and written by the
-  `stripe-webhook` Edge Function.
-- **`overtime_requests`** is read and written by `overtimeService`, behind
-  `/app/overtime` and the reports analytics card.
+**History, Supabase era.** The section used to name `platform_health_probes` and `rate_limit_events`, tables that
+had row level security (retired) enabled, no policy and grants to `service_role` alone (`pg_net`, `0076` and `0085`), and
+`shift_templates`, which `0096` dropped on 2026-08-31 (BUG-051). The first two no longer exist in MariaDB:
+`backend/src/DataMove/Map.php` records the health tables as replaced by an external uptime check, and `rate_limits` is
+the limiter's table. The method that old section recorded (grep `src/` for `from('<table>')`) was blind to a table no
+client role could reach, which is why reading the SQL in `backend/src` is the better test; do not re-derive the list from
+the old text.
 
 ## 9. GDPR. Built, deliberately narrower than "delete everything"
 
-Per-staff **export** (JSON of everything held) and **anonymize** (scrub PII, keep
-operational rows) on `/app/team`, owner-only, via `anonymize_staff_member`
-(`0011_gdpr_anonymize.sql`, applied). Two things it deliberately does not do:
+Per-staff **export** (JSON of what the API's list routes return for that person) and **erase** (scrub the personal
+fields, keep operational rows) on `/app/team`, owner-only. Erase is `POST /orgs/{o}/staff/{s}/erase`
+(`Gdpr::eraseStaff`, `backend/src/Mod/Gdpr.php`; `anonymize_staff_member`, `0011`, in the Supabase era). The export
+and its gaps (the documents dataset is always empty) are written up in `docs/SECURITY.md` section 4. That button
+deliberately does not:
 
-- Delete the person's RotaFlow login (`profiles`/`auth.users`), that can span
-  organisations and needs the Auth Admin API, a platform-level operation.
-  A person can now **ask** for it from My account, Your data (§4), which files an
-  erasure case in the register; the deletion itself is still GAP-057.
-- Delete the file behind a stored `documents.file_url`, only the row goes.
+- Delete the person's RotaFlow login, which can span organisations. A person can **ask** for it from My account, Your data
+  (§4), which files an erasure case in the register; closing that case as completed queues the login, and
+  `Gdpr::cron` deletes it from Clerk and then from `users` (GAP-057, shipped).
+- Delete the file behind a legacy pasted link (`documents.file_url`): only the row goes. Uploaded files are queued for
+  deletion and removed by `Lifecycle::cron`.
 
-The _obligation_ side — the Article 12(3) one-month clock on each request — is a
-separate screen in the platform console, `/admin/gdpr` (§11). This section is the
-action; that one is the register.
+The _obligation_ side — the Article 12(3) one-month clock on each request — is a separate screen in the platform
+console, `/admin/gdpr` (§11). This section is the action; that one is the register.
 
-## 10. Realtime
+## 10. Realtime (Supabase Realtime retired)
 
-13 screens live-update via `useRealtimeRefresh` (`docs/ARCHITECTURE.md#hook-contracts` §11) against the 14
-tables published by `0012_realtime.sql` (13) and `0013_realtime_overtime.sql` (1):
-Dashboard, Schedule, Leave, Swaps, Overtime, Timesheets, Clock in, Availability,
-Announcements, Notifications, Team directory, Locations, and the invite manager in
-Settings → Permissions.
+There is no longer any realtime channel. `useRealtimeRefresh` (`src/hooks/useRealtimeRefresh.ts`,
+`docs/ARCHITECTURE.md#hook-contracts` §11) keeps its name and its callers but **polls**: it re-runs the screen's own load
+function on a timer, fastest-table-wins, and also when the tab becomes visible or the network returns. The intervals are
+`POLL_MS` in that file: clock events 15 s, shifts and rotas 20 s, notifications and swaps 30 s, leave and overtime 45 s,
+availability, announcements, staff profiles and invites 60 s, locations, departments and shift types 120 s. There is no
+`EventSource`, `WebSocket` or server push in `src` (`git grep -nE "EventSource|WebSocket" -- src` finds only comments); the
+nav badges and the notification bell have their own timers. Sixteen pages and the invite manager in Settings, Permissions
+call the hook (`git grep -l useRealtimeRefresh -- src`): Dashboard, Schedule, Approvals, Attendance, Leave, Swaps,
+Overtime, Timesheets, Clock in, Availability, Announcements, Notifications, Open shifts, Setup, Team directory and
+Locations.
 
-**Rota Builder is deliberately excluded.** Its load path calls
-`getOrCreateRotaForPeriod`, which INSERTs, so a naive subscription creates a
-write→event→refetch cycle and a mid-drag refetch could disturb an in-progress edit.
-It needs a mutation-aware guard first.
+**Rota Builder is deliberately excluded.** Its load path calls `getOrCreateRotaForPeriod`, which INSERTs, so a naive
+refresh would write, then refetch, in a loop, and a mid-drag refetch could disturb an in-progress edit. It would need a
+mutation-aware guard first. (Whether the builder still calls that function is `NOT VERIFIED`: not re-read in this pass.)
 
-`org_smtp_settings` and `audit_logs` are deliberately **not** published. Publishing
-a table whose whole design is that clients cannot read a column would hand that
-column out in a change payload.
+The text of this section in the Supabase era described 14 tables published by `0012_realtime.sql` and
+`0013_realtime_overtime.sql`, and said `org_smtp_settings` and `audit_logs` were deliberately not published because a
+change payload would hand out a column clients cannot read. Polling has no such payload: each refresh is an ordinary
+authenticated API read.
 
-## 11. Platform console (`/admin`)-18 screens, all built
+## 11. Platform console (`/admin`)-19 screens, all built
 
-This section used to read "Super Admin console does not exist". It does. Nineteen
-files in `src/pages/admin/`, eighteen of them routed in `src/App.tsx`; the
-nineteenth is `AdminPreviewHarness`, the DEV-only design-loop harness.
+This section used to read "Super Admin console does not exist". It does. Twenty
+files in `src/pages/admin/`, nineteen of them routed in `src/App.tsx` (counted 9 November 2026: the index route
+and eighteen nested paths); the twentieth is `AdminPreviewHarness`, the DEV-only design-loop harness. The section
+heading said 18 until that count; the table below has always listed 19 rows.
 
 It sits **outside `/app`** on purpose: the area is above organisations, so it is
-gated on `profiles.is_platform_admin` (`RequirePlatformAdmin`) rather than on a
-`MembershipRole`. `ProtectedRoute` still wraps it, so an anonymous visitor is sent
-to sign in rather than told the area exists. Fourteen routes narrow it further with
+gated on a platform role from `GET /me` (`RequirePlatformAdmin`: `isPlatformAdmin` is `platformRole !== null`)
+rather than on a `MembershipRole`. `ProtectedRoute` still wraps it, so an anonymous visitor is sent
+to sign in rather than told the area exists. Fifteen of the screens narrow it further with
 `RequirePlatformRole`, because a hidden nav link that still renders when the URL
-is typed is a decoration, not a permission.
+is typed is a decoration, not a permission. The boundary itself is the API: the `/platform/*` routes answer 404 to
+a caller without the needed platform role (`backend/src/Mod/Console.php`; `GET /platform/settings` is the one any signed-in person may read), so the gates here are presentation.
 
 Reference for this area is `docs/design/PLATFORM_CONSOLE.html`, not a PNG. There is no
 mockup file for any of these, so none of them appears in the §-counts below.
@@ -328,27 +339,27 @@ mockup file for any of these, so none of them appears in the §-counts below.
 | ------ | ------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ✅     | Overview            | `/admin` (index)                       | Platform-wide counts plus a real `audit_logs` activity feed                                                                                                                                                                                                                                                                                                                                     |
 | ✅     | Organisations       | `/admin/organisations`                 | Tenant register                                                                                                                                                                                                                                                                                                                                                                                 |
-| ✅     | Organisation detail | `/admin/organisations/:organisationId` | Nine of the reference's ten tabs. Activity is stated-not-shown on the Data tab. No route gate on purpose: finance needs Subscription and Usage, so the operational tabs are hidden per role in `src/lib/organisationTabs.ts` instead. Usage copy states the `0070` staff and location limits                                                                                                    |
+| ✅     | Organisation detail | `/admin/organisations/:organisationId` | Nine of the reference's ten tabs. Activity is stated-not-shown on the Data tab. No route gate on purpose: finance needs Subscription and Usage, so the operational tabs are hidden per role in `src/lib/organisationTabs.ts` instead. Usage copy states the staff and location limits (`0070` in the Supabase era; the limits are enforced in `backend/src/Billing.php`)                                                                                                    |
 | ✅     | Users               | `/admin/users`                         | Cross-tenant accounts. The platform-admin grant is the one write, and it refuses to strand the platform                                                                                                                                                                                                                                                                                         |
-| ✅     | User detail         | `/admin/users/:userId`                 | One account across every tenant. Auth facts via `platform_user_auth_facts` (0027)                                                                                                                                                                                                                                                                                                               |
+| ✅     | User detail         | `/admin/users/:userId`                 | One account across every tenant. Sign-in facts live in Clerk, so the screen shows only what the API knows (created, last seen: `GET /platform/users/{u}`, `src/services/platformFactsService.ts`); `platform_user_auth_facts` (0027) was the source in the Supabase era                                                                                                                                                                                                                                                                                                               |
 | ✅     | Subscriptions       | `/admin/subscriptions`                 | `RequirePlatformRole` → `PLATFORM_BILLING_ROLES`. Keyed on organisations, so a tenant with no subscription shows. Read-only: no plan control, since plan changes happen in the customer's Stripe Billing Portal. Stripe's `canceled` displays as "Cancelled"                                                                                                                                    |
 | ✅     | Billing             | `/admin/billing`                       | `PLATFORM_BILLING_ROLES`. MRR/ARR/collected/outstanding, all summed in `src/lib/revenue.ts` over `invoices` and `subscriptions × plans` (0023)                                                                                                                                                                                                                                                  |
-| ✅     | Enquiries           | `/admin/enquiries`                     | The website contact form's inbox (`0155`). `PLATFORM_OPERATIONAL_ROLES` on the route and the nav, matching `enquiries_select`. Status filter on the shared `useFilterState` contract, search kept out of the URL, and a dialog with the message and a status change (New, Replied, Demo booked, Closed). Not a CRM: replies go from the team's mailbox. Previewed at `/admin-preview/enquiries` |
+| ✅     | Enquiries           | `/admin/enquiries`                     | The website contact form's inbox (`0155`). `PLATFORM_OPERATIONAL_ROLES` on the route and the nav, matching the API's operational roles (`Enquiries::OPERATIONAL`, `backend/src/Mod/Enquiries.php`). Status filter on the shared `useFilterState` contract, search kept out of the URL, and a dialog with the message and a status change (New, Replied, Demo booked, Closed). Not a CRM: replies go from the team's mailbox. Previewed at `/admin-preview/enquiries` |
 | ✅     | Support Centre      | `/admin/support`                       | The `support_cases` queue (0024). `/app/help` is the requester-facing door into it                                                                                                                                                                                                                                                                                                              |
 | ✅     | Support case detail | `/admin/support/:caseId`               | Reply, status, assign. Status/assign need `PLATFORM_SUPPORT_ROLES`; the controls disable rather than vanish                                                                                                                                                                                                                                                                                     |
-| ✅     | Support access      | `/admin/support-access`                | Time-boxed tenant access. Since 0028 a session genuinely gates RLS via `has_support_access()`                                                                                                                                                                                                                                                                                                   |
+| ✅     | Support access      | `/admin/support-access`                | Time-boxed tenant access. A session genuinely gates the data: `Scope::supportMembership` (`backend/src/Scope.php`) re-checks it on every request (`has_support_access()`, 0028, in the Supabase era)                                                                                                                                                                                                                                                                                                   |
 | ✅     | Audit logs          | `/admin/audit`                         | Cross-tenant `audit_logs`                                                                                                                                                                                                                                                                                                                                                                       |
 | ✅     | Platform health     | `/admin/platform-health`               | Configured-integration reporting plus a re-probing Watch mode                                                                                                                                                                                                                                                                                                                                   |
 | ✅     | Incidents           | `/admin/incidents`                     | `incidents` + `incident_updates` (0021)                                                                                                                                                                                                                                                                                                                                                         |
 | ✅     | Integrations        | `/admin/integrations`                  | Platform services (build-time config) kept separate from tenant integrations (per-org SMTP, the only one)                                                                                                                                                                                                                                                                                       |
 | ✅     | Notifications       | `/admin/notifications`                 | `PLATFORM_CONFIG_ROLES`, gated on the route as well as the nav: it is a cross-tenant view of who was told what                                                                                                                                                                                                                                                                                  |
-| ✅     | Feature flags       | `/admin/feature-flags`                 | `PLATFORM_CONFIG_ROLES`. Reports `registration_enabled` and `maintenance_mode` as recorded values with no consumer, not as switches; per-tenant flags have no table and are absent rather than faked                                                                                                                                                                                            |
-| ✅     | GDPR & data         | `/admin/gdpr`                          | `PLATFORM_OPERATIONAL_ROLES` on the route and the nav (finance excluded, matching `0138`). A deadline register (Article 12(3)), not a data browser. The per-staff action lives in §9                                                                                                                                                                                                            |
-| ✅     | Platform settings   | `/admin/settings`                      | `PLATFORM_CONFIG_ROLES`. Authentication (the `require_mfa` switch, the one setting with a consumer), Data Retention and Administrators. General and Maintenance are hidden: their columns drive nothing, so their values are kept but not shown                                                                                                                                                 |
+| ✅     | Feature flags       | `/admin/feature-flags`                 | `PLATFORM_CONFIG_ROLES`. Lists and edits the platform feature flags through `GET` and `POST /platform/flags` (`backend/src/Mod/FeatureFlags.php`, tables `feature_flags` and `feature_flag_targets`). It reports `registration_enabled` and `maintenance_mode` as recorded values rather than switches; the page header says they have no consumer, which `NOT VERIFIED` here, since `GET /platform/settings` is what the app reads the maintenance notice from                                                                                                                                                                                            |
+| ✅     | GDPR & data         | `/admin/gdpr`                          | `PLATFORM_OPERATIONAL_ROLES` on the route and the nav (finance excluded, matching `Gdpr::OPERATIONAL`; `0138` in the Supabase era). A deadline register (Article 12(3)), not a data browser. The per-staff action lives in §9                                                                                                                                                                                                            |
+| ✅     | Platform settings   | `/admin/settings`                      | `PLATFORM_CONFIG_ROLES`. Authentication (two-step verification for platform staff is set in the Clerk dashboard: `setPlatformMfaRequired` rejects with 405 `not_available` in `src/services/platformSettingsService.ts`, so the `require_mfa` switch of the Supabase era is gone), Data Retention (`GET /platform/retention`) and Administrators. General and Maintenance are hidden: their columns drive nothing, so their values are kept but not shown                                                                                                                                                 |
 
 **Preview harness.** `/admin-preview/*` mounts the real `AdminShell` and the real
-page components with `fetch` intercepted so the Supabase client answers from
-fixtures. DEV only, defined behind `devPage(...)` so Rollup drops it from the
+page components with `fetch` intercepted so a client answers from
+fixtures (the harness's own comment still names the retired Supabase client; whether the fixtures answer the PHP API's routes is `NOT VERIFIED`, not run). DEV only, defined behind `devPage(...)` so Rollup drops it from the
 production bundle. It is the only way to look at these screens without a seeded
 platform-admin session.
 
@@ -413,11 +424,23 @@ Plus, with no mockup file of their own:
 - **12 rows in §5** — team management, overtime, help, the setup checklist, notifications inbox,
   account settings, forgot/reset password, accept invite, the legal pages (five
   routes, in one row), the OAuth callback, permission denied, 404.
-- **18 platform-console screens in §11** (`/admin/*`), referenced by
+- **19 platform-console screens in §11** (`/admin/*`), referenced by
   `docs/design/PLATFORM_CONSOLE.html`.
 - **6 designed tabs** specified by the §3/§4 tab bars — Permissions, Roles,
-  Connected Accounts, Sessions, API Tokens, Activity. All six built.
+  Connected Accounts, Sessions, API Tokens, Activity. Four are built as tabs; Connected Accounts and Sessions
+  were built and now redirect to Security (Clerk, §4).
 - **1 undesigned tab**, Your data (§4, 2026-10-21).
+
+**Front-end routes in `src/App.tsx`, counted 9 November 2026.** Command: `grep -nE '<Route|^ +path=' src/App.tsx`,
+tallied by reading its output and leaving out the DEV-only preview block (the `import.meta.env.DEV` branch; there are
+no scripts tracked for this). Redirects are `Navigate` or `*Redirect` elements. **Twenty** top-level `<Route>` elements
+(twelve public pages, `/login/*`, `/signup/*`, `/forgot-password` and `/reset-password`, which both redirect to `/login`,
+`/splash`, `/auth/callback`, `/invite/:token` and `/onboarding`), plus a catch-all 404. **Thirty** `<Route>` elements
+directly under `/app`: 22 screens and 8 redirects (`/app`, `staff`, `staff/:staffId`, `locations/departments`,
+`locations/:locationId`, `clock-in`, `integrations`, `profile/*`). Under `/app/settings`, 9 screens and 1 redirect; under
+`/app/account`, 6 screens and 3 redirects (`/app/account`, `accounts`, `sessions`). Under `/admin`, 19 screens and no
+redirect. The earlier figures in this section (18 console screens, 7 designed account tabs "all built") are the 2026-08-20 and
+2026-10 counts, which these supersede.
 
 > Recomputed 2026-08-20 by parsing this file's own tables, not by hand. The
 > previous block read `33 ✅ · 2 🟡` and predated three landings: the admin
@@ -477,11 +500,11 @@ one and not the other.
 
 ### Preview routes. Read this before screenshotting
 
-Most matched screens live behind auth and need a real Supabase session, an org and
+Most matched screens live behind auth and need a real Clerk session, an org and
 seeded rows, which the loop cannot produce. The pattern already in use is a
 **`*-preview` route** carrying fixed mock data that reproduces the reference's exact
-numbers. Seventeen exist, all inside the one `import.meta.env.DEV` block in
-`src/App.tsx`: `/appboot`, `/onboarding-preview`,
+numbers. Seventeen exist (counted 9 November 2026), all inside the one `import.meta.env.DEV` block in
+`src/App.tsx`, which Rollup drops from the production bundle (`scripts/check-bundle-size.mjs` fails on a DEV page in `dist/`): `/appboot`, `/onboarding-preview`,
 `/dashboard-preview`, `/rota-builder-preview`, `/schedule-preview`,
 `/timesheets-preview`, `/clockin-preview`, `/admin-preview` (the whole platform
 console nested under it), `/staff-preview`, `/staff-preview/:staffId`,
@@ -491,7 +514,7 @@ console nested under it), `/staff-preview`, `/staff-preview/:staffId`,
 
 `/settings-preview/*` (added 2026-10-21, `SettingsLivePreviewPage`) mounts the
 **real** Settings and My account pages inside their tab layouts, with
-`fetch` answering Supabase from fixtures: `/settings-preview/{organisation,
+`fetch` answering from fixtures: `/settings-preview/{organisation,
 policies,notifications,integrations,billing,audit}` and
 `/settings-preview/account/{profile,preferences,security}`. Before it, none of
 those nine screens could be captured without a session, which is why they had
@@ -655,9 +678,9 @@ Build the **`<SCREEN>`** screen so it visually matches `<REF>` as closely as pos
    `dark:` variant per `docs/DESIGN-SYSTEM.md` §1. Don't defer dark mode.
 6. **You may run the dev server for this task.** Start `pnpm run dev` in the background
    if it isn't already running and reuse it. Do not spawn a second instance.
-7. This is a **static PWA build**, no server runtime. Anything server-side (data,
-   auth) goes through Supabase per `docs/DATA-MODEL.md` / `docs/ARCHITECTURE.md`; don't
-   invent a backend for a screen that needs real data. Wire it to Supabase or use
+7. This is a **static front end** on a PHP API (`backend/`). Anything server-side (data,
+   auth) goes through the API per `docs/API-SPEC.md` / `docs/ARCHITECTURE.md`; don't
+   invent a backend for a screen that needs real data. Wire it to the API or use
    the same demo/mock pattern already used on built screens.
 
 #### Match target
