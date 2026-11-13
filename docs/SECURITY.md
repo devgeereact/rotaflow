@@ -91,9 +91,9 @@ first real organisation with live staff data, because production held almost no 
 workflow ran from 30 August 2026 (first success 5 September; a human restore on 7 September found the dump missing grants,
 fixed the same day: GAP-001, GAP-036) and was read as green every night to 10 October.
 
-Since the 1 November 2026 cutover that workflow (`.github/workflows/backup.yml`) backs up the archived Supabase project,
-not the live database, and its scheduled runs were still failing when last read on 9 November 2026 (`gh run list`, read
-only). It is not a backup of anything live; repairing or removing it is Phase 5 (workflow files). The full previous text of
+Since the 1 November 2026 cutover that workflow (`.github/workflows/backup.yml`) backed up the archived Supabase project,
+not the live database, and its scheduled runs failed every night. It was not a backup of anything live, and it was removed on
+13 November 2026 (commit `787b398` on `main`). The full previous text of
 §1, including "What exists in the meantime, and what it is not", is at the tag: `git show
 live-supabase-2026-11-01:docs/SECURITY.md`.
 
@@ -545,8 +545,8 @@ when a session ends.
    checks where a password exists, and two-step verification are Clerk settings. The earlier items about leaked-password
    protection and CAPTCHA in the hosted-auth settings no longer apply to this stack; the equivalent checks are in the
    Clerk dashboard, and nothing in the repository can show their state.
-10. **Retire or repair the scheduled workflows that still target the retired Supabase project** (`backup.yml`, `auth-config.yml`):
-    Phase 5.
+10. **Retire the scheduled workflow that still targets the retired Supabase project** (`auth-config.yml`; `backup.yml` was removed on
+    13 November 2026): Phase 5.
 
 ## Privacy data map
 
@@ -837,7 +837,7 @@ in neither list, which is the right shape for this class of problem.
 | Second factor           | Clerk's setting, not the API's. The API verifies a Clerk session token (RS256, issuer, authorised party) and has no second-factor code of its own; whether two-step verification is on for accounts is `NOT VERIFIED` (dashboard)                                                                                                                                                                                              | `backend/src/Jwt.php`                              |
 | Rate limiting           | 600 requests a minute per signed-in user, 300 a minute per address on public routes, and named limits on sensitive paths (invitations, enquiries, calendar feed, organisation deletion, support sessions, AI)                                                                                                                                                                                                                  | `backend/src/Api.php`, `backend/src/RateLimiter.php` |
 | Backups                 | **On-server dump every six hours, installed and proven 2026-11-08; no off-site copy, no failure alert, no point-in-time recovery; stored files not covered** (§1)                                                                                                                                                                                                                                                              | `backend/bin/backup.php`, `docs/DEPLOYMENT.md`     |
-| Scheduled checks        | `backup.yml` (failing on schedule when read on 2026-11-09) and `auth-config.yml` still target the retired Supabase project; the current state of `auth-config.yml` is `NOT VERIFIED` (not read this pass); repair is Phase 5                                                                                                                                                                                                                                                                                                                    | `.github/workflows/backup.yml`                     |
+| Scheduled checks        | `backup.yml` was removed on 2026-11-13; `auth-config.yml` still targets the retired Supabase project; the current state of `auth-config.yml` is `NOT VERIFIED` (not read this pass); repair is Phase 5                                                                                                                                                                                                                                                                                                                    | `.github/workflows/backup.yml`                     |
 
 ---
 

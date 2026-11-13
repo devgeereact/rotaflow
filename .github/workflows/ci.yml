@@ -465,10 +465,12 @@ jobs:
         run: |
           set -uo pipefail
           status=0
-          # backup.yml and auth-config.yml guard production. plan-drift-audit.yml
-          # keeps docs/SAAS.md honest, and codeql.yml is the weekly security
-          # scan: both are scheduled too, so both fail where nobody is standing.
-          for wf in backup.yml auth-config.yml plan-drift-audit.yml codeql.yml; do
+          # backup.yml was retired on 13 Nov 2026: it dumped the archived Supabase
+          # project, not the live database. auth-config.yml still reads that
+          # retired project. plan-drift-audit.yml keeps docs/SAAS.md honest, and
+          # codeql.yml is the weekly security scan: all are scheduled, so all fail
+          # where nobody is standing.
+          for wf in auth-config.yml plan-drift-audit.yml codeql.yml; do
             # `|| true` on the API call: a transient GitHub failure must not be
             # reported as "your backups are broken". No data is the one answer
             # this job does not turn into an alarm.

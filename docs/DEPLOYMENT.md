@@ -460,16 +460,15 @@ The release snapshots in `~/backups/rotaflow/releases/` hold **code only**. The 
   (`NOT TESTED`). The owner's pilot targets are a 6 hour data-loss window (the backup interval) and a 4 hour recovery time; they are targets,
   and no recovery has been timed.
 
-## Recovery: the scheduled workflows that still target the retired Supabase project
+## Recovery: the scheduled workflow that still targets the retired Supabase project
 
-Two scheduled GitHub workflows were written for the previous stack and **still target it** (read 9 November 2026,
-`.github/workflows`): `backup.yml` takes a nightly `pg_dump` of the archived (retired) Supabase project, and `auth-config.yml` checks
-that retired project's Auth settings against `scripts/check-auth-config.mjs`. Their secrets (`SUPABASE_DB_URL`,
+`backup.yml` took a nightly `pg_dump` of the archived (retired) Supabase project, not the live database, and failed every night after the
+cutover (five consecutive failures read 5 to 9 November 2026, and daily since). **It was removed on 13 November 2026** (commit `787b398` on
+`main`); the real backup is `backend/bin/backup.php` above. One workflow written for the previous stack still targets it: `auth-config.yml`,
+which checks that retired project's Auth settings against `scripts/check-auth-config.mjs` (disabled in Actions). Their secrets (`SUPABASE_DB_URL`,
 `BACKUP_PASSPHRASE`, `SUPABASE_ACCESS_TOKEN`) belong to that retired stack. **Do not create them, and do not follow the old runbook to set
-them.** `backup.yml`'s scheduled runs were failing when last read (five consecutive failures, 5 to 9 November 2026, `gh run
-list`, read only), which is expected after the cutover and means nothing about the live database. Neither is a backup or a
-monitor of anything live. Repairing or removing them is Phase 5 (workflow files); `ci.yml`'s `scheduled-checks` job reads their
-last runs and annotates pull requests, so a red status there comes from these two. The 2026-09-05 runbook for setting those
+them.** Neither it nor the removed `backup.yml` is a backup or a monitor of anything live. Removing `auth-config.yml` is Phase 5
+(workflow files); `ci.yml`'s `scheduled-checks` job reads its last runs and annotates pull requests, so a red status there comes from it. The 2026-09-05 runbook for setting those
 secrets, and its notes on what a restore rehearsal into legacy stock PostgreSQL does and does not prove, are at the tag:
 `git show live-supabase-2026-11-01:docs/DEPLOYMENT.md`.
 
@@ -497,7 +496,7 @@ is one person for all of them.
 | `backend/bin/cron.php` (cPanel cron, every five minutes) | Notifications, retention and file deletion have stopped | Gideon Akinlotan | Read `~/rotaflow-private/logs/cron.log`. **No alert reaches anyone today** |
 | `plan-drift-audit.yml` | The weekly register-against-code audit did not run or found drift | Gideon Akinlotan | Read the drift log at the end of `docs/SAAS.md` and the run log |
 | `codeql.yml` | A code-scanning finding, or the analysis failed | Gideon Akinlotan | Security tab, then a fix or a dismissal with a reason |
-| `backup.yml`, `auth-config.yml` | Red is expected: they target the retired stack | Gideon Akinlotan | None until Phase 5 repairs or removes them |
+| `auth-config.yml` | Red is expected (disabled in Actions): it targets the retired stack | Gideon Akinlotan | None until it is removed. `backup.yml` was removed on 13 Nov 2026; the real backup is `backend/bin/backup.php` above |
 
 GitHub emails the account that owns a schedule when a scheduled run fails, if that account's notification settings allow it;
 whether they do, and whether Actions can run at all (owner action O14 in `docs/SAAS.md`), has not been checked from this

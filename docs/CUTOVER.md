@@ -322,7 +322,7 @@ Rollback of the cron line: remove it (restore the backup).
 - Push-to-deploy (later, your decision): merge `release/cutover` into `main`, set `"branch": "main"` in `release.json`, add
   the `push:` trigger written in `.github/workflows/deploy.yml`, create the repository variables named there and the
   `CPANEL_SSH_KEY` / `CPANEL_KNOWN_HOSTS` secrets, enable Actions for the repository. Until then `pnpm release` from the Mac.
-- Retire Supabase-era workflows (`backup.yml`, `auth-config.yml`) once the project is closed; add a MariaDB backup instead.
+- Retire Supabase-era workflows (`backup.yml`, `auth-config.yml`) once the project is closed; add a MariaDB backup instead. `backup.yml` was retired on 13 Nov 2026 (it only ever dumped the archived Supabase project and failed every night); `auth-config.yml` is still to go. The old runbook for it is at the tag `live-supabase-2026-11-01`.
 - DNS and Cloudflare: no change for the site (same domain, same origin, still proxied). Only the Clerk CNAMEs (grey) matter.
 
 ## If the tunnel is refused

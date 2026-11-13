@@ -84,8 +84,8 @@ describe how to sequence work; in this repository GEE OS routes.
 `backend/migrations`. In CI, `ci.yml` runs
 **six** jobs; which of them a merge requires, and the scheduled workflows with their
 current state and owners, are the table in `qa/README.md`. Three of the six jobs
-(`edge-types`, `e2e-authenticated`, `db-tests`) and the workflows `auth-config.yml` and
-`backup.yml` still target the retired Supabase stack and are repaired in a later phase.
+(`edge-types`, `e2e-authenticated`, `db-tests`) and the workflow `auth-config.yml` still target
+the retired Supabase stack and are repaired in a later phase. `backup.yml` was removed on 13 Nov 2026.
 Whether GitHub Actions runs for the owner's account is `NOT VERIFIED` (owner action O14 in
 `docs/SAAS.md`). A scheduled workflow fails where nobody is standing: check
 `gh run list --workflow=<name> --limit 3` before trusting what it protects. The PHP
