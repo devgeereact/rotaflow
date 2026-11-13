@@ -602,6 +602,8 @@ recover":
 
 ### Alert owners
 
+`backup.yml` was removed on 13 Nov 2026: it dumped the archived Supabase project, not the live database, and failed every night. The secrets and restore text for it elsewhere in this file are history; the full old runbook is at the tag `live-supabase-2026-11-01`.
+
 A scheduled workflow fails where nobody is standing, so each one has a named
 person who acts on a red run. Today that is one person for all of them. GitHub
 emails the account that owns the schedule when a scheduled run fails, if that
@@ -610,7 +612,6 @@ from this repository.
 
 | Workflow               | What a red run means                                              | Owner            | First action                                                                                        |
 | ---------------------- | ----------------------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------- |
-| `backup.yml`           | Last night's production dump or its restore check failed          | Gideon Akinlotan | `gh run view --log-failed`; treat a backup older than 26 hours as a release blocker                 |
 | `auth-config.yml`      | Supabase Auth settings drifted, or the check cannot read them     | Gideon Akinlotan | A `401` means a new `SUPABASE_ACCESS_TOKEN`; otherwise compare with `scripts/check-auth-config.mjs` |
 | `plan-drift-audit.yml` | The weekly register-against-code audit did not run or found drift | Gideon Akinlotan | Read the drift log at the end of `docs/SAAS.md` and the run log                                     |
 | `codeql.yml`           | A code-scanning finding, or the analysis failed                   | Gideon Akinlotan | Security tab, then a fix or a dismissal with a reason                                               |

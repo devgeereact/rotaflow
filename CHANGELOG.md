@@ -6,6 +6,9 @@ capability status. Started on 11 October 2026 with the ten most recently merged
 pull requests, read from `gh pr list --state merged`. Earlier history is in
 `git log --merges` and the pull requests themselves.
 
+## 13 November 2026: the Supabase-era backup workflow is removed
+- Deleted `.github/workflows/backup.yml`. It ran a nightly `pg_dump` of the archived Supabase project, so it protected nothing live, and it failed on schedule every night (secrets of the retired stack). `ci.yml`'s `scheduled-checks` no longer reads it; `DEPLOYMENT.md` and `CUTOVER.md` say so. `auth-config.yml` (also Supabase-era, already disabled in Actions) is still to go. The old runbook is kept at the tag `live-supabase-2026-11-01`.
+
 **The rule: one entry per merged pull request**, added in that pull request, under
 "Unreleased" until it merges, then dated with its merge date. Dependency bumps from
 Dependabot may be grouped into one line per week. The rule sits under
